@@ -1,46 +1,98 @@
+x-logs: &logs
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
 services:
   app:
     build: ./app
     restart: unless-stopped
+    <<: *logs
     environment:
       DATABASE_URL: postgres://escala:${DB_PASS}@db:5432/escala
+      NODE_ENV: production
+      DOMAIN: ${DOMAIN}
+      APP_URL: ${APP_URL:-}
+      SESSION_SECRET: ${SESSION_SECRET}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASS: ${ADMIN_PASS}
-      NODE_ENV: production
-      SESSION_SECRET: ${SESSION_SECRET}
       WEBHOOK_TOKEN: ${WEBHOOK_TOKEN}
       CHECKOUT_URL: ${CHECKOUT_URL:-}
-      LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
+      SUPORTE_WHATSAPP: ${SUPORTE_WHATSAPP:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       META_PIXEL_ID: ${META_PIXEL_ID:-}
-    depends_on: [db]
-    # Se o VPS já tem proxy (Traefik/Nginx/Caddy) rodando, remova o serviço "caddy"
-    # abaixo e aponte seu proxy para a porta 3000 deste container:
+      LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Só o próprio VPS enxerga esta porta (o proxy com HTTPS fica na frente)
     ports:
-      - "127.0.0.1:3010:3000"
+      - "127.0.0.1:${APP_PORT:-3010}:3000"
 
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    <<: *logs
     environment:
       POSTGRES_USER: escala
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: escala
     volumes:
       - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escala -d escala"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
+  # Backup diário do banco em ./backups (guarda 14 dias)
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    <<: *logs
+    environment:
+      PGPASSWORD: ${DB_PASS}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      app: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          f=/backups/escala-$$(date +%Y-%m-%d_%H%M).sql.gz
+          if pg_dump -h db -U escala escala | gzip > $$f.tmp; then mv $$f.tmp $$f; echo "backup ok: $$f"; else rm -f $$f.tmp; echo "backup FALHOU"; fi
+          find /backups -name 'escala-*.sql.gz' -mtime +14 -delete
+          sleep 86400
+        done
+
+  # HTTPS automático. Use quando as portas 80 e 443 do VPS estiverem livres:
+  #   docker compose --profile caddy up -d
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    <<: *logs
     profiles: ["caddy"]
-    ports: ["80:80", "443:443"]
+    ports: ["80:80", "443:443", "443:443/udp"]
     environment:
       DOMAIN: ${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
+      - caddyconfig:/config
     depends_on: [app]
 
 volumes:
   dbdata:
   caddydata:
+  caddyconfig:

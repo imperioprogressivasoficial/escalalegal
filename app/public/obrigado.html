@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compra confirmada — Escala Legal</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,700..800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--azul:#1351b4;--azul-esc:#071d41;--verde:#168821;--amarelo:#ffcd07;--tinta:#0c1b33;--texto:#3d4a5c;--mut:#6b778a;--linha:#dfe3ea;color-scheme:light}
+*{box-sizing:border-box;margin:0}
+body{font:400 16px/1.55 "Public Sans",system-ui,sans-serif;color:var(--texto);background:linear-gradient(160deg,var(--azul-esc),#0b2d6b 55%,var(--azul));min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.caixa{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:32px 26px;box-shadow:0 30px 80px rgba(0,0,0,.3);text-align:center}
+.marca{font:800 1.3rem/1 "Archivo",Arial,sans-serif;font-stretch:85%;color:var(--tinta)}.marca span{color:var(--verde)}
+img{width:120px;margin:18px auto 6px;display:block}
+h1{font:800 clamp(1.6rem,5vw,2rem)/1.1 "Archivo",Arial,sans-serif;font-stretch:88%;color:var(--tinta);margin-bottom:12px}
+ol{text-align:left;margin:18px 0;padding-left:22px;display:grid;gap:8px}
+ol b{color:var(--tinta)}
+.btn{display:inline-block;border-radius:8px;padding:13px 20px;font-weight:700;text-decoration:none;background:var(--verde);color:#fff;margin:4px}
+.btn.sec{background:#fff;color:var(--tinta);border:1px solid var(--linha)}
+.nota{font-size:.88rem;color:var(--mut);margin-top:16px}
+</style>
+<script src="/pixel.js"></script>
+</head>
+<body>
+<main class="caixa">
+  <div class="marca">Escala<span>Legal</span></div>
+  <img src="/img/mascote.svg" alt="Zé Folga, o mascote do Escala Legal">
+  <h1>Compra confirmada!</h1>
+  <p>Seu acesso já está a caminho do e-mail que você usou na compra.</p>
+  <ol>
+    <li>Abra o e-mail <b>"Seu acesso ao Escala Legal chegou"</b>.</li>
+    <li>Clique em <b>Criar minha senha</b>.</li>
+    <li>Cadastre a equipe e gere a escala 5x2.</li>
+  </ol>
+  <a class="btn" href="/app">Já criei minha senha: entrar</a>
+  <p class="nota">Não chegou em 5 minutos? Olhe a pasta de spam ou promoções. Pagou com boleto? O acesso chega quando o banco confirmar o pagamento.</p>
+  <p class="nota" id="suporte"></p>
+</main>
+<script>
+fetch('/api/config').then(r => r.json()).then(c => {
+  if (c.suporte) document.getElementById('suporte').innerHTML = `Precisa de ajuda? <a class="btn sec" target="_blank" rel="noopener" href="https://wa.me/${c.suporte}?text=${encodeURIComponent('Oi! Comprei o Escala Legal e preciso de ajuda com o acesso.')}">Falar no WhatsApp</a>`;
+}).catch(() => {});
+</script>
+</body>
+</html>

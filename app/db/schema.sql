@@ -57,3 +57,53 @@ create table if not exists compras (
   criado_em timestamptz not null default now(),
   origem text
 );
+
+-- ---------- v2: entrega de acesso após a compra ----------
+-- conta criada pela compra ainda não tem senha (a pessoa define pelo link do e-mail)
+alter table usuarios alter column senha_hash drop not null;
+alter table usuarios alter column empresa drop not null;
+alter table usuarios add column if not exists sessao_v int not null default 0;
+alter table usuarios add column if not exists origem text;
+alter table usuarios add column if not exists ultimo_acesso timestamptz;
+
+alter table compras add column if not exists status text not null default 'aprovada';
+alter table compras add column if not exists nome text;
+alter table compras add column if not exists transacao text;
+alter table compras add column if not exists atualizado_em timestamptz not null default now();
+
+-- todo evento recebido do checkout fica guardado (auditoria e suporte)
+create table if not exists pagamentos_eventos (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  email text,
+  acao text not null,           -- liberar | bloquear | ignorar | erro
+  evento text,
+  plataforma text,
+  payload jsonb
+);
+create index if not exists pagamentos_eventos_email_idx on pagamentos_eventos (email, criado_em desc);
+
+-- links de criar/redefinir senha (guarda só o hash do token)
+create table if not exists acesso_tokens (
+  token_hash text primary key,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  criado_em timestamptz not null default now(),
+  expira_em timestamptz not null,
+  usado_em timestamptz
+);
+create index if not exists acesso_tokens_usuario_idx on acesso_tokens (usuario_id);
+
+-- fila de e-mails: tenta de novo se o SMTP falhar
+create table if not exists emails (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  para text not null,
+  assunto text not null,
+  html text not null,
+  texto text not null,
+  tentativas int not null default 0,
+  proxima_em timestamptz not null default now(),
+  enviado_em timestamptz,
+  erro text
+);
+create index if not exists emails_pendentes_idx on emails (proxima_em) where enviado_em is null;

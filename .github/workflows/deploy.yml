@@ -1,0 +1,32 @@
+# Publica no VPS sozinho a cada push na main, se os testes passarem.
+# Para ligar, crie em Settings > Secrets and variables > Actions:
+#   VPS_HOST     IP do VPS
+#   VPS_USER     usuário SSH (ex.: root)
+#   VPS_SSH_KEY  chave privada SSH com acesso ao VPS
+name: Deploy no VPS
+on:
+  workflow_run:
+    workflows: [Testes]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    concurrency: deploy-vps
+    steps:
+      - name: Conferir segredos
+        id: seg
+        env: { H: "${{ secrets.VPS_HOST }}" }
+        run: if [ -n "$H" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::notice::Deploy automático desligado (faltam os segredos VPS_HOST, VPS_USER, VPS_SSH_KEY)."; fi
+      - name: Atualizar no VPS
+        if: steps.seg.outputs.ok == '1'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 15m
+          script: bash /opt/escalalegal/deploy/atualizar.sh

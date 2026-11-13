@@ -1,14 +1,38 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Admin — Escala Legal</title>
-<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#f3f5f8;color:#0c1b33}.w{max-width:1200px;margin:0 auto;padding:24px}h1{margin:0 0 14px}
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Admin — Escala Legal</title>
+<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#f3f5f8;color:#0c1b33}.w{max-width:1250px;margin:0 auto;padding:24px 16px}h1{margin:0 0 14px}h2{font-size:1.1rem;margin:28px 0 10px}
 .k{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}.k div{background:#fff;border:1px solid #dfe3ea;border-radius:10px;padding:12px 18px}.k b{display:block;font-size:24px;color:#1351b4}
-input{padding:9px;border:1px solid #c9d0db;border-radius:8px;width:280px;margin-bottom:12px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:9px;border-bottom:1px solid #dfe3ea;text-align:left;font-size:14px}th{color:#6b778a}
-.ok{color:#168821;font-weight:700}.no{color:#c4161c;font-weight:700}button{border:1px solid #c9d0db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer}</style></head>
-<body><div class="w"><h1>Clientes — Escala Legal</h1><div class="k" id="k"></div><input id="b" placeholder="Buscar nome, empresa ou e-mail">
-<table><thead><tr><th>Cadastro</th><th>Nome</th><th>Empresa</th><th>E-mail</th><th>WhatsApp</th><th>Equipes</th><th>Escalas</th><th>Acesso</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+input{padding:9px;border:1px solid #c9d0db;border-radius:8px;font:inherit}.barra{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.rol{overflow-x:auto;background:#fff;border:1px solid #dfe3ea;border-radius:10px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #eef1f5;text-align:left;font-size:14px;white-space:nowrap}th{color:#6b778a;font-weight:600}
+.ok{color:#168821;font-weight:700}.no{color:#c4161c;font-weight:700}.mut{color:#6b778a}button{border:1px solid #c9d0db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit;font-size:13px}button.p{background:#168821;border-color:#168821;color:#fff;font-weight:700;padding:9px 14px}
+.box{background:#fff;border:1px solid #dfe3ea;border-radius:10px;padding:14px 16px;margin-bottom:12px}.aviso{background:#fff5c2;border-color:#f0d97a;color:#5a4500}code{background:#f3f5f8;padding:2px 6px;border-radius:4px;word-break:break-all}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0c1b33;color:#fff;padding:10px 16px;border-radius:8px}</style></head>
+<body><div class="w"><h1>Clientes — Escala Legal</h1>
+<div class="k" id="k"></div>
+<div id="smtp"></div>
+<form class="box barra" id="fLib"><b>Liberar acesso na mão</b> (Pix direto, cortesia)<input id="lEmail" type="email" placeholder="e-mail do cliente" required style="width:240px"><input id="lNome" placeholder="nome (opcional)"><button class="p">Liberar e enviar acesso</button></form>
+<div class="barra"><input id="b" placeholder="Buscar nome, empresa ou e-mail" style="width:300px"></div>
+<div class="rol"><table><thead><tr><th>Cadastro</th><th>Nome</th><th>Empresa</th><th>E-mail</th><th>WhatsApp</th><th>Senha</th><th>Equipes</th><th>Escalas</th><th>Último acesso</th><th>Acesso</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+<h2>Últimos eventos de pagamento</h2>
+<p class="mut" id="wh"></p>
+<div class="rol"><table><thead><tr><th>Quando</th><th>E-mail</th><th>Ação</th><th>Evento</th><th>Plataforma</th></tr></thead><tbody id="ev"></tbody></table></div>
+</div>
 <script>
 let d=[];const e=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function c(){d=await (await fetch('/api/admin/clientes')).json();const l=d.filter(x=>x.acesso_liberado).length;
-k.innerHTML=`<div><b>${d.length}</b>contas</div><div><b>${l}</b>com acesso pago</div><div><b>${d.length-l}</b>aguardando pagamento</div><div><b>${d.reduce((a,x)=>a+x.escalas,0)}</b>escalas geradas</div>`;r()}
-function r(){const q=b.value.toLowerCase();t.innerHTML=d.filter(x=>!q||[x.nome,x.empresa,x.email].join(' ').toLowerCase().includes(q)).map(x=>`<tr><td>${new Date(x.criado_em).toLocaleDateString('pt-BR')}</td><td>${e(x.nome)}</td><td>${e(x.empresa)}</td><td>${e(x.email)}</td><td>${x.whatsapp?`<a target=_blank href="https://wa.me/55${e(x.whatsapp)}">${e(x.whatsapp)}</a>`:''}</td><td>${x.equipes}</td><td>${x.escalas}</td><td class="${x.acesso_liberado?'ok':'no'}">${x.acesso_liberado?'Liberado':'Pendente'}</td><td><button data-id="${x.id}" data-v="${!x.acesso_liberado}">${x.acesso_liberado?'Bloquear':'Liberar'}</button></td></tr>`).join('')}
-t.onclick=async ev=>{const bt=ev.target.closest('button');if(!bt)return;await fetch('/api/admin/clientes/'+bt.dataset.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({acesso_liberado:bt.dataset.v==='true'})});c()};b.oninput=r;c();
+const dt=x=>x?new Date(x).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),3000)};
+const api=async(u,o={})=>{const r=await fetch(u,{method:o.method||'GET',headers:{'Content-Type':'application/json'},body:o.body?JSON.stringify(o.body):undefined});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||'Erro');return j};
+async function c(){d=await api('/api/admin/clientes');const l=d.filter(x=>x.acesso_liberado).length;
+k.innerHTML=`<div><b>${d.length}</b>contas</div><div><b>${l}</b>com acesso pago</div><div><b>${d.filter(x=>x.acesso_liberado&&!x.tem_senha).length}</b>pagaram e não criaram senha</div><div><b>${d.length-l}</b>sem pagamento</div><div><b>${d.reduce((a,x)=>a+x.escalas,0)}</b>escalas geradas</div>`;r();res()}
+async function res(){const s=await api('/api/admin/resumo');
+smtp.innerHTML=s.emails.smtp?(s.emails.falharam?`<div class="box aviso">${s.emails.falharam} e-mail(s) não foram entregues. Último erro: ${e(s.emails.ultimo_erro)}</div>`:''):'<div class="box aviso"><b>E-mail ainda não configurado</b> (SMTP no .env). Os clientes não recebem o acesso por e-mail: use o botão "Copiar link" e mande no WhatsApp.</div>';
+wh.innerHTML=`URL do webhook para colar na plataforma de pagamento: <code>${e(s.webhook)}</code> · e-mails enviados: ${s.emails.enviados}, na fila: ${s.emails.pendentes}`;
+ev.innerHTML=s.eventos.map(x=>`<tr><td>${dt(x.criado_em)}</td><td>${e(x.email)}</td><td class="${x.acao==='liberar'?'ok':x.acao==='bloquear'||x.acao==='erro'?'no':'mut'}">${e(x.acao)}</td><td>${e(x.evento)}</td><td>${e(x.plataforma)}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">Nenhum evento ainda.</td></tr>'}
+function r(){const q=b.value.toLowerCase();t.innerHTML=d.filter(x=>!q||[x.nome,x.empresa,x.email].join(' ').toLowerCase().includes(q)).map(x=>`<tr><td>${dt(x.criado_em)}</td><td>${e(x.nome)}</td><td>${e(x.empresa)}</td><td>${e(x.email)}</td><td>${x.whatsapp?`<a target=_blank href="https://wa.me/55${e(x.whatsapp)}">${e(x.whatsapp)}</a>`:''}</td><td class="${x.tem_senha?'':'no'}">${x.tem_senha?'criada':'falta'}</td><td>${x.equipes}</td><td>${x.escalas}</td><td>${dt(x.ultimo_acesso)}</td><td class="${x.acesso_liberado?'ok':'no'}">${x.acesso_liberado?'Liberado':'Pendente'}</td><td><button data-a="ac" data-id="${x.id}" data-v="${!x.acesso_liberado}">${x.acesso_liberado?'Bloquear':'Liberar'}</button> <button data-a="link" data-id="${x.id}">Copiar link</button> <button data-a="mail" data-id="${x.id}">Reenviar e-mail</button></td></tr>`).join('')}
+t.onclick=async ev=>{const bt=ev.target.closest('button');if(!bt)return;const id=bt.dataset.id;bt.disabled=true;try{
+if(bt.dataset.a==='ac'){const v=bt.dataset.v==='true';if(!v&&!confirm('Bloquear o acesso deste cliente?'))return;await api('/api/admin/clientes/'+id,{method:'PATCH',body:{acesso_liberado:v}});toast(v?'Liberado. O acesso foi enviado por e-mail.':'Bloqueado.');await c()}
+if(bt.dataset.a==='link'){const j=await api(`/api/admin/clientes/${id}/link`,{method:'POST',body:{}});try{await navigator.clipboard.writeText(j.link);toast('Link copiado (vale 3 dias). Cole no WhatsApp do cliente.')}catch{prompt('Link de acesso (vale 3 dias):',j.link)}}
+if(bt.dataset.a==='mail'){await api(`/api/admin/clientes/${id}/link`,{method:'POST',body:{email:true}});toast('E-mail colocado na fila de envio.')}
+}catch(err){toast(err.message)}finally{bt.disabled=false}};
+fLib.onsubmit=async ev=>{ev.preventDefault();try{const j=await api('/api/admin/acessos',{method:'POST',body:{email:lEmail.value,nome:lNome.value}});toast(j.ja_estava_liberado?'Esse cliente já tinha acesso.':'Acesso liberado e enviado por e-mail.');lEmail.value=lNome.value='';await c()}catch(err){toast(err.message)}};
+b.oninput=r;c();
 </script></body></html>

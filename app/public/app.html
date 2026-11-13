@@ -157,6 +157,20 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
       <label for="cSenha">Senha</label><input id="cSenha" type="password" autocomplete="current-password">
       <button class="btn" style="width:100%;justify-content:center;margin-top:18px" id="btnEntrar">Entrar</button>
       <p class="erro" id="erroEntrada"></p>
+      <p class="so-login" style="text-align:center"><button type="button" class="link" id="btnEsqueci">Esqueci minha senha</button></p>
+    </form>
+    <form id="formSenha" class="hide" novalidate>
+      <h2 id="sTitulo">Crie sua senha</h2>
+      <p id="sTexto" style="margin-top:6px"></p>
+      <div id="sDados">
+        <label for="sNome">Seu nome</label><input id="sNome" autocomplete="name">
+        <label for="sEmpresa">Nome da empresa</label><input id="sEmpresa" autocomplete="organization">
+        <label for="sZap">WhatsApp</label><input id="sZap" inputmode="tel" placeholder="(71) 99999-9999">
+      </div>
+      <label for="sSenha">Senha (mínimo 6 caracteres)</label><input id="sSenha" type="password" autocomplete="new-password">
+      <label for="sSenha2">Repita a senha</label><input id="sSenha2" type="password" autocomplete="new-password">
+      <button class="btn" style="width:100%;justify-content:center;margin-top:18px" id="btnSenha">Salvar e entrar</button>
+      <p class="erro" id="erroSenha"></p>
     </form>
   </div>
 </div>
@@ -227,6 +241,16 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
   </form>
 </dialog>
 
+<dialog id="dlgEsqueci">
+  <form method="dialog" id="formEsqueci">
+    <h2>Esqueci minha senha</h2>
+    <p style="margin-top:6px">Digite o e-mail da sua conta (o mesmo da compra). Enviamos um link para você criar uma senha nova.</p>
+    <label for="eqEmail">E-mail</label><input id="eqEmail" type="email" autocomplete="email">
+    <p class="erro" id="erroEsqueci"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Fechar</button><button class="btn" value="ok" id="btnEsqueciEnviar">Enviar link</button></div>
+  </form>
+</dialog>
+
 <script src="/scheduler.js"></script>
 <script>
 const DIAS = Escala.DIAS, SETORES = Escala.SETORES;
@@ -248,6 +272,7 @@ opcoesSetor($('#cfSetor')); opcoesSetor($('#nSetor'));
 $$('.abas button').forEach(b => b.onclick = () => {
   modo = b.dataset.modo; $$('.abas button').forEach(x => x.classList.toggle('on', x === b));
   $('.so-cad').classList.toggle('hide', modo !== 'cadastro');
+  $('.so-login').classList.toggle('hide', modo !== 'login');
   $('#btnEntrar').textContent = modo === 'login' ? 'Entrar' : 'Criar conta';
   $('#cSenha').autocomplete = modo === 'login' ? 'current-password' : 'new-password';
 });
@@ -262,11 +287,52 @@ $('#formEntrada').onsubmit = async e => {
 };
 $('#btnSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); location.reload(); };
 
+// esqueci a senha
+$('#btnEsqueci').onclick = () => { $('#eqEmail').value = $('#cEmail').value; $('#erroEsqueci').textContent = ''; $('#dlgEsqueci').showModal(); };
+$('#formEsqueci').onsubmit = async e => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault(); $('#btnEsqueciEnviar').disabled = true; $('#erroEsqueci').textContent = '';
+  try {
+    await api('/api/senha/esqueci', {method: 'POST', body: {email: $('#eqEmail').value}});
+    $('#dlgEsqueci').close(); toast('Se o e-mail tiver conta, o link chega em instantes. Confira também o spam.');
+  } catch (err) { $('#erroEsqueci').textContent = err.message; }
+  $('#btnEsqueciEnviar').disabled = false;
+};
+
+// link do e-mail: criar / redefinir senha
+const tokenAcesso = new URLSearchParams(location.search).get('acesso');
+async function telaSenha() {
+  $('#telaEntrada').classList.remove('hide'); $('#formEntrada').classList.add('hide'); $('#formSenha').classList.remove('hide');
+  let t;
+  try { t = await api('/api/senha/token?t=' + encodeURIComponent(tokenAcesso)); }
+  catch (err) {
+    $('#sTitulo').textContent = 'Link expirado'; $('#sTexto').textContent = err.message;
+    $('#formSenha').querySelectorAll('label,input,#sDados,#btnSenha').forEach(x => x.classList.add('hide'));
+    $('#formSenha').insertAdjacentHTML('beforeend', '<a class="btn" style="margin-top:16px" href="/app">Ir para o login</a>');
+    return;
+  }
+  $('#sTitulo').textContent = t.tem_senha ? 'Crie uma senha nova' : 'Falta só criar sua senha';
+  $('#sTexto').innerHTML = `Conta: <b>${esc(t.email)}</b>`;
+  $('#sNome').value = t.nome || ''; $('#sEmpresa').value = t.empresa || ''; $('#sZap').value = t.whatsapp || '';
+  $('#sDados').classList.toggle('hide', !!(t.tem_senha && t.empresa));
+  $('#formSenha').onsubmit = async e => {
+    e.preventDefault(); $('#erroSenha').textContent = '';
+    if ($('#sSenha').value !== $('#sSenha2').value) return $('#erroSenha').textContent = 'As duas senhas não são iguais.';
+    $('#btnSenha').disabled = true;
+    try {
+      await api('/api/senha/definir', {method: 'POST', body: {token: tokenAcesso, senha: $('#sSenha').value, nome: $('#sNome').value, empresa: $('#sEmpresa').value, whatsapp: $('#sZap').value}});
+      history.replaceState(null, '', '/app'); $('#formSenha').classList.add('hide'); $('#formEntrada').classList.remove('hide');
+      await iniciar(); toast('Senha salva. Bem-vindo ao Escala Legal!');
+    } catch (err) { $('#erroSenha').textContent = err.message; }
+    $('#btnSenha').disabled = false;
+  };
+}
+
 // ---------- painel ----------
 async function iniciar() {
   try { eu = await api('/api/eu'); } catch { $('#telaEntrada').classList.remove('hide'); $('#telaPainel').classList.add('hide'); if (new URLSearchParams(location.search).has('cadastro')) $$('.abas button')[1].click(); return; }
   $('#telaEntrada').classList.add('hide'); $('#telaPainel').classList.remove('hide');
-  $('#nomeEmpresa').textContent = eu.empresa;
+  $('#nomeEmpresa').textContent = eu.empresa || eu.nome;
   $('#avisoPag').classList.toggle('hide', eu.acesso_liberado);
   if (eu.checkout) $('#btnPagar').href = eu.checkout;
   await carregaEquipes();
@@ -409,7 +475,7 @@ function desenhaEscala() {
     try { await navigator.clipboard.writeText(t); toast('Escala copiada. Cole no grupo da equipe.'); } catch { window.open('https://wa.me/?text=' + encodeURIComponent(t)); }
   };
 }
-iniciar();
+if (tokenAcesso) telaSenha(); else iniciar();
 </script>
 </body>
 </html>
