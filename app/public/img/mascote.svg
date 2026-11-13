@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" role="img" aria-label="Zé Folga, o mascote do Escala Legal">
+  <ellipse cx="110" cy="248" rx="62" ry="8" fill="#071d41" opacity=".12"/>
+  <!-- pernas -->
+  <rect x="80" y="206" width="16" height="36" rx="8" fill="#071d41"/>
+  <rect x="124" y="206" width="16" height="36" rx="8" fill="#071d41"/>
+  <rect x="70" y="232" width="32" height="12" rx="6" fill="#0c1b33"/>
+  <rect x="118" y="232" width="32" height="12" rx="6" fill="#0c1b33"/>
+  <!-- braço esquerdo acenando -->
+  <path d="M40 120 C22 104 18 82 24 66" fill="none" stroke="#071d41" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="25" cy="60" r="12" fill="#fff" stroke="#071d41" stroke-width="5"/>
+  <!-- braço direito com polegar -->
+  <path d="M180 128 C198 130 206 116 204 100" fill="none" stroke="#071d41" stroke-width="13" stroke-linecap="round"/>
+  <rect x="190" y="82" width="26" height="24" rx="9" fill="#fff" stroke="#071d41" stroke-width="5"/>
+  <rect x="196" y="66" width="10" height="22" rx="5" fill="#fff" stroke="#071d41" stroke-width="5"/>
+  <!-- corpo calendário -->
+  <rect x="34" y="40" width="152" height="176" rx="24" fill="#fff" stroke="#071d41" stroke-width="6"/>
+  <path d="M34 64a24 24 0 0 1 24-24h104a24 24 0 0 1 24 24v18H34z" fill="#1351b4" stroke="#071d41" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="70" y="24" width="12" height="32" rx="6" fill="#071d41"/>
+  <rect x="138" y="24" width="12" height="32" rx="6" fill="#071d41"/>
+  <text x="110" y="72" text-anchor="middle" font-family="Archivo,Arial,sans-serif" font-weight="800" font-size="17" fill="#fff" letter-spacing="1">5x2</text>
+  <!-- olhos -->
+  <ellipse cx="86" cy="112" rx="9" ry="11" fill="#071d41"/>
+  <ellipse cx="134" cy="112" rx="9" ry="11" fill="#071d41"/>
+  <circle cx="89" cy="108" r="3" fill="#fff"/>
+  <circle cx="137" cy="108" r="3" fill="#fff"/>
+  <!-- bochechas = as duas folgas -->
+  <rect x="58" y="126" width="22" height="14" rx="5" fill="#ffcd07"/>
+  <rect x="140" y="126" width="22" height="14" rx="5" fill="#ffcd07"/>
+  <!-- sorriso -->
+  <path d="M94 136 Q110 152 126 136" fill="none" stroke="#071d41" stroke-width="5" stroke-linecap="round"/>
+  <!-- gola e gravata -->
+  <path d="M86 168 L110 180 L134 168" fill="none" stroke="#071d41" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M110 180 L101 190 L106 214 L110 220 L114 214 L119 190 Z" fill="#168821" stroke="#071d41" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="102" y="176" width="16" height="11" rx="3" fill="#168821" stroke="#071d41" stroke-width="4"/>
+</svg>

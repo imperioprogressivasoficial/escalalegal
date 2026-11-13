@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escala Legal — gerador de escala 5x2</title>
+<meta name="description" content="A escala 6x1 acaba em 16 de dezembro de 2026. O Escala Legal monta a escala 5x2 da sua empresa em 2 minutos, sem deixar nenhum dia descoberto. R$ 47, pagamento único.">
+<meta name="theme-color" content="#061533">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..900&family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: hero escuro em degradê azul com o app em destaque; seções alternam branco, azul-gelo e azul-noite.
+     Cores do serviço público brasileiro: azul, verde e amarelo. */
+  --noite:#061533; --marinho:#0b2d6b; --azul:#1351b4; --azul-vivo:#2670e8; --verde:#168821; --verde-vivo:#23b53a; --amarelo:#ffcd07;
+  --gelo:#f2f6fc; --linha:#dde4ef; --tinta:#0c1b33; --texto:#46546a; --mut:#6b778a;
+  --grad-hero:radial-gradient(900px 520px at 85% 10%,rgba(38,112,232,.55),transparent 60%),radial-gradient(700px 480px at 5% 95%,rgba(35,181,58,.28),transparent 60%),linear-gradient(160deg,#061533 0%,#0a2557 55%,#0f3f8f 100%);
+  --grad-verde:linear-gradient(135deg,#23b53a 0%,#168821 100%);
+  --grad-marca:linear-gradient(90deg,#23b53a,#ffcd07 50%,#2670e8);
+  --display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --corpo:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{overflow-x:clip}
+body{font:400 1.0625rem/1.6 var(--corpo);color:var(--texto);background:#fff;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+.wrap{width:min(1180px,100% - 40px);margin-inline:auto}
+h1,h2,h3{font-family:var(--display);color:var(--tinta);font-weight:800;font-stretch:86%;letter-spacing:-.02em;line-height:1.04;text-wrap:balance}
+h2{font-size:clamp(2.1rem,4vw,3.25rem)}
+p{text-wrap:pretty}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--amarelo);outline-offset:3px}
+.sec{padding:clamp(72px,9vw,120px) 0}
+.centro{text-align:center;margin-inline:auto}
+.cab-sec{max-width:760px;margin-bottom:clamp(36px,5vw,56px)}
+.cab-sec p{font-size:1.18rem;margin-top:16px}
+.etq{display:inline-block;font-weight:700;font-size:.9rem;color:var(--azul);background:#e6eefb;border-radius:99px;padding:6px 14px;margin-bottom:16px}
+.escuro .etq{background:rgba(255,255,255,.1);color:#9fc2ff}
+
+/* botões */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;cursor:pointer;background:var(--grad-verde);color:#fff;font:800 1.12rem/1.2 var(--corpo);padding:19px 32px;border-radius:12px;text-decoration:none;text-align:center;box-shadow:0 14px 34px -10px rgba(35,181,58,.75),inset 0 1px 0 rgba(255,255,255,.3);transition:transform .2s,box-shadow .2s;overflow:hidden}
+.btn:hover{transform:translateY(-2px);box-shadow:0 20px 40px -10px rgba(35,181,58,.85),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn::after{content:"";position:absolute;inset:0 auto 0 -40%;width:30%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:brilho 4s ease-in-out infinite}
+@keyframes brilho{0%,65%{left:-40%}100%{left:130%}}
+.btn small{font-weight:700;background:rgba(0,0,0,.18);border-radius:6px;padding:3px 8px;font-size:.85rem}
+.btn-sec{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:700;text-decoration:none;padding:18px 22px;border-radius:12px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(6px)}
+.btn-sec:hover{background:rgba(255,255,255,.12)}
+.btn-p{font-size:.95rem;padding:11px 18px;border-radius:10px}
+
+/* aviso topo */
+.faixa{background:var(--grad-marca);height:4px}
+.aviso{background:var(--noite);color:#d5e2f7;font-size:.9rem;text-align:center;padding:9px 16px}
+.aviso b{color:var(--amarelo)}
+.previa{background:#fff6cf;color:#5a4500;font-size:.8rem;text-align:center;padding:5px 12px}
+
+/* cabeçalho */
+.topo{position:sticky;top:0;z-index:60;transition:background .3s,box-shadow .3s}
+.topo .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}
+.topo.cheio{background:rgba(6,21,51,.92);backdrop-filter:blur(12px);box-shadow:0 10px 30px -18px rgba(0,0,0,.6)}
+.marca{display:inline-flex;align-items:center;gap:10px;font:900 1.5rem/1 var(--display);font-stretch:84%;color:#fff;text-decoration:none;letter-spacing:-.02em}
+.marca img{width:34px;height:auto}
+.marca span{background:linear-gradient(90deg,#4ade5f,#ffcd07);-webkit-background-clip:text;background-clip:text;color:transparent}
+.menu{display:flex;align-items:center;gap:28px;font-weight:600;font-size:.95rem}
+.menu a{color:#d5e2f7;text-decoration:none}.menu a:hover{color:#fff}
+.menu .btn{color:#fff}
+
+/* herói */
+.heroi{position:relative;isolation:isolate;background:var(--grad-hero);color:#c9d8f0;margin-top:-74px;padding:130px 0 0;overflow:hidden}
+.heroi::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%)}
+.brilho-h{position:absolute;z-index:-1;width:520px;height:520px;border-radius:50%;filter:blur(40px);opacity:.5;animation:deriva 16s ease-in-out infinite alternate}
+.bh1{background:#2670e8;right:-120px;top:-120px}
+.bh2{background:#23b53a;left:-220px;bottom:-200px;opacity:.28;animation-delay:-5s}
+@keyframes deriva{to{transform:translate(60px,40px) scale(1.12)}}
+.heroi-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(30px,4vw,60px);align-items:center}
+.selo{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#e3ecfa;border-radius:99px;padding:7px 16px 7px 10px;font-weight:600;font-size:.92rem;backdrop-filter:blur(6px)}
+.selo i{width:9px;height:9px;border-radius:50%;background:var(--amarelo);box-shadow:0 0 0 0 rgba(255,205,7,.7);animation:pulso 1.8s infinite}
+@keyframes pulso{70%,100%{box-shadow:0 0 0 12px rgba(255,205,7,0)}}
+.heroi h1{color:#fff;font-size:clamp(2.6rem,4.6vw,4.1rem);margin:22px 0 20px}
+.heroi h1 .g{display:block;background:linear-gradient(90deg,#ffffff 0%,#9fd8ff 35%,#7be08a 75%,#ffe46b 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.heroi .lead{font-size:clamp(1.12rem,1.5vw,1.3rem);color:#c9d8f0;max-width:31em}
+.heroi .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.confianca{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:26px;font-size:.92rem;font-weight:600;color:#c9d8f0}
+.confianca span{display:inline-flex;align-items:center;gap:8px}
+.confianca span::before{content:"";width:18px;height:18px;border-radius:50%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.4l2.6 2.6L11 4.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat,var(--grad-verde)}
+
+.vitrine{position:relative;padding:20px 0 60px}
+.janela{position:relative;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 50px 100px -30px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.12);transform:perspective(1600px) rotateY(-8deg) rotateX(3deg);transform-origin:left center}
+.janela-barra{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#eef2f8;border-bottom:1px solid var(--linha)}
+.janela-barra i{width:10px;height:10px;border-radius:50%;background:#ff5f57}.janela-barra i:nth-child(2){background:#febc2e}.janela-barra i:nth-child(3){background:#28c840}
+.janela-barra span{margin-left:12px;font-size:.78rem;color:var(--mut);background:#fff;border-radius:6px;padding:3px 14px}
+.celular{position:absolute;right:0;bottom:6px;width:30%;min-width:150px;background:#0c1b33;border-radius:30px;padding:8px;box-shadow:0 40px 70px -24px rgba(0,0,0,.75);animation:boia 7s ease-in-out infinite}
+.celular img{border-radius:23px}
+.celular::before{content:"";position:absolute;top:13px;left:50%;width:30%;height:5px;border-radius:9px;background:#26344f;transform:translateX(-50%)}
+@keyframes boia{50%{transform:translateY(-12px)}}
+.chip{position:absolute;z-index:2;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);color:var(--tinta);border-radius:14px;padding:11px 15px;box-shadow:0 22px 44px -16px rgba(0,0,0,.55);font-weight:700;font-size:.9rem;line-height:1.25;animation:boia 6s ease-in-out infinite}
+.chip small{display:block;font-weight:500;color:var(--mut);font-size:.78rem}
+.chip b{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--grad-verde);color:#fff;font-size:1rem}
+.chip.c1{left:-26px;top:38%;animation-delay:-2s}
+.chip.c2{left:16%;bottom:6px;animation-delay:-4s}
+.chip.c2 b{background:linear-gradient(135deg,#ffe46b,#ffcd07);color:#3b2f00}
+.ze-espia{position:absolute;left:-58px;bottom:44px;width:96px;z-index:3;animation:aceno 5s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes aceno{0%,100%{transform:rotate(0)}8%{transform:rotate(-6deg)}16%{transform:rotate(4deg)}24%{transform:rotate(0)}}
+
+.fatos{position:relative;z-index:5;margin-top:-1px;background:linear-gradient(180deg,transparent 0 50%,#fff 50%)}
+.fatos-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border-radius:18px;box-shadow:0 30px 60px -30px rgba(6,21,51,.45),0 0 0 1px var(--linha);overflow:hidden}
+.fato{padding:24px 26px;border-right:1px solid var(--linha)}
+.fato:last-child{border-right:0}
+.fato b{display:block;font:900 2.1rem/1 var(--display);font-stretch:80%;background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent}
+.fato span{display:block;margin-top:6px;font-size:.92rem;line-height:1.4}
+
+/* problema */
+.problema{background:linear-gradient(180deg,#fff 0%,var(--gelo) 100%)}
+.compara{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.lado{border-radius:20px;padding:30px;background:#fff;border:1px solid var(--linha)}
+.lado h3{font-size:1.55rem;margin-bottom:6px}
+.lado>p{margin-bottom:20px}
+.lado ul{list-style:none;padding:0;display:grid;gap:12px}
+.lado li{display:flex;gap:12px;line-height:1.45}
+.lado li::before{content:"";flex:none;width:24px;height:24px;margin-top:1px;border-radius:50%}
+.ruim li::before{background:#fde3e3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M4 4l6 6M10 4l-6 6' stroke='%23c4161c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center/12px no-repeat}
+.bom{position:relative;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,var(--azul-vivo),var(--verde-vivo),var(--amarelo)) border-box;border:2px solid transparent;box-shadow:0 30px 60px -36px rgba(19,81,180,.55)}
+.bom li::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.4l2.6 2.6L11 4.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat,var(--grad-verde)}
+.bom .rotulo{position:absolute;top:-14px;right:24px;background:var(--grad-verde);color:#fff;font-weight:800;font-size:.82rem;padding:6px 12px;border-radius:99px}
+.mini-pl{display:grid;grid-template-columns:62px repeat(7,minmax(0,1fr));font-size:.74rem;border:1px solid #e3e7ee;border-radius:8px;overflow:hidden;margin-bottom:20px}
+.mini-pl>*{padding:6px 2px;text-align:center;border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;font-style:normal;color:#5b6577}
+.mini-pl>:nth-child(8n+1){text-align:left;padding-left:8px;font-weight:600}
+.mini-pl .h{background:#f6f7f9;font-weight:600}
+.mini-pl .f{background:#fff5c2}
+.mini-pl .x{background:#fde3e3;color:#c4161c;font-weight:800;animation:pisca 1.4s ease-in-out infinite}
+@keyframes pisca{50%{background:#f9b4b4}}
+.mini-ok{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:20px}
+.mini-ok i{font-style:normal;text-align:center;border-radius:8px;padding:8px 0;font-weight:800;font-size:.8rem;background:#e3f5e1;color:var(--verde)}
+.mini-ok i small{display:block;font-weight:600;color:var(--mut);font-size:.68rem}
+
+/* mecanismo */
+.escuro{position:relative;isolation:isolate;background:var(--grad-hero);color:#c9d8f0;overflow:hidden}
+.escuro h2,.escuro h3{color:#fff}
+.mec-cab{display:grid;grid-template-columns:auto minmax(0,1fr);gap:30px;align-items:end;max-width:900px;margin-bottom:50px}
+.mec-cab img{width:150px;animation:aceno 5s ease-in-out infinite;transform-origin:50% 100%}
+.mec-cab p{font-size:1.18rem;margin-top:14px}
+.pilares{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.pilar{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:30px;backdrop-filter:blur(8px)}
+.pilar::before{content:"";position:absolute;left:30px;right:30px;top:-1px;height:3px;border-radius:3px;background:var(--grad-marca)}
+.pilar .n{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#2670e8,#1351b4);color:#fff;margin-bottom:18px;box-shadow:0 12px 26px -10px rgba(38,112,232,.9)}
+.pilar:nth-child(2) .n{background:var(--grad-verde);box-shadow:0 12px 26px -10px rgba(35,181,58,.9)}
+.pilar:nth-child(3) .n{background:linear-gradient(135deg,#ffe46b,#ffcd07);color:#3b2f00;box-shadow:0 12px 26px -10px rgba(255,205,7,.8)}
+.pilar .n svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pilar h3{font-size:1.55rem;margin-bottom:10px}
+.pilar p{line-height:1.55}
+
+/* app */
+.app-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(30px,5vw,64px);align-items:center}
+.abas{display:grid;gap:10px}
+.aba{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--linha);border-radius:14px;padding:18px 20px;cursor:pointer;font:inherit;color:inherit;transition:box-shadow .3s,border-color .3s}
+.aba strong{display:block;font:800 1.2rem/1.2 var(--display);font-stretch:90%;color:var(--tinta)}
+.aba span{display:block;margin-top:4px;font-size:.96rem;line-height:1.45}
+.aba.on{border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,var(--azul-vivo),var(--verde-vivo)) border-box;border:2px solid transparent;box-shadow:0 20px 40px -24px rgba(19,81,180,.6)}
+.tela{position:relative;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 40px 90px -40px rgba(6,21,51,.6),0 0 0 1px var(--linha)}
+.tela .janela-barra{background:#f3f6fa}
+.tela-img{display:grid}
+.tela-img img{grid-area:1/1;transition:opacity .45s}
+.tela-img img:not(.on){opacity:0}
+.fundo-app{position:relative}
+.fundo-app::before{content:"";position:absolute;inset:-30px -30px -30px 40px;border-radius:30px;background:radial-gradient(circle at 70% 30%,rgba(38,112,232,.18),transparent 60%),radial-gradient(circle at 20% 90%,rgba(35,181,58,.16),transparent 60%);z-index:-1}
+
+/* passos */
+.passos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;position:relative;list-style:none;padding:0}
+.passos::before{content:"";position:absolute;top:31px;left:12%;right:12%;height:3px;background:var(--grad-marca);border-radius:3px}
+.passos li{position:relative;text-align:center;padding:0 10px}
+.passos b{position:relative;display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#fff;border:3px solid var(--azul);font:900 1.5rem/1 var(--display);color:var(--tinta);box-shadow:0 12px 26px -12px rgba(19,81,180,.6)}
+.passos li:nth-child(2) b{border-color:var(--verde)}.passos li:nth-child(3) b{border-color:var(--amarelo)}
+.passos h3{font-size:1.35rem;margin-bottom:6px}
+
+/* setores */
+.gelo{background:var(--gelo)}
+.setores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.setor{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:22px;transition:transform .3s,box-shadow .3s}
+.setor:hover{transform:translateY(-4px);box-shadow:0 24px 44px -26px rgba(6,21,51,.45)}
+.setor h3{font-size:1.2rem;margin-bottom:6px}
+.setor p{font-size:.95rem;line-height:1.5}
+.setor .tg{display:inline-block;margin-top:12px;font-size:.78rem;font-weight:700;color:var(--azul);background:#e6eefb;border-radius:6px;padding:4px 9px}
+
+/* lei */
+.lei-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(36px,6vw,80px);align-items:start}
+.tempo{list-style:none;padding:0;position:relative;display:grid;gap:20px}
+.tempo::before{content:"";position:absolute;left:10px;top:8px;bottom:8px;width:3px;background:linear-gradient(180deg,var(--azul),var(--verde),var(--amarelo));border-radius:3px}
+.tempo li{position:relative;padding-left:44px}
+.tempo li::before{content:"";position:absolute;left:0;top:4px;width:23px;height:23px;border-radius:50%;background:#fff;border:4px solid var(--azul)}
+.tempo time{display:block;font:800 1.2rem/1.2 var(--display);font-stretch:90%;color:var(--tinta)}
+.tempo .agora{background:linear-gradient(135deg,#eaf7ec,#fff);border:1px solid #bfe5c6;border-radius:14px;padding:14px 16px 14px 44px}
+.tempo .agora::before{border-color:var(--verde);top:18px;box-shadow:0 0 0 6px rgba(35,181,58,.18)}
+.contador{display:flex;gap:8px;margin-top:12px;font-variant-numeric:tabular-nums}
+.contador div{min-width:64px;background:var(--noite);color:#fff;border-radius:10px;padding:8px 6px 6px;text-align:center}
+.contador b{display:block;font:900 1.6rem/1 var(--display)}
+.contador span{font-size:.7rem;color:#9fb3d6}
+.fontes{font-size:.86rem;color:var(--mut);margin-top:18px}
+.fontes a{color:var(--azul)}
+.lei-txt p{font-size:1.15rem;margin-top:16px}
+
+/* preço */
+.preco-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:clamp(36px,6vw,80px);align-items:center}
+.preco-txt p{font-size:1.18rem;margin-top:16px}
+.garantia{display:flex;align-items:center;gap:18px;margin-top:30px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px}
+.garantia svg{flex:none;width:86px;height:86px}
+.garantia b{display:block;color:#fff;font-size:1.1rem}
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+.oferta{position:relative;background:linear-gradient(#fff,#fff) padding-box,conic-gradient(from var(--ang),#2670e8,#23b53a,#ffcd07,#2670e8) border-box;border:3px solid transparent;border-radius:26px;padding:clamp(26px,3.5vw,38px);color:var(--texto);box-shadow:0 50px 100px -40px rgba(0,0,0,.8);animation:gira 6s linear infinite}
+@keyframes gira{to{--ang:360deg}}
+.oferta .tag{position:absolute;top:-15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffe46b,#ffcd07);color:#3b2f00;font-weight:800;font-size:.84rem;border-radius:99px;padding:6px 16px;white-space:nowrap;box-shadow:0 10px 20px -10px rgba(255,205,7,.9)}
+.oferta-nome{font-weight:800;color:var(--azul);text-align:center}
+.valor{display:flex;justify-content:center;align-items:flex-start;gap:6px;font:900 clamp(5rem,10vw,6.8rem)/.9 var(--display);font-stretch:78%;color:var(--tinta);margin-top:10px}
+.valor span{font-size:.3em;margin-top:.4em}
+.unico{text-align:center;font-weight:700;color:var(--tinta)}
+.itens{list-style:none;padding:0;display:grid;gap:10px;margin:24px 0}
+.itens li{display:flex;gap:10px;line-height:1.4}
+.itens li::before{content:"";flex:none;width:20px;height:20px;margin-top:1px;border-radius:50%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.4l2.6 2.6L11 4.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat,var(--grad-verde)}
+.oferta .btn{width:100%}
+.oferta-pe{text-align:center;font-size:.88rem;margin-top:12px;color:var(--mut)}
+
+/* dúvidas */
+.faq-grid{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:clamp(30px,5vw,70px);align-items:start}
+.faq details{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:0 20px;margin-bottom:10px;transition:box-shadow .3s}
+.faq details[open]{box-shadow:0 18px 40px -26px rgba(6,21,51,.4)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;padding:18px 0;font-weight:700;font-size:1.06rem;color:var(--tinta)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e6eefb;color:var(--azul);font-size:1.2rem;transition:transform .3s}
+.faq details[open] summary::after{transform:rotate(45deg);background:var(--grad-verde);color:#fff}
+.faq details p{padding-bottom:18px}
+
+/* fechamento */
+.final-card{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;background:linear-gradient(120deg,#0b2d6b 0%,#1351b4 55%,#168821 100%);border-radius:28px;padding:clamp(32px,5vw,60px);color:#d5e2f7}
+.final-card::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(500px 300px at 90% 0%,rgba(255,205,7,.35),transparent 60%)}
+.final-card h2{color:#fff}
+.final-card p{font-size:1.18rem;margin:14px 0 26px}
+.ze-final{display:grid;justify-items:center}
+.ze-final img{width:180px;animation:aceno 5s ease-in-out infinite;transform-origin:50% 100%}
+.balao{position:relative;background:#fff;color:var(--tinta);font-weight:800;border-radius:14px;padding:10px 14px;margin-bottom:14px;max-width:210px;text-align:center;line-height:1.3}
+.balao::after{content:"";position:absolute;left:50%;bottom:-8px;width:16px;height:16px;background:#fff;transform:translateX(-50%) rotate(45deg)}
+.rodape{background:var(--noite);color:#8fa3c4;font-size:.88rem;padding:36px 0 40px}
+.rodape .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.rodape p{max-width:62ch}
+
+/* compra */
+dialog{border:0;border-radius:20px;padding:0;width:min(460px,94vw);box-shadow:0 40px 100px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
+.dlg-topo{background:var(--grad-hero);color:#fff;padding:22px 26px}
+.dlg-topo h3{color:#fff;font-size:1.5rem}
+.dlg-topo p{color:#c9d8f0;font-size:.95rem;margin-top:4px}
+.dlg-corpo{padding:22px 26px 26px}
+.dlg-corpo label{display:block;font-weight:700;font-size:.88rem;color:var(--tinta);margin:12px 0 5px}
+.dlg-corpo input{width:100%;border:1px solid #c9d0db;border-radius:10px;padding:12px 14px;font:inherit}
+.dlg-corpo .btn{width:100%;margin-top:20px}
+.dlg-nota{font-size:.82rem;color:var(--mut);text-align:center;margin-top:10px}
+.dlg-erro{color:#c4161c;font-size:.88rem;min-height:1.2em;margin-top:8px}
+.fechar{position:absolute;right:14px;top:12px;background:rgba(255,255,255,.15);border:0;color:#fff;width:32px;height:32px;border-radius:50%;font-size:1.2rem;cursor:pointer}
+
+.fixo{position:fixed;z-index:70;left:12px;right:12px;bottom:12px;display:none;align-items:center;justify-content:space-between;gap:12px;background:rgba(6,21,51,.95);backdrop-filter:blur(10px);color:#fff;border-radius:16px;padding:9px 9px 9px 18px;box-shadow:0 20px 40px -12px rgba(0,0,0,.6);transform:translateY(160%);visibility:hidden;transition:transform .4s,visibility 0s .4s}
+.fixo.on{transform:none;visibility:visible;transition:transform .4s}
+.fixo b{display:block;font:900 1.35rem/1 var(--display)}
+.fixo small{color:#9fb3d6;font-size:.75rem}
+
+/* entrada */
+.carrega .heroi [data-e]{opacity:0;transform:translateY(24px)}
+[data-e]{transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);transition-delay:calc(var(--d,0)*110ms)}
+.js [data-r]{transition:transform .9s cubic-bezier(.16,1,.3,1),opacity .9s;transition-delay:calc(var(--d,0)*90ms)}
+.js [data-r].fora{transform:translateY(40px);opacity:.15}
+
+@media(max-width:980px){
+  .menu a:not(.btn){display:none}
+  .heroi-grid,.app-grid,.lei-grid,.preco-grid,.faq-grid{grid-template-columns:minmax(0,1fr)}
+  .janela{transform:none}
+  .ze-espia{left:-6px;width:74px;bottom:auto;top:-46px}
+  .chip.c1{left:6px;top:auto;bottom:58%}
+  .fatos-grid{grid-template-columns:1fr 1fr}.fato:nth-child(2){border-right:0}.fato:nth-child(-n+2){border-bottom:1px solid var(--linha)}
+  .compara,.pilares,.setores{grid-template-columns:minmax(0,1fr)}
+  .mec-cab{grid-template-columns:1fr}.mec-cab img{width:110px}
+  .final-card{grid-template-columns:1fr}.ze-final{justify-items:start}
+}
+@media(max-width:760px){
+  .fixo{display:flex}.rodape{padding-bottom:110px}
+  .passos{grid-template-columns:1fr;gap:28px}.passos::before{left:31px;right:auto;top:10px;bottom:10px;width:3px;height:auto}
+  .passos li{text-align:left;display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;padding:0}.passos b{margin:0}
+  .heroi{padding-top:118px}
+  .chip{font-size:.8rem;padding:8px 11px}.chip b{width:28px;height:28px}
+  .chip.c2{left:4px;bottom:0}
+  .celular{width:36%}
+}
+@media(max-width:480px){.menu .btn{display:none}.fatos-grid{grid-template-columns:1fr}.fato{border-right:0;border-bottom:1px solid var(--linha)}.btn{width:100%}.btn-sec{width:100%;justify-content:center}.lado{padding:22px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body class="carrega">
+<div class="faixa"></div>
+<div class="aviso" id="avisoTopo">Emenda Constitucional 141/2026: a escala 5x2 passa a valer em <b>16 de dezembro de 2026</b>.</div>
+<div class="previa" id="previa" hidden></div>
+
+<header class="topo" id="topo">
+  <div class="wrap">
+    <a class="marca" href="#"><img src="img/mascote.svg" alt="">Escala<span>Legal</span></a>
+    <nav class="menu" aria-label="Principal"><a href="#como">Como funciona</a><a href="#app">O sistema</a><a href="#lei">A lei</a><a href="#duvidas">Dúvidas</a><a href="/app">Entrar</a><a class="btn btn-p" href="#preco">Quero o Escala Legal</a></nav>
+  </div>
+</header>
+
+<section class="heroi">
+  <div class="brilho-h bh1"></div><div class="brilho-h bh2"></div>
+  <div class="wrap heroi-grid">
+    <div>
+      <p class="selo" data-e><i></i><span id="seloTxt">Nova regra da escala 5x2 em vigor em 16/12/2026</span></p>
+      <h1 data-e style="--d:1">A escala 6x1 acabou. <span class="g">Monte a 5x2 da sua empresa em 2 minutos.</span></h1>
+      <p class="lead" data-e style="--d:2">O Escala Legal é o sistema que distribui as duas folgas da sua equipe, garante gente suficiente em todos os dias e faz o rodízio de domingo. Sem planilha e sem dor de cabeça.</p>
+      <div class="ctas" data-e style="--d:3">
+        <a class="btn" href="#preco" data-comprar>Quero o Escala Legal <small>R$&nbsp;47</small></a>
+        <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
+      </div>
+      <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único</span><span>7 dias de garantia</span></div>
+    </div>
+    <div class="vitrine" data-e style="--d:2">
+      <img class="ze-espia" src="img/mascote.svg" alt="Zé Folga, o mascote do Escala Legal">
+      <div class="janela"><div class="janela-barra"><i></i><i></i><i></i><span>Escala Legal · Loja Shopping Norte</span></div><img src="img/app-escala.webp" width="1600" height="950" alt="Tela do Escala Legal com a escala de seis funcionários, duas folgas para cada um e a Trava de Cobertura confirmando todos os dias cobertos."></div>
+      <div class="celular"><img src="img/app-celular.webp" width="600" height="1298" alt="O Escala Legal aberto no celular."></div>
+      <div class="chip c1"><b>✓</b><div>Trava de Cobertura<small>todos os dias cobertos</small></div></div>
+      <div class="chip c2"><b>2</b><div>folgas por funcionário<small>como manda a nova lei</small></div></div>
+    </div>
+  </div>
+  <div class="fatos wrap" style="width:auto">
+    <div class="wrap fatos-grid" data-r>
+      <div class="fato"><b>2 folgas</b><span>remuneradas por semana para cada funcionário</span></div>
+      <div class="fato"><b>42 horas</b><span>de limite semanal a partir de 16/12/2026</span></div>
+      <div class="fato"><b>40 horas</b><span>de limite semanal a partir de 16/12/2027</span></div>
+      <div class="fato"><b>0%</b><span>de redução de salário permitida pela lei</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec problema">
+  <div class="wrap">
+    <div class="cab-sec">
+      <span class="etq">O problema</span>
+      <h2>Cada funcionário perde um dia de trabalho. Sua loja continua abrindo sete.</h2>
+      <p>Com seis pessoas em 6x1 você tinha 36 turnos por semana. Na 5x2 são 30. Montar isso na mão é onde a escala quebra.</p>
+    </div>
+    <div class="compara">
+      <div class="lado ruim" data-r>
+        <h3>Na planilha</h3>
+        <p>Horas tentando encaixar folga, e o furo aparece no sábado.</p>
+        <div class="mini-pl" aria-hidden="true">
+          <b class="h"></b><i class="h">S</i><i class="h">T</i><i class="h">Q</i><i class="h">Q</i><i class="h">S</i><i class="h">S</i><i class="h">D</i>
+          <b>Ana</b><i></i><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i>
+          <b>Bruno</b><i></i><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i>
+          <b>Carla</b><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i><i></i>
+          <b>Total</b><i>5</i><i>5</i><i>5</i><i>6</i><i>5</i><i class="x">2</i><i class="x">2</i>
+        </div>
+        <ul><li>Todo mundo pede folga no fim de semana, justo quando o movimento é maior.</li><li>Você muda a folga de um e descobre outro dia.</li><li>O mesmo funcionário pega domingo atrás de domingo.</li><li>O erro só aparece quando falta gente no balcão.</li></ul>
+      </div>
+      <div class="lado bom" data-r style="--d:1">
+        <span class="rotulo">Com o Escala Legal</span>
+        <h3>No Escala Legal</h3>
+        <p>Você informa a equipe. O sistema entrega a escala pronta e conferida.</p>
+        <div class="mini-ok" aria-hidden="true"><i>4<small>Seg</small></i><i>4<small>Ter</small></i><i>4<small>Qua</small></i><i>4<small>Qui</small></i><i>5<small>Sex</small></i><i>5<small>Sáb</small></i><i>4<small>Dom</small></i></div>
+        <ul><li>Duas folgas para cada um, juntas sempre que a operação permite.</li><li>Nenhum dia fica abaixo do mínimo de pessoas que você definiu.</li><li>Domingo de folga em rodízio, justo para a equipe.</li><li>Escala pronta para imprimir ou mandar no grupo do WhatsApp.</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec escuro" id="como">
+  <div class="brilho-h bh1" style="top:auto;bottom:-200px;right:-160px"></div>
+  <div class="wrap">
+    <div class="mec-cab">
+      <img src="img/mascote.svg" alt="Zé Folga acenando">
+      <div><span class="etq">O método</span><h2>Três travas que deixam a escala certa de primeira</h2><p>O Escala Legal testa as combinações de folga e só entrega a escala que respeita a lei e a sua operação.</p></div>
+    </div>
+    <div class="pilares">
+      <article class="pilar" data-r><span class="n"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span><h3>Trava de Cobertura</h3><p>Você define quantas pessoas precisa em cada dia. Nenhum dia fica abaixo disso. Se a equipe não for suficiente, o sistema avisa quantas pessoas faltam.</p></article>
+      <article class="pilar" data-r style="--d:1"><span class="n"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></span><h3>Rodízio de Domingo</h3><p>A folga de domingo gira entre a equipe. Ninguém passa do segundo domingo seguido trabalhando sem você ser avisado.</p></article>
+      <article class="pilar" data-r style="--d:2"><span class="n"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M9 15h2"/></svg></span><h3>Folga Fixa</h3><p>Quem só pode folgar em certo dia mantém o dia dele. O sistema encaixa o resto da equipe em volta.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="app">
+  <div class="wrap">
+    <div class="cab-sec">
+      <span class="etq">O sistema por dentro</span>
+      <h2>Um sistema de verdade, não uma planilha pronta</h2>
+      <p>Funciona no navegador do computador e do celular. Sua equipe fica salva e a escala é refeita sempre que alguém entra ou sai.</p>
+    </div>
+    <div class="app-grid">
+      <div class="abas" role="tablist">
+        <button class="aba on" role="tab" aria-selected="true" data-tela="0"><strong>Escala gerada em segundos</strong><span>Semanas com datas, folgas em amarelo e a contagem de presentes em cada dia.</span></button>
+        <button class="aba" role="tab" aria-selected="false" data-tela="1"><strong>Equipe cadastrada uma vez</strong><span>Nome, cargo e folga fixa de cada funcionário. Várias lojas na mesma conta.</span></button>
+        <button class="aba" role="tab" aria-selected="false" data-tela="2"><strong>Dias e cobertura do seu jeito</strong><span>Marque os dias em que abre e quantas pessoas precisa em cada um.</span></button>
+      </div>
+      <div class="fundo-app" data-r>
+        <div class="tela">
+          <div class="janela-barra"><i></i><i></i><i></i><span id="telaNome">Escala</span></div>
+          <div class="tela-img">
+            <img class="on" src="img/app-escala.webp" width="1600" height="950" alt="Escala gerada com folgas e presentes por dia.">
+            <img src="img/app-funcionarios.webp" width="1600" height="950" alt="Cadastro de funcionários com cargo e folga fixa." loading="lazy">
+            <img src="img/app-config.webp" width="1600" height="950" alt="Configuração dos dias abertos e do mínimo de pessoas por dia." loading="lazy">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec gelo">
+  <div class="wrap">
+    <div class="cab-sec centro" style="text-align:center"><span class="etq">Do pagamento à escala</span><h2>Pronto em 3 passos</h2></div>
+    <ol class="passos">
+      <li data-r><b>1</b><div><h3>Garanta o acesso</h3><p>Pagamento único de R$&nbsp;47. O acesso chega no seu e-mail.</p></div></li>
+      <li data-r style="--d:1"><b>2</b><div><h3>Cadastre a equipe</h3><p>Crie a loja ou o setor e informe os funcionários.</p></div></li>
+      <li data-r style="--d:2"><b>3</b><div><h3>Gere e envie</h3><p>A escala sai pronta. Imprima ou mande no grupo da equipe.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="cab-sec"><span class="etq">Para quem é</span><h2>Feito para quem abre as portas todo dia</h2><p>Seis setores já vêm configurados com os dias e a cobertura mais comuns. Você ajusta o que for diferente.</p></div>
+    <div class="setores">
+      <div class="setor" data-r><h3>Lojas e shopping</h3><p>Sábado e domingo cheios e equipe pedindo folga no fim de semana.</p><span class="tg">7 dias abertos</span></div>
+      <div class="setor" data-r style="--d:1"><h3>Restaurantes e lanchonetes</h3><p>Pico no jantar e no fim de semana, cozinha e salão para cobrir.</p><span class="tg">Mais gente de quinta a domingo</span></div>
+      <div class="setor" data-r style="--d:2"><h3>Farmácias</h3><p>Balcão que não pode ficar vazio em nenhum dia da semana.</p><span class="tg">Cobertura constante</span></div>
+      <div class="setor" data-r><h3>Salões, clínicas e estética</h3><p>Agenda cheia no sábado e equipe pequena.</p><span class="tg">Fecha domingo</span></div>
+      <div class="setor" data-r style="--d:1"><h3>Escritórios</h3><p>Atendimento de segunda a sexta com equipe enxuta.</p><span class="tg">Segunda a sexta</span></div>
+      <div class="setor" data-r style="--d:2"><h3>Portaria e segurança</h3><p>Posto que precisa de alguém todos os dias.</p><span class="tg">Posto 7 dias</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec gelo" id="lei">
+  <div class="wrap lei-grid">
+    <div class="lei-txt">
+      <span class="etq">A lei</span>
+      <h2>Não é mais projeto. Está na Constituição.</h2>
+      <p>A Emenda Constitucional 141/2026 foi publicada no Diário Oficial em 16 de outubro de 2026. Toda empresa com funcionário em 6x1 precisa refazer a escala.</p>
+      <p class="fontes">Fontes: <a href="https://planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc141.htm" target="_blank" rel="noopener">texto da EC 141/2026 no Planalto</a> e <a href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/saiba-quando-comeca-valer-o-fim-da-escala-6-por-1" target="_blank" rel="noopener">Agência Brasil</a>. Confirme as datas com o seu contador.</p>
+    </div>
+    <ol class="tempo">
+      <li data-r><time>27 de maio de 2026</time><p>Câmara aprova a proposta por 461 votos a 19.</p></li>
+      <li data-r><time>14 de outubro de 2026</time><p>Senado aprova por 75 votos a 1.</p></li>
+      <li data-r><time>16 de outubro de 2026</time><p>Emenda promulgada e publicada no Diário Oficial.</p></li>
+      <li class="agora" data-r><time>16 de dezembro de 2026</time><p>Duas folgas por semana e limite de 42 horas passam a valer.</p>
+        <div class="contador" id="contador" hidden><div><b id="cdD">0</b><span>dias</span></div><div><b id="cdH">00</b><span>horas</span></div><div><b id="cdM">00</b><span>min</span></div><div><b id="cdS">00</b><span>seg</span></div></div></li>
+      <li data-r><time>16 de dezembro de 2027</time><p>Limite semanal cai para 40 horas.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec escuro" id="preco">
+  <div class="brilho-h bh2" style="left:auto;right:-200px;bottom:-240px;opacity:.35"></div>
+  <div class="wrap preco-grid">
+    <div class="preco-txt">
+      <span class="etq">Oferta de lançamento</span>
+      <h2>Acesso completo ao Escala Legal</h2>
+      <p>Um pagamento só. Você monta a escala de quantas equipes precisar e refaz sempre que a equipe mudar.</p>
+      <div class="garantia">
+        <svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="gs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe46b"/><stop offset="1" stop-color="#ffcd07"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="url(#gs)"/><circle cx="50" cy="50" r="38" fill="none" stroke="#3b2f00" stroke-width="2" stroke-dasharray="3 4"/><text x="50" y="50" text-anchor="middle" font-family="Archivo,Arial" font-weight="900" font-size="30" fill="#3b2f00">7</text><text x="50" y="66" text-anchor="middle" font-family="Archivo,Arial" font-weight="800" font-size="11" fill="#3b2f00">DIAS</text></svg>
+        <div><b>Garantia de 7 dias</b>Se o sistema não servir para a sua empresa, você pede o reembolso dentro de 7 dias.</div>
+      </div>
+    </div>
+    <div class="oferta" data-r>
+      <span class="tag">Pagamento único, sem mensalidade</span>
+      <p class="oferta-nome">Escala Legal</p>
+      <p class="valor"><span>R$</span>47</p>
+      <p class="unico">à vista, acesso imediato</p>
+      <ul class="itens"><li>Escala 5x2 gerada em 2 minutos</li><li>Trava de Cobertura, Rodízio de Domingo e Folga Fixa</li><li>Várias lojas e setores na mesma conta</li><li>Até 200 funcionários por equipe</li><li>Ajuste de folga com um clique</li><li>Impressão e envio pelo WhatsApp</li></ul>
+      <a class="btn" href="#preco" data-comprar>Quero meu acesso agora</a>
+      <p class="oferta-pe">Compra segura. Acesso enviado para o seu e-mail.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec faq" id="duvidas">
+  <div class="wrap faq-grid">
+    <div><span class="etq">Dúvidas</span><h2>Perguntas frequentes</h2></div>
+    <div>
+      <details data-r open><summary>Quando a regra começa a valer?</summary><p>A Emenda 141/2026 foi publicada em 16/10/2026. As duas folgas e o limite de 42 horas valem a partir de 16/12/2026. As 40 horas valem a partir de 16/12/2027. Confirme a data com o seu contador.</p></details>
+      <details data-r><summary>Vale para empresa pequena?</summary><p>Vale. A emenda permite que uma lei complementar crie regras de transição para MEI, micro e pequenas empresas. Enquanto ela não existir, vale a regra geral.</p></details>
+      <details data-r><summary>Como recebo o acesso?</summary><p>Assim que o pagamento é confirmado, você recebe o link no e-mail da compra. É só criar a senha e começar. Funciona no navegador, sem instalar nada.</p></details>
+      <details data-r><summary>Tem mensalidade?</summary><p>Não. São R$&nbsp;47 uma única vez.</p></details>
+      <details data-r><summary>Serve para mais de uma loja?</summary><p>Sim. Cada loja, setor ou turno vira uma equipe dentro da mesma conta.</p></details>
+      <details data-r><summary>O sistema calcula ponto ou folha de pagamento?</summary><p>Não. Ele organiza quem trabalha e quem folga em cada dia. Horários, banco de horas e folha seguem com o seu contador.</p></details>
+      <details data-r><summary>E se não servir para mim?</summary><p>Você tem 7 dias para pedir o reembolso.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="final-card" data-r>
+      <div>
+        <h2 id="finalTit">Deixe a escala nova pronta antes de 16 de dezembro</h2>
+        <p>Dois minutos para gerar. Nenhum dia descoberto. Equipe sabendo das folgas.</p>
+        <a class="btn" href="#preco" data-comprar>Quero o Escala Legal <small>R$&nbsp;47</small></a>
+      </div>
+      <div class="ze-final"><p class="balao">Deixa que a escala eu monto. Você cuida da loja.</p><img src="img/mascote.svg" alt="Zé Folga, o mascote do Escala Legal"></div>
+    </div>
+  </div>
+</section>
+
+<footer class="rodape">
+  <div class="wrap">
+    <a class="marca" href="#"><img src="img/mascote.svg" alt="">Escala<span>Legal</span></a>
+    <p>Ferramenta privada de organização de escalas, sem vínculo com o governo. Não substitui a orientação do seu contador ou advogado. Datas conforme a Emenda Constitucional 141/2026.</p>
+  </div>
+</footer>
+
+<div class="fixo" id="fixo"><div><b>R$&nbsp;47</b><small>pagamento único</small></div><a class="btn btn-p" href="#preco" data-comprar>Quero o Escala Legal</a></div>
+
+<dialog id="dlgCompra">
+  <button class="fechar" id="fechar" aria-label="Fechar">×</button>
+  <div class="dlg-topo"><h3>Garanta seu acesso</h3><p>Escala Legal · R$ 47, pagamento único</p></div>
+  <form class="dlg-corpo" id="formCompra" novalidate>
+    <label for="cNome">Seu nome</label><input id="cNome" autocomplete="name" required>
+    <label for="cEmail">E-mail (o acesso chega aqui)</label><input id="cEmail" type="email" autocomplete="email" required>
+    <label for="cZap">WhatsApp com DDD</label><input id="cZap" inputmode="tel" autocomplete="tel" placeholder="(71) 99999-9999" required>
+    <button class="btn" type="submit" id="btnPagar">Ir para o pagamento</button>
+    <p class="dlg-erro" id="dlgErro"></p>
+    <p class="dlg-nota">Você será levado ao checkout seguro para pagar.</p>
+  </form>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+document.documentElement.classList.add('js');
+const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+requestAnimationFrame(() => setTimeout(() => document.body.classList.remove('carrega'), 60));
+
+// checkout: no VPS o link vem de /api/config
+let CHECKOUT = '';
+fetch('/api/config').then(r => r.json()).then(c => { CHECKOUT = c.checkout || ''; if (CHECKOUT) $('#previa').hidden = true; }).catch(() => {});
+
+// compra
+const dlg = $('#dlgCompra');
+$$('[data-comprar]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); $('#dlgErro').textContent = ''; dlg.showModal(); $('#cNome').focus(); }));
+$('#fechar').onclick = () => dlg.close();
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+$('#formCompra').addEventListener('submit', async e => {
+  e.preventDefault();
+  const nome = $('#cNome').value.trim(), email = $('#cEmail').value.trim(), zap = $('#cZap').value.replace(/\D/g, '');
+  if (!nome) return $('#dlgErro').textContent = 'Informe seu nome.';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return $('#dlgErro').textContent = 'Informe um e-mail válido.';
+  if (zap.length < 10) return $('#dlgErro').textContent = 'Informe o WhatsApp com DDD.';
+  const btn = $('#btnPagar'); btn.disabled = true; btn.textContent = 'Abrindo o pagamento...';
+  const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')));
+  try { await fetch('/api/leads', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome, email, whatsapp: zap, setor: 'checkout', utm})}); } catch {}
+  if (window.fbq) fbq('track', 'InitiateCheckout', {value: 47, currency: 'BRL'});
+  if (CHECKOUT) {
+    const u = new URL(CHECKOUT); u.searchParams.set('email', email); u.searchParams.set('name', nome); u.searchParams.set('phone', zap);
+    location.href = u.toString();
+  } else {
+    $('#dlgErro').textContent = 'Prévia: o checkout ainda não foi ligado. No site publicado, este botão abre o pagamento.';
+    btn.disabled = false; btn.textContent = 'Ir para o pagamento';
+  }
+});
+
+// contagem até 16/12/2026
+const alvo = new Date('2026-12-16T00:00:00-03:00'), dois = n => String(n).padStart(2, '0');
+function conta() {
+  const ms = alvo - Date.now();
+  if (ms <= 0) { $('#avisoTopo').innerHTML = 'Emenda Constitucional 141/2026: a escala 5x2 <b>já está valendo</b>.'; $('#seloTxt').textContent = 'A regra das duas folgas já está valendo'; $('#contador').hidden = true; return false; }
+  const d = Math.floor(ms / 864e5);
+  $('#avisoTopo').innerHTML = `Emenda Constitucional 141/2026: faltam <b>${d} ${d === 1 ? 'dia' : 'dias'}</b> para a escala 5x2 valer.`;
+  $('#seloTxt').textContent = `Faltam ${d} ${d === 1 ? 'dia' : 'dias'} para o fim da escala 6x1`;
+  $('#cdD').textContent = d; $('#cdH').textContent = dois(Math.floor(ms / 36e5) % 24); $('#cdM').textContent = dois(Math.floor(ms / 6e4) % 60); $('#cdS').textContent = dois(Math.floor(ms / 1e3) % 60);
+  $('#contador').hidden = false; return true;
+}
+if (conta()) { const t = setInterval(() => { if (!conta()) clearInterval(t); }, 1000); }
+
+// abas do sistema
+const nomes = ['Escala', 'Funcionários', 'Dias e cobertura'];
+let abaAtual = 0, girar = null;
+function mostra(i) {
+  abaAtual = i;
+  $$('.aba').forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
+  $$('.tela-img img').forEach((im, j) => im.classList.toggle('on', j === i));
+  $('#telaNome').textContent = nomes[i];
+}
+$$('.aba').forEach(b => b.addEventListener('click', () => { clearInterval(girar); mostra(+b.dataset.tela); }));
+if (!calmo) girar = setInterval(() => mostra((abaAtual + 1) % 3), 5000);
+
+// cabeçalho e barra fixa
+const topo = $('#topo'), fixo = $('#fixo'), preco = $('#preco');
+function rolar() {
+  topo.classList.toggle('cheio', scrollY > 40);
+  const r = preco.getBoundingClientRect();
+  fixo.classList.toggle('on', scrollY > 700 && !(r.top < innerHeight * .9 && r.bottom > 80));
+}
+addEventListener('scroll', rolar, {passive: true}); rolar();
+
+// entrada ao rolar
+if (!calmo && 'IntersectionObserver' in window) {
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.remove('fora'); io.unobserve(e.target); } }), {rootMargin: '0px 0px -8% 0px'});
+  $$('[data-r]').forEach(el => { if (el.getBoundingClientRect().top > innerHeight * .92) { el.classList.add('fora'); io.observe(el); } });
+}
+</script>
+<script src="/pixel.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Admin — Escala Legal</title>
+<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#f3f5f8;color:#0c1b33}.w{max-width:1200px;margin:0 auto;padding:24px}h1{margin:0 0 14px}
+.k{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}.k div{background:#fff;border:1px solid #dfe3ea;border-radius:10px;padding:12px 18px}.k b{display:block;font-size:24px;color:#1351b4}
+input{padding:9px;border:1px solid #c9d0db;border-radius:8px;width:280px;margin-bottom:12px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:9px;border-bottom:1px solid #dfe3ea;text-align:left;font-size:14px}th{color:#6b778a}
+.ok{color:#168821;font-weight:700}.no{color:#c4161c;font-weight:700}button{border:1px solid #c9d0db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer}</style></head>
+<body><div class="w"><h1>Clientes — Escala Legal</h1><div class="k" id="k"></div><input id="b" placeholder="Buscar nome, empresa ou e-mail">
+<table><thead><tr><th>Cadastro</th><th>Nome</th><th>Empresa</th><th>E-mail</th><th>WhatsApp</th><th>Equipes</th><th>Escalas</th><th>Acesso</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+<script>
+let d=[];const e=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function c(){d=await (await fetch('/api/admin/clientes')).json();const l=d.filter(x=>x.acesso_liberado).length;
+k.innerHTML=`<div><b>${d.length}</b>contas</div><div><b>${l}</b>com acesso pago</div><div><b>${d.length-l}</b>aguardando pagamento</div><div><b>${d.reduce((a,x)=>a+x.escalas,0)}</b>escalas geradas</div>`;r()}
+function r(){const q=b.value.toLowerCase();t.innerHTML=d.filter(x=>!q||[x.nome,x.empresa,x.email].join(' ').toLowerCase().includes(q)).map(x=>`<tr><td>${new Date(x.criado_em).toLocaleDateString('pt-BR')}</td><td>${e(x.nome)}</td><td>${e(x.empresa)}</td><td>${e(x.email)}</td><td>${x.whatsapp?`<a target=_blank href="https://wa.me/55${e(x.whatsapp)}">${e(x.whatsapp)}</a>`:''}</td><td>${x.equipes}</td><td>${x.escalas}</td><td class="${x.acesso_liberado?'ok':'no'}">${x.acesso_liberado?'Liberado':'Pendente'}</td><td><button data-id="${x.id}" data-v="${!x.acesso_liberado}">${x.acesso_liberado?'Bloquear':'Liberar'}</button></td></tr>`).join('')}
+t.onclick=async ev=>{const bt=ev.target.closest('button');if(!bt)return;await fetch('/api/admin/clientes/'+bt.dataset.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({acesso_liberado:bt.dataset.v==='true'})});c()};b.oninput=r;c();
+</script></body></html>

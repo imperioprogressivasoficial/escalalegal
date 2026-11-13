@@ -1,0 +1,46 @@
+services:
+  app:
+    build: ./app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://escala:${DB_PASS}@db:5432/escala
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASS: ${ADMIN_PASS}
+      NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN}
+      CHECKOUT_URL: ${CHECKOUT_URL:-}
+      LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+    depends_on: [db]
+    # Se o VPS já tem proxy (Traefik/Nginx/Caddy) rodando, remova o serviço "caddy"
+    # abaixo e aponte seu proxy para a porta 3000 deste container:
+    ports:
+      - "127.0.0.1:3010:3000"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: escala
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: escala
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["caddy"]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [app]
+
+volumes:
+  dbdata:
+  caddydata:
