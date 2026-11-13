@@ -104,15 +104,6 @@ const logado = erro(async (req, res, next) => {
   if (!rows[0] || rows[0].sessao_v !== s.v) return res.status(401).json({ erro: 'Entre na sua conta.' });
   req.u = rows[0]; next();
 });
-const pago = (req, res, next) => (req.u.acesso_liberado || LIBERAR_TUDO === '1')
-  ? next() : res.status(402).json({ erro: 'Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.', checkout: CHECKOUT_URL });
-
-const minhaEquipe = erro(async (req, res, next) => {
-  const { rows } = await q('select * from equipes where id=$1 and usuario_id=$2', [+req.params.id || 0, req.u.id]);
-  if (!rows[0]) return res.status(404).json({ erro: 'Equipe não encontrada.' });
-  req.equipe = rows[0]; next();
-});
-
 // ---------- links de acesso (criar / redefinir senha) ----------
 const hashToken = t => crypto.createHash('sha256').update(t).digest('hex');
 async function criaLink(usuarioId, horas) {
@@ -123,7 +114,8 @@ async function criaLink(usuarioId, horas) {
 }
 async function tokenValido(token) {
   if (!/^[\w-]{20,80}$/.test(String(token || ''))) return null;
-  const { rows } = await q(`select t.token_hash, u.id, u.nome, u.empresa, u.email, u.whatsapp, u.senha_hash is not null tem_senha
+  const { rows } = await q(`select t.token_hash, u.id, u.nome, u.empresa, u.email, u.whatsapp, u.senha_hash is not null tem_senha,
+    exists (select 1 from membros m where m.usuario_id=u.id) convidado
     from acesso_tokens t join usuarios u on u.id=t.usuario_id
     where t.token_hash=$1 and t.usado_em is null and t.expira_em > now()`, [hashToken(token)]);
   return rows[0] || null;
@@ -226,10 +218,13 @@ app.post('/api/login', limite(10), erro(async (req, res) => {
 }));
 
 app.post('/api/sair', (_req, res) => { res.setHeader('Set-Cookie', `sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${PRODUCAO ? '; Secure' : ''}`); res.json({ ok: true }); });
-app.get('/api/eu', logado, (req, res) => {
+app.get('/api/eu', logado, erro(async (req, res) => {
   const { sessao_v, ...u } = req.u;
-  res.json({ ...u, acesso_liberado: u.acesso_liberado || LIBERAR_TUDO === '1', checkout: CHECKOUT_URL });
-});
+  const { rows } = await q(`select m.conta_id id, coalesce(c.empresa, c.nome) empresa, m.papel from membros m
+    join usuarios c on c.id=m.conta_id where m.usuario_id=$1 order by c.empresa`, [u.id]);
+  res.json({ ...u, acesso_liberado: u.acesso_liberado || LIBERAR_TUDO === '1', checkout: CHECKOUT_URL,
+    contas: [{ id: u.id, empresa: u.empresa || u.nome, papel: 'dono' }, ...rows] });
+}));
 
 // esqueci a senha: sempre responde igual (não revela se o e-mail existe)
 app.post('/api/senha/esqueci', limite(5), erro(async (req, res) => {
@@ -243,7 +238,7 @@ app.post('/api/senha/esqueci', limite(5), erro(async (req, res) => {
 app.get('/api/senha/token', limite(20), erro(async (req, res) => {
   const t = await tokenValido(req.query.t);
   if (!t) return res.status(404).json({ erro: 'Este link expirou ou já foi usado. Peça um novo em "Esqueci minha senha".' });
-  res.json({ email: t.email, nome: t.nome, empresa: t.empresa, whatsapp: t.whatsapp, tem_senha: t.tem_senha });
+  res.json({ email: t.email, nome: t.nome, empresa: t.empresa, whatsapp: t.whatsapp, tem_senha: t.tem_senha, convidado: t.convidado });
 }));
 app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
   const b = req.body || {};
@@ -253,7 +248,8 @@ app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
   if (senha.length < 6 || senha.length > 200) return res.status(400).json({ erro: 'A senha precisa ter pelo menos 6 caracteres.' });
   const nome = limpa(b.nome) || t.nome, empresa = limpa(b.empresa) || t.empresa;
   const whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, '') || t.whatsapp;
-  if (!empresa) return res.status(400).json({ erro: 'Informe o nome da empresa.' });
+  const { rows: conv } = await q('select 1 from membros where usuario_id=$1 limit 1', [t.id]);
+  if (!empresa && !conv[0]) return res.status(400).json({ erro: 'Informe o nome da empresa.' });
   const { rowCount } = await q('update acesso_tokens set usado_em=now() where token_hash=$1 and usado_em is null', [t.token_hash]);
   if (!rowCount) return res.status(404).json({ erro: 'Este link já foi usado.' });
   const { rows } = await q(`update usuarios set senha_hash=$1, nome=$2, empresa=$3, whatsapp=$4, sessao_v=sessao_v+1, ultimo_acesso=now()
@@ -263,102 +259,8 @@ app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ---------- equipes ----------
-function validaEquipe(b) {
-  const setor = SETORES[b.setor] ? b.setor : 'varejo';
-  const abertos = Array.isArray(b.abertos) && b.abertos.length === 7 ? b.abertos.map(x => (x ? 1 : 0)) : SETORES[setor].abertos;
-  const minimo = Array.isArray(b.minimo) && b.minimo.length === 7 ? b.minimo.map(x => Math.max(0, Math.min(200, Math.round(+x) || 0))) : SETORES[setor].minimo;
-  return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo };
-}
-app.get('/api/equipes', logado, erro(async (req, res) => {
-  const { rows } = await q(`select e.*, (select count(*)::int from funcionarios f where f.equipe_id=e.id and f.ativo) total,
-    (select max(criado_em) from escalas s where s.equipe_id=e.id) ultima from equipes e where usuario_id=$1 order by e.id`, [req.u.id]);
-  res.json(rows);
-}));
-app.post('/api/equipes', logado, erro(async (req, res) => {
-  const e = validaEquipe(req.body || {});
-  const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.u.id]);
-  if (n[0].c >= 50) return res.status(400).json({ erro: 'Limite de 50 equipes por conta.' });
-  const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo) values ($1,$2,$3,$4,$5) returning *',
-    [req.u.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo)]);
-  res.json(rows[0]);
-}));
-app.put('/api/equipes/:id', logado, minhaEquipe, erro(async (req, res) => {
-  const e = validaEquipe({ ...req.equipe, ...req.body });
-  const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4 where id=$5 returning *',
-    [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), req.equipe.id]);
-  res.json(rows[0]);
-}));
-app.delete('/api/equipes/:id', logado, minhaEquipe, erro(async (req, res) => {
-  await q('delete from equipes where id=$1', [req.equipe.id]); res.json({ ok: true });
-}));
-
-// ---------- funcionários ----------
-const fixos = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 2);
-app.get('/api/equipes/:id/funcionarios', logado, minhaEquipe, erro(async (req, res) => {
-  const { rows } = await q('select * from funcionarios where equipe_id=$1 and ativo order by nome', [req.equipe.id]);
-  res.json(rows);
-}));
-app.post('/api/equipes/:id/funcionarios', logado, minhaEquipe, erro(async (req, res) => {
-  const lista = (Array.isArray(req.body) ? req.body : [req.body]).filter(f => limpa(f?.nome));
-  if (!lista.length) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
-  const { rows: n } = await q('select count(*)::int c from funcionarios where equipe_id=$1 and ativo', [req.equipe.id]);
-  if (n[0].c + lista.length > 200) return res.status(400).json({ erro: 'Limite de 200 funcionários por equipe.' });
-  const { rows } = await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa)
-    select $1, x.nome, x.cargo, x.folga_fixa from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb) returning *`,
-  [req.equipe.id, JSON.stringify(lista.map(f => ({ nome: limpa(f.nome, 60), cargo: limpa(f.cargo, 60), folga_fixa: fixos(f.folga_fixa) })))]);
-  res.json(rows);
-}));
-app.put('/api/funcionarios/:fid', logado, erro(async (req, res) => {
-  const b = req.body || {};
-  if (!limpa(b.nome)) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
-  const { rows } = await q(`update funcionarios f set nome=$1, cargo=$2, folga_fixa=$3 from equipes e
-    where f.id=$4 and f.equipe_id=e.id and e.usuario_id=$5 returning f.*`,
-  [limpa(b.nome, 60), limpa(b.cargo, 60), JSON.stringify(fixos(b.folga_fixa)), +req.params.fid || 0, req.u.id]);
-  if (!rows[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
-  res.json(rows[0]);
-}));
-app.delete('/api/funcionarios/:fid', logado, erro(async (req, res) => {
-  await q('update funcionarios f set ativo=false from equipes e where f.id=$1 and f.equipe_id=e.id and e.usuario_id=$2', [+req.params.fid || 0, req.u.id]);
-  res.json({ ok: true });
-}));
-
-// ---------- escalas ----------
-app.post('/api/equipes/:id/escalas', logado, pago, minhaEquipe, limite(30), erro(async (req, res) => {
-  const { rows: fs_ } = await q('select id, nome, cargo, folga_fixa from funcionarios where equipe_id=$1 and ativo order by nome', [req.equipe.id]);
-  if (!fs_.length) return res.status(400).json({ erro: 'Cadastre pelo menos um funcionário antes de gerar a escala.' });
-  const semanas = Math.max(1, Math.min(8, Math.round(+req.body?.semanas) || 4));
-  const ini = String(req.body?.inicio || '');
-  const inicio = /^\d{4}-\d{2}-\d{2}$/.test(ini) && !isNaN(Date.parse(ini)) ? ini : new Date().toISOString().slice(0, 10);
-  const r = gerarEscala({ funcionarios: fs_.map(f => ({ nome: f.nome, fixo: f.folga_fixa })), abertos: req.equipe.abertos, minimo: req.equipe.minimo, semanas });
-  const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas)
-    values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
-  [req.equipe.id, inicio, semanas, JSON.stringify(fs_.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
-    JSON.stringify(req.equipe.abertos), JSON.stringify(req.equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas)]);
-  res.json(rows[0]);
-}));
-app.get('/api/equipes/:id/escalas', logado, minhaEquipe, erro(async (req, res) => {
-  const { rows } = await q('select * from escalas where equipe_id=$1 order by criado_em desc limit 20', [req.equipe.id]);
-  res.json(rows);
-}));
-// ajuste manual de uma célula (trabalha <-> folga)
-app.patch('/api/escalas/:eid', logado, erro(async (req, res) => {
-  const { semana, funcionario, dia } = req.body || {};
-  if (![semana, funcionario, dia].every(Number.isInteger) || dia < 0 || dia > 6) return res.status(400).json({ erro: 'Célula inválida.' });
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const { rows } = await client.query('select s.id, s.dados from escalas s join equipes e on e.id=s.equipe_id where s.id=$1 and e.usuario_id=$2 for update',
-      [+req.params.eid || 0, req.u.id]);
-    if (!rows[0]) { await client.query('rollback'); return res.status(404).json({ erro: 'Escala não encontrada.' }); }
-    const d = rows[0].dados;
-    if (!Array.isArray(d[semana]?.[funcionario])) { await client.query('rollback'); return res.status(400).json({ erro: 'Célula inválida.' }); }
-    d[semana][funcionario][dia] = d[semana][funcionario][dia] === 'F' ? 'T' : 'F';
-    await client.query('update escalas set dados=$1 where id=$2', [JSON.stringify(d), rows[0].id]);
-    await client.query('commit');
-    res.json({ ok: true, dados: d });
-  } catch (e) { await client.query('rollback').catch(() => {}); throw e; } finally { client.release(); }
-}));
+// ---------- gestão: equipes, funcionários, escalas, ocorrências, acessos, relatórios ----------
+require('./gestao.js')({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte });
 
 // ---------- pagamento: webhook do checkout ----------
 // URL para colar na plataforma (Kiwify, Hotmart, Eduzz, Cakto, Ticto, Clickmax, n8n...):

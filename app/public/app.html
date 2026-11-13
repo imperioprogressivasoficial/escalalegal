@@ -120,17 +120,82 @@ dialog{border:0;border-radius:14px;padding:22px;width:min(420px,92vw);box-shadow
 dialog::backdrop{background:rgba(7,29,65,.5)}
 .dlg-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
+/* navegação e empresa */
+.nav{display:grid;gap:2px}
+.nav button{width:100%;text-align:left;background:none;border:0;color:#dce5f3;padding:9px 10px;border-radius:8px;cursor:pointer;font-weight:600}
+.nav button:hover,.equipes button:hover{background:rgba(255,255,255,.07)}
+.nav button.on{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 3px 0 0 var(--amarelo)}
+.conta-sel select{background:#0b2d6b;color:#fff;border-color:rgba(255,255,255,.25);padding:8px 10px;font-weight:600}
+.papel{display:inline-block;background:var(--amarelo);color:#4a3a00;border-radius:99px;padding:1px 8px;font-size:.72rem;font-weight:700;margin-left:4px;vertical-align:1px}
+.so-leitura .edita{display:none!important}
+.leitura-aviso{display:none;background:var(--azul-claro);color:var(--azul);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:600}
+.so-leitura .leitura-aviso{display:block}
+.dica{color:var(--mut);font-size:.86rem}
+.form-linha{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-linha>div{flex:1 1 150px}
+.form-linha label{margin-top:0}
+
+/* visão geral */
+.visao{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.grade-eq{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.eq-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.eq-top h3{font-size:1.15rem}
+.grande{font:800 2.2rem/1 var(--display);font-stretch:85%;color:var(--tinta);margin-top:10px}
+.grande small{font:500 .9rem var(--corpo);color:var(--mut);margin-left:6px}
+.semana7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:12px 0}
+.semana7 div{border-radius:8px;padding:6px 2px;text-align:center;font-size:.72rem;line-height:1.25}
+.semana7 b{display:block;font-size:.95rem;font-variant-numeric:tabular-nums}
+.d-ok{background:var(--verde-claro);color:var(--verde)}.d-baixo{background:var(--vermelho-claro);color:var(--vermelho)}
+.d-sem{background:var(--cinza);color:var(--mut)}.d-fech{border:1px dashed var(--linha);color:var(--mut)}
+.d-hoje{box-shadow:inset 0 0 0 2px var(--azul)}
+.fer-tag{display:block;font-size:.62rem;color:#8a5a00;font-weight:700}
+.rotulo{font-size:.78rem;font-weight:700;color:var(--mut);margin-top:10px}
+.pessoas{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.pessoa{background:var(--cinza);border-radius:99px;padding:3px 10px;font-size:.8rem;color:var(--tinta)}
+.pessoa.aus{background:#ece7fb;color:#4b2a9a}
+.alerta-eq{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--amarelo-claro);border-radius:8px;padding:8px 10px;font-size:.85rem;color:#5a4500;font-weight:600}
+.prox li{list-style:none;padding:9px 0;border-bottom:1px solid var(--linha);font-size:.88rem}
+.prox{padding:0}
+.prox li:last-child{border:0}
+
+/* ocorrências e tabelas */
+.esc td.A{background:#ece7fb;color:#4b2a9a;font-size:.76rem;cursor:not-allowed}
+.esc th.fer,.esc th.fer small{color:#8a5a00}
+.tipo{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.76rem;font-weight:700;white-space:nowrap}
+.tipo-ferias{background:#e3f0ff;color:var(--azul)}.tipo-atestado{background:#ece7fb;color:#4b2a9a}.tipo-falta{background:var(--vermelho-claro);color:var(--vermelho)}
+.tipo-afastamento{background:#eceef2;color:#3d4a5c}.tipo-folga_extra{background:var(--amarelo-claro);color:#5a4500}.tipo-banco_horas{background:var(--verde-claro);color:var(--verde)}
+table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
+.tab th,.tab td{padding:9px 8px;border-bottom:1px solid var(--linha);text-align:left}
+.tab th{color:var(--mut);font-weight:600;font-size:.78rem;white-space:nowrap}
+.tab td.n,.tab th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tab tr:hover td{background:#fafbfc}
+.espelho{border-collapse:collapse;font-size:.7rem}
+.espelho th,.espelho td{border:1px solid var(--linha);padding:4px 2px;text-align:center;min-width:26px}
+.espelho th{font-weight:600;color:var(--mut)}
+.espelho td:first-child,.espelho th:first-child{text-align:left;padding:4px 8px;white-space:nowrap;position:sticky;left:0;background:#fff;min-width:140px}
+.espelho .dom{background:#f6f7f9}.espelho th.fer{background:#fff0c2;color:#8a5a00}
+.c-T{background:var(--azul-claro);color:var(--azul)}.c-F{background:var(--amarelo);color:#4a3a00;font-weight:700}
+.c-V{background:#e3f0ff;color:var(--azul);font-weight:700}.c-M{background:#ece7fb;color:#4b2a9a;font-weight:700}
+.c-X{background:var(--vermelho-claro);color:var(--vermelho);font-weight:700}.c-L{background:#eceef2;font-weight:700}.c-E{background:var(--amarelo-claro);color:#5a4500;font-weight:700}
+.sec-tit{font-size:1.1rem;margin-bottom:10px}
+.convite{background:var(--verde-claro);border-radius:10px;padding:12px 14px;margin-top:12px;color:#0f5c17}
+.badge-ok{color:var(--verde);font-weight:700}.badge-esp{color:#8a5a00;font-weight:700}
+
 @media(max-width:860px){
   .entrada{grid-template-columns:1fr}.entrada-lado{padding:28px 22px}.entrada-lado img{width:110px}
   .painel{grid-template-columns:minmax(0,1fr)}
   .lateral{padding:14px}.lat-pe{display:none}
   .equipes{display:flex;overflow-x:auto}.equipes button{white-space:nowrap}
+  .nav{display:flex;overflow-x:auto}.nav button{white-space:nowrap;width:auto}
+  .visao{grid-template-columns:minmax(0,1fr)}.grade-eq{grid-template-columns:minmax(0,1fr)}
   .form-func{grid-template-columns:1fr 1fr}.form-func .dias-chip{grid-column:1/-1;flex-wrap:wrap}
   .grade-conf{grid-template-columns:1fr}
 }
 @media print{
   body{background:#fff}.lateral,.tabs,.controles,.acoes,.aviso-pag,.semanas,.hist,.topo .btn{display:none!important}
   .painel{display:block}.principal{padding:0}.cartao{border:0;padding:0}
+  .sem-print,.leitura-aviso{display:none!important}
+  body.print-fech .vista:not(#v-fechamento){display:none!important}
   .esc td.T,.esc td.F,.esc td.ok,.esc td.baixo{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .sem-print{display:none}.todas-semanas .semana-print{display:block!important;break-inside:avoid;margin-bottom:18px}
 }
@@ -164,7 +229,7 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
       <p id="sTexto" style="margin-top:6px"></p>
       <div id="sDados">
         <label for="sNome">Seu nome</label><input id="sNome" autocomplete="name">
-        <label for="sEmpresa">Nome da empresa</label><input id="sEmpresa" autocomplete="organization">
+        <div id="sEmpresaBox"><label for="sEmpresa">Nome da empresa</label><input id="sEmpresa" autocomplete="organization"></div>
         <label for="sZap">WhatsApp</label><input id="sZap" inputmode="tel" placeholder="(71) 99999-9999">
       </div>
       <label for="sSenha">Senha (mínimo 6 caracteres)</label><input id="sSenha" type="password" autocomplete="new-password">
@@ -179,27 +244,47 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
 <div class="painel hide" id="telaPainel">
   <aside class="lateral">
     <div class="marca">Escala<span>Legal</span></div>
+    <div class="conta-sel hide" id="contaSel"><p class="lat-tit" style="margin-bottom:6px">Empresa</p><select id="selConta" aria-label="Empresa"></select></div>
+    <nav class="nav" id="nav">
+      <button data-ir="visao">Visão geral</button>
+      <button data-ir="ocorrencias">Férias, faltas e atestados</button>
+      <button data-ir="fechamento">Fechamento do mês</button>
+      <button data-ir="acessos" class="so-dono">Acessos</button>
+      <button data-ir="historico">Histórico</button>
+    </nav>
     <div>
       <p class="lat-tit">Equipes</p>
       <ul class="equipes" id="listaEquipes"></ul>
     </div>
-    <button class="nova" id="btnNova">+ Nova equipe</button>
-    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><button class="link" id="btnSair">Sair</button></div></div>
+    <button class="nova edita" id="btnNova">+ Nova equipe</button>
+    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><span id="papelEu"></span><br><button class="link" id="btnSair">Sair</button></div></div>
   </aside>
   <main class="principal">
-    <div class="aviso-pag hide" id="avisoPag"><span>Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.</span><a class="btn pq" id="btnPagar" href="#" target="_blank" rel="noopener">Liberar acesso por R$ 47</a></div>
-    <div id="semEquipe" class="cartao vazio hide">
-      <img src="/img/mascote.svg" alt="">
-      <h2>Vamos montar sua primeira escala</h2>
-      <p>Crie uma equipe (uma loja, um setor, um turno) e cadastre os funcionários.</p>
-      <button class="btn" id="btnPrimeira">Criar primeira equipe</button>
-    </div>
-    <div id="comEquipe" class="hide">
-      <div class="topo"><div><h1 id="tEquipe"></h1><p id="tSetor"></p></div></div>
+    <div class="aviso-pag hide" id="avisoPag"><span id="avisoPagTxt">Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.</span><a class="btn pq so-dono" id="btnPagar" href="#" target="_blank" rel="noopener">Liberar acesso por R$ 47</a></div>
+    <div class="leitura-aviso">Você está com acesso de contador: vê tudo e baixa o fechamento, mas não altera escalas.</div>
+
+    <!-- VISÃO GERAL -->
+    <section class="vista hide" id="v-visao">
+      <div class="topo"><div><h1 id="vOla"></h1><p id="vData"></p></div><button class="btn sec edita" data-ir-oc>Lançar férias, falta ou atestado</button></div>
+      <div id="semEquipe" class="cartao vazio hide">
+        <img src="/img/mascote.svg" alt="">
+        <h2>Vamos montar sua primeira escala</h2>
+        <p>Crie uma equipe (uma loja, um setor, um turno) e cadastre os funcionários.</p>
+        <button class="btn edita" id="btnPrimeira">Criar primeira equipe</button>
+      </div>
+      <div class="visao" id="visaoConteudo">
+        <div class="grade-eq" id="vEquipes"></div>
+        <aside class="cartao"><h3 class="sec-tit">Próximos 30 dias</h3><ul class="prox" id="vProx"></ul></aside>
+      </div>
+    </section>
+
+    <!-- EQUIPE -->
+    <section class="vista hide" id="v-equipe">
+      <div class="topo"><div><h1 id="tEquipe"></h1><p id="tSetor"></p></div><button class="btn sec edita" data-ir-oc>Lançar ocorrência</button></div>
       <nav class="tabs"><button data-aba="escala" class="on">Escala</button><button data-aba="funcionarios">Funcionários</button><button data-aba="config">Dias e cobertura</button></nav>
 
       <section data-painel="escala">
-        <div class="controles">
+        <div class="controles edita">
           <div><label for="eInicio">Começa em</label><input id="eInicio" type="date"></div>
           <div><label for="eSemanas">Semanas</label><select id="eSemanas"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option></select></div>
           <button class="btn azul" id="btnGerar">Gerar escala</button>
@@ -208,7 +293,7 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
       </section>
 
       <section data-painel="funcionarios" class="hide">
-        <form class="cartao form-func" id="formFunc">
+        <form class="cartao form-func edita" id="formFunc">
           <div><label for="fNome">Nome</label><input id="fNome" placeholder="Ex.: Ana Souza"></div>
           <div><label for="fCargo">Cargo (opcional)</label><input id="fCargo" placeholder="Ex.: Vendedora"></div>
           <div><label>Folga fixa (opcional)</label><div class="dias-chip" id="fFixa"></div></div>
@@ -225,10 +310,58 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
           </div>
           <label>Dias abertos e mínimo de pessoas por dia</label>
           <div class="dias-conf" id="cfDias"></div>
-          <div class="acoes"><button class="btn" id="btnSalvarCfg">Salvar</button><button class="link perigo" id="btnExcluir">Excluir equipe</button></div>
+          <div class="acoes edita"><button class="btn" id="btnSalvarCfg">Salvar</button><button class="link perigo" id="btnExcluir">Excluir equipe</button></div>
         </div>
       </section>
-    </div>
+    </section>
+
+    <!-- OCORRÊNCIAS -->
+    <section class="vista hide" id="v-ocorrencias">
+      <div class="topo"><div><h1>Férias, faltas e atestados</h1><p>O que você lança aqui já aparece na escala e no fechamento do mês.</p></div><button class="btn edita" data-ir-oc>Lançar ocorrência</button></div>
+      <div class="cartao form-linha" style="margin-bottom:14px">
+        <div><label for="ocMes">Mês</label><input id="ocMes" type="month"></div>
+        <div><label for="ocFiltroEq">Equipe</label><select id="ocFiltroEq"></select></div>
+        <div><label for="ocFiltroTipo">Tipo</label><select id="ocFiltroTipo"></select></div>
+      </div>
+      <div class="cartao rolagem" id="ocLista"></div>
+    </section>
+
+    <!-- FECHAMENTO -->
+    <section class="vista hide" id="v-fechamento">
+      <div class="topo"><div><h1>Fechamento do mês</h1><p id="fechSub">Dias trabalhados, folgas, domingos e feriados trabalhados, faltas, atestados, férias e banco de horas de cada funcionário.</p></div></div>
+      <div class="cartao form-linha sem-print" style="margin-bottom:14px">
+        <div><label for="fechMes">Mês</label><input id="fechMes" type="month"></div>
+        <div><label for="fechEq">Equipe</label><select id="fechEq"></select></div>
+        <div style="flex:0 0 auto"><button class="btn" id="btnCsv">Baixar planilha (Excel)</button></div>
+        <div style="flex:0 0 auto"><button class="btn sec" id="btnImpFech">Imprimir</button></div>
+      </div>
+      <div class="cartao rolagem" id="fechResumo" style="margin-bottom:14px"></div>
+      <div class="cartao"><h3 class="sec-tit">Espelho do mês</h3><div class="rolagem" id="fechEspelho"></div>
+        <div class="legenda"><span><i class="c-T"></i>T trabalha</span><span><i class="c-F"></i>F folga</span><span><i class="c-V"></i>FÉ férias</span><span><i class="c-M"></i>AT atestado</span><span><i class="c-X"></i>FA falta</span><span><i class="c-L"></i>AF afastamento</span><span><i class="c-E"></i>FX folga extra</span><span>Coluna amarela: feriado</span></div>
+      </div>
+    </section>
+
+    <!-- ACESSOS -->
+    <section class="vista hide" id="v-acessos">
+      <div class="topo"><div><h1>Acessos</h1><p>Dê acesso ao seu contador e aos gestores das lojas. Cada um entra com o próprio e-mail e senha.</p></div></div>
+      <form class="cartao" id="formMembro">
+        <div class="form-linha">
+          <div><label for="mEmail">E-mail</label><input id="mEmail" type="email" placeholder="contador@escritorio.com.br"></div>
+          <div><label for="mNome">Nome</label><input id="mNome" placeholder="Ex.: Carla (contabilidade)"></div>
+          <div><label for="mPapel">Acesso</label><select id="mPapel"><option value="contador">Contador: vê tudo e baixa o fechamento</option><option value="gestor">Gestor: monta escalas e lança ocorrências</option></select></div>
+          <div style="flex:0 0 auto"><button class="btn">Dar acesso</button></div>
+        </div>
+        <p class="erro" id="erroMembro"></p>
+        <div id="conviteBox"></div>
+      </form>
+      <div class="cartao rolagem" id="listaMembros" style="margin-top:14px"></div>
+    </section>
+
+    <!-- HISTÓRICO -->
+    <section class="vista hide" id="v-historico">
+      <div class="topo"><div><h1>Histórico</h1><p>Quem mudou o quê, e quando.</p></div></div>
+      <div class="cartao rolagem" id="listaHist"></div>
+    </section>
   </main>
 </div>
 
@@ -251,20 +384,69 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
   </form>
 </dialog>
 
+<dialog id="dlgOc">
+  <form method="dialog" id="formOc">
+    <h2>Lançar ocorrência</h2>
+    <label for="ocFunc">Funcionário</label><select id="ocFunc"></select>
+    <label for="ocTipo">O que aconteceu</label><select id="ocTipo"></select>
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="ocIni" id="ocLblIni">De</label><input id="ocIni" type="date"></div>
+      <div id="ocFimBox"><label for="ocFim">Até</label><input id="ocFim" type="date"></div>
+      <div id="ocHorasBox" class="hide"><label for="ocHoras">Horas</label><input id="ocHoras" inputmode="decimal" placeholder="2 ou -1,5"></div>
+    </div>
+    <p class="dica" id="ocDica" style="margin-top:8px"></p>
+    <label for="ocObs">Observação (opcional)</label><input id="ocObs" maxlength="300" placeholder="Ex.: atestado entregue no RH">
+    <p class="erro" id="ocErro"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="btnOcSalvar">Salvar</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgFunc">
+  <form method="dialog" id="formEditFunc">
+    <h2>Editar funcionário</h2>
+    <label for="efNome">Nome</label><input id="efNome">
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="efCargo">Cargo</label><input id="efCargo"></div>
+      <div><label for="efMat">Matrícula</label><input id="efMat"></div>
+    </div>
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="efAdm">Admissão</label><input id="efAdm" type="date"></div>
+      <div><label for="efTel">WhatsApp</label><input id="efTel" inputmode="tel"></div>
+    </div>
+    <label>Folga fixa</label><div class="dias-chip" id="efFixa"></div>
+    <p class="erro" id="efErro"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Salvar</button></div>
+  </form>
+</dialog>
+
 <script src="/scheduler.js"></script>
 <script>
-const DIAS = Escala.DIAS, SETORES = Escala.SETORES;
+const DIAS = Escala.DIAS, SETORES = Escala.SETORES, OC = Escala.OCORRENCIAS, COD = Escala.COD_NOME;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let eu = null, equipes = [], atual = null, funcs = [], escalas = [], escalaAtual = null, semanaAtual = 0, modo = 'login', fixaNova = [];
+const br = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+const ROTULO = {ferias: 'Férias', atestado: 'Atestado médico', falta: 'Falta', afastamento: 'Afastamento (INSS, licença)', folga_extra: 'Folga extra (compensação)', banco_horas: 'Banco de horas'};
+const DICA = {ferias: 'A pessoa sai da escala nesses dias. Gere a escala de novo para redistribuir as folgas.', atestado: 'Os dias de atestado aparecem na escala e no fechamento.', falta: 'Falta sem justificativa. Conta no fechamento do mês.', afastamento: 'Licença, INSS, maternidade. A pessoa sai da escala no período.', folga_extra: 'Folga além das 2 da semana (compensação de banco de horas, por exemplo).', banco_horas: 'Positivo = hora extra (crédito). Negativo = saída mais cedo (débito).'};
+const CURTO = {T: 'T', F: 'F', V: 'FÉ', M: 'AT', X: 'FA', L: 'AF', E: 'FX'};
+const PAPEL = {dono: 'Dono', gestor: 'Gestor', contador: 'Contador'};
+let eu = null, conta = null, equipes = [], atual = null, funcs = [], escalas = [], escalaAtual = null, semanaAtual = 0, modo = 'login', fixaNova = [];
+const hojeIso = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const lerConta = () => { try { return +localStorage.getItem('conta') || null; } catch { return null; } };
+const gravarConta = id => { try { localStorage.setItem('conta', id || ''); } catch {} };
+const podeEditar = () => conta && conta.papel !== 'contador';
 
 async function api(url, opts = {}) {
-  const r = await fetch(url, {method: opts.method || 'GET', headers: {'Content-Type': 'application/json'}, body: opts.body ? JSON.stringify(opts.body) : undefined});
+  const headers = {'Content-Type': 'application/json'};
+  if (conta?.id) headers['x-conta'] = conta.id;
+  const r = await fetch(url, {method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined});
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(j.erro || 'Erro'); e.status = r.status; throw e; }
+  if (!r.ok) {
+    if (j.trocar_conta) { gravarConta(null); location.hash = ''; location.reload(); }
+    const e = new Error(j.erro || 'Erro'); e.status = r.status; throw e;
+  }
   return j;
 }
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3200); }
 const opcoesSetor = sel => sel.innerHTML = Object.entries(SETORES).map(([k, s]) => `<option value="${k}">${s.nome}</option>`).join('');
 opcoesSetor($('#cfSetor')); opcoesSetor($('#nSetor'));
 
@@ -285,9 +467,8 @@ $('#formEntrada').onsubmit = async e => {
   } catch (err) { $('#erroEntrada').textContent = err.message; }
   $('#btnEntrar').disabled = false;
 };
-$('#btnSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); location.reload(); };
+$('#btnSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); gravarConta(null); location.href = '/app'; };
 
-// esqueci a senha
 $('#btnEsqueci').onclick = () => { $('#eqEmail').value = $('#cEmail').value; $('#erroEsqueci').textContent = ''; $('#dlgEsqueci').showModal(); };
 $('#formEsqueci').onsubmit = async e => {
   if (e.submitter?.value !== 'ok') return;
@@ -314,7 +495,8 @@ async function telaSenha() {
   $('#sTitulo').textContent = t.tem_senha ? 'Crie uma senha nova' : 'Falta só criar sua senha';
   $('#sTexto').innerHTML = `Conta: <b>${esc(t.email)}</b>`;
   $('#sNome').value = t.nome || ''; $('#sEmpresa').value = t.empresa || ''; $('#sZap').value = t.whatsapp || '';
-  $('#sDados').classList.toggle('hide', !!(t.tem_senha && t.empresa));
+  $('#sDados').classList.toggle('hide', !!(t.tem_senha && (t.empresa || t.convidado)));
+  $('#sEmpresaBox').classList.toggle('hide', !!t.convidado && !t.empresa);
   $('#formSenha').onsubmit = async e => {
     e.preventDefault(); $('#erroSenha').textContent = '';
     if ($('#sSenha').value !== $('#sSenha2').value) return $('#erroSenha').textContent = 'As duas senhas não são iguais.';
@@ -331,33 +513,56 @@ async function telaSenha() {
 // ---------- painel ----------
 async function iniciar() {
   try { eu = await api('/api/eu'); } catch { $('#telaEntrada').classList.remove('hide'); $('#telaPainel').classList.add('hide'); if (new URLSearchParams(location.search).has('cadastro')) $$('.abas button')[1].click(); return; }
+  // empresa: a última escolhida; quem só foi convidado (sem empresa própria) cai direto na empresa de quem convidou
+  const salva = lerConta();
+  const escolhida = eu.contas.find(c => c.id === salva) || (!eu.empresa && eu.contas[1]) || eu.contas[0];
+  conta = {id: escolhida.id};
+  conta = await api('/api/conta');
+  gravarConta(conta.id);
+  document.body.classList.toggle('so-leitura', conta.papel === 'contador');
+  $$('.so-dono').forEach(x => x.classList.toggle('hide', conta.papel !== 'dono'));
+  $('#contaSel').classList.toggle('hide', eu.contas.length < 2);
+  $('#selConta').innerHTML = eu.contas.map(c => `<option value="${c.id}" ${c.id === conta.id ? 'selected' : ''}>${esc(c.empresa || 'Minha empresa')}${c.papel !== 'dono' ? ` (${PAPEL[c.papel]})` : ''}</option>`).join('');
+  $('#selConta').onchange = () => { gravarConta(+$('#selConta').value); location.hash = 'visao'; location.reload(); };
   $('#telaEntrada').classList.add('hide'); $('#telaPainel').classList.remove('hide');
-  $('#nomeEmpresa').textContent = eu.empresa || eu.nome;
-  $('#avisoPag').classList.toggle('hide', eu.acesso_liberado);
+  $('#nomeEmpresa').textContent = conta.empresa || eu.empresa || eu.nome;
+  $('#papelEu').innerHTML = conta.papel !== 'dono' ? `<span class="papel">${PAPEL[conta.papel]}</span>` : '';
+  $('#avisoPag').classList.toggle('hide', conta.liberado);
+  $('#avisoPagTxt').textContent = conta.papel === 'dono' ? 'Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.' : 'O acesso desta empresa ainda não foi liberado pelo dono.';
   if (eu.checkout) $('#btnPagar').href = eu.checkout;
   await carregaEquipes();
+  rota();
 }
-async function carregaEquipes(selecionar) {
+
+// rotas: #visao, #equipe/ID/aba, #ocorrencias, #fechamento, #acessos, #historico
+window.onhashchange = () => rota();
+const ir = h => { if (location.hash === '#' + h) rota(); else location.hash = h; };
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); ir(b.dataset.ir); }
+  if (e.target.closest('[data-ir-oc]')) abreDlgOc({funcionario_id: e.target.closest('[data-func]')?.dataset.func});
+});
+async function rota() {
+  if (!conta) return;
+  let [v, id, aba] = (location.hash.slice(1) || 'visao').split('/');
+  if (!document.getElementById('v-' + v) || (v === 'acessos' && conta.papel !== 'dono')) v = 'visao';
+  if (v === 'equipe' && !equipes.some(e => e.id === +id)) v = 'visao';
+  $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.ir === v));
+  $$('#listaEquipes button').forEach(b => b.classList.toggle('on', v === 'equipe' && +b.dataset.id === +id));
+  window.scrollTo(0, 0);
+  try {
+    if (v === 'visao') await telaVisao();
+    else if (v === 'equipe') await abreEquipe(+id, aba);
+    else if (v === 'ocorrencias') await telaOcorrencias();
+    else if (v === 'fechamento') await telaFechamento();
+    else if (v === 'acessos') await telaAcessos();
+    else if (v === 'historico') await telaHistorico();
+  } catch (err) { toast(err.message); }
+}
+
+async function carregaEquipes() {
   equipes = await api('/api/equipes');
-  $('#listaEquipes').innerHTML = equipes.map(e => `<li><button data-id="${e.id}"><span>${esc(e.nome)}</span><small>${e.total}</small></button></li>`).join('');
-  $$('#listaEquipes button').forEach(b => b.onclick = () => abreEquipe(+b.dataset.id));
-  $('#semEquipe').classList.toggle('hide', equipes.length > 0);
-  $('#comEquipe').classList.toggle('hide', !equipes.length);
-  if (equipes.length) abreEquipe(selecionar || atual?.id || equipes[0].id);
-}
-async function abreEquipe(id) {
-  atual = equipes.find(e => e.id === id) || equipes[0];
-  $$('#listaEquipes button').forEach(b => b.classList.toggle('on', +b.dataset.id === atual.id));
-  $('#tEquipe').textContent = atual.nome;
-  $('#tSetor').textContent = SETORES[atual.setor]?.nome || '';
-  [funcs, escalas] = await Promise.all([api(`/api/equipes/${atual.id}/funcionarios`), api(`/api/equipes/${atual.id}/escalas`)]);
-  escalaAtual = escalas[0] || null; semanaAtual = 0;
-  desenhaFuncs(); desenhaEscala(); desenhaConfig();
-}
-$$('.tabs button').forEach(b => b.onclick = () => abreAba(b.dataset.aba));
-function abreAba(aba) {
-  $$('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.aba === aba));
-  $$('[data-painel]').forEach(p => p.classList.toggle('hide', p.dataset.painel !== aba));
+  $('#listaEquipes').innerHTML = equipes.map(e => `<li><button data-id="${e.id}" data-ir="equipe/${e.id}"><span>${esc(e.nome)}</span><small>${e.total}</small></button></li>`).join('');
 }
 
 // nova equipe
@@ -365,9 +570,60 @@ const novaEquipe = () => { $('#nNome').value = ''; $('#dlgNova').showModal(); };
 $('#btnNova').onclick = novaEquipe; $('#btnPrimeira').onclick = novaEquipe;
 $('#formNova').onsubmit = async e => {
   if (e.submitter?.value !== 'ok') return;
-  const nova = await api('/api/equipes', {method: 'POST', body: {nome: $('#nNome').value, setor: $('#nSetor').value}});
-  await carregaEquipes(nova.id); abreAba('funcionarios'); toast('Equipe criada. Agora cadastre os funcionários.');
+  try {
+    const nova = await api('/api/equipes', {method: 'POST', body: {nome: $('#nNome').value, setor: $('#nSetor').value}});
+    await carregaEquipes(); ir(`equipe/${nova.id}/funcionarios`); toast('Equipe criada. Agora cadastre os funcionários.');
+  } catch (err) { toast(err.message); }
 };
+
+// ---------- visão geral ----------
+async function telaVisao() {
+  const h = new Date().getHours();
+  $('#vOla').textContent = `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}, ${(eu.nome || '').split(' ')[0]}`;
+  $('#semEquipe').classList.toggle('hide', equipes.length > 0);
+  $('#visaoConteudo').classList.toggle('hide', !equipes.length);
+  if (!equipes.length) { $('#vData').textContent = ''; return; }
+  const v = await api('/api/visao?data=' + hojeIso());
+  const dt = new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'});
+  $('#vData').textContent = dt.charAt(0).toUpperCase() + dt.slice(1) + (v.feriado ? ` · Feriado: ${v.feriado}` : '');
+  const pessoas = (l, cls = '') => l.length ? `<div class="pessoas">${l.map(p => `<span class="pessoa ${cls}">${esc(p.nome)}${p.motivo ? ' · ' + esc(p.motivo) : ''}</span>`).join('')}</div>` : '<p class="dica" style="margin-top:4px">Ninguém</p>';
+  $('#vEquipes').innerHTML = v.equipes.map(e => {
+    const hoje = e.dias[0];
+    const semEscalaHoje = hoje.presentes === null;
+    return `<article class="cartao">
+      <div class="eq-top"><h3>${esc(e.nome)}</h3><button class="link" data-ir="equipe/${e.id}">Abrir escala</button></div>
+      ${!e.total ? `<p class="dica" style="margin-top:10px">Nenhum funcionário cadastrado.</p><button class="btn pq edita" style="margin-top:10px" data-ir="equipe/${e.id}/funcionarios">Cadastrar funcionários</button>` : `
+      <p class="grande">${semEscalaHoje ? '–' : e.hoje.trabalham.length}<small>${!hoje.aberto ? 'fechado hoje' : semEscalaHoje ? 'sem escala para hoje' : `trabalhando hoje · mínimo ${hoje.minimo}`}</small></p>
+      <div class="semana7">${e.dias.map((d, i) => {
+        const cls = !d.aberto ? 'd-fech' : d.presentes === null ? 'd-sem' : d.presentes >= d.minimo ? 'd-ok' : 'd-baixo';
+        return `<div class="${cls} ${i === 0 ? 'd-hoje' : ''}" title="${br(d.data)}${d.feriado ? ' · ' + esc(d.feriado) : ''}">${d.dia}<b>${!d.aberto ? '–' : d.presentes === null ? '?' : d.presentes + '/' + d.minimo}</b>${d.feriado ? '<span class="fer-tag">feriado</span>' : ''}</div>`;
+      }).join('')}</div>
+      ${!semEscalaHoje ? `<p class="rotulo">Folgam hoje</p>${pessoas(e.hoje.folgam)}` : ''}
+      ${e.hoje.ausentes.length ? `<p class="rotulo">Fora hoje</p>${pessoas(e.hoje.ausentes, 'aus')}` : ''}
+      ${e.proxima_semana_sem_escala || semEscalaHoje ? `<div class="alerta-eq"><span>${semEscalaHoje ? 'Sem escala para esta semana.' : 'A próxima semana ainda não tem escala.'}</span><button class="btn pq edita" data-ir="equipe/${e.id}">Gerar</button></div>` : ''}`}
+    </article>`;
+  }).join('');
+  $('#vProx').innerHTML = v.ocorrencias.length ? v.ocorrencias.map(o => `<li><span class="tipo tipo-${o.tipo}">${esc(ROTULO[o.tipo] || o.tipo)}</span> <b>${esc(o.funcionario)}</b><br><span class="dica">${esc(o.equipe)} · ${o.inicio === o.fim ? br(o.inicio) : br(o.inicio) + ' a ' + br(o.fim)}</span></li>`).join('')
+    : '<li class="dica">Nenhuma férias, atestado ou afastamento lançado.</li>';
+}
+
+// ---------- equipe ----------
+async function abreEquipe(id, aba) {
+  atual = equipes.find(e => e.id === id) || equipes[0];
+  $('#tEquipe').textContent = atual.nome;
+  $('#tSetor').textContent = SETORES[atual.setor]?.nome || '';
+  abreAba(aba || 'escala', false);
+  [funcs, escalas] = await Promise.all([api(`/api/equipes/${atual.id}/funcionarios`), api(`/api/equipes/${atual.id}/escalas`)]);
+  escalaAtual = escalas[0] || null; semanaAtual = 0;
+  desenhaFuncs(); desenhaEscala(); desenhaConfig();
+}
+$$('.tabs button').forEach(b => b.onclick = () => abreAba(b.dataset.aba, true));
+function abreAba(aba, mudaUrl) {
+  if (!$(`[data-painel="${aba}"]`)) aba = 'escala';
+  $$('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.aba === aba));
+  $$('[data-painel]').forEach(p => p.classList.toggle('hide', p.dataset.painel !== aba));
+  if (mudaUrl && atual) history.replaceState(null, '', `#equipe/${atual.id}/${aba}`);
+}
 
 // ---------- funcionários ----------
 function chipsFixa(el, sel, onChange) {
@@ -387,19 +643,38 @@ $('#formFunc').onsubmit = async e => {
     await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: nomes.map(nome => ({nome, cargo: $('#fCargo').value, folga_fixa: fixaNova}))});
     $('#fNome').value = ''; fixaNova.length = 0; chipsFixa($('#fFixa'), fixaNova);
     funcs = await api(`/api/equipes/${atual.id}/funcionarios`); desenhaFuncs(); carregaContagem();
+    toast(nomes.length > 1 ? `${nomes.length} funcionários cadastrados.` : `${nomes[0]} cadastrado.`);
   } catch (err) { toast(err.message); }
 };
 function desenhaFuncs() {
-  $('#listaFunc').innerHTML = funcs.length ? funcs.map(f => `<li>
-    <div><b>${esc(f.nome)}</b> ${f.cargo ? `<small>· ${esc(f.cargo)}</small>` : ''}</div>
+  $('#listaFunc').innerHTML = funcs.length ? funcs.map(f => `<li data-func="${f.id}">
+    <div><b>${esc(f.nome)}</b> ${f.cargo ? `<small>· ${esc(f.cargo)}</small>` : ''}${f.matricula ? `<small> · matr. ${esc(f.matricula)}</small>` : ''}${f.admissao ? `<small> · desde ${br(f.admissao)}</small>` : ''}</div>
     <div>${f.folga_fixa.length ? `<span class="tag">Folga fixa: ${f.folga_fixa.map(d => DIAS[d]).join(' e ')}</span>` : ''}</div>
-    <button class="link perigo" data-del="${f.id}">Remover</button></li>`).join('')
-    : `<li><span class="mut">Nenhum funcionário ainda. Dica: cole vários nomes separados por ponto e vírgula.</span></li>`;
+    <div class="edita" style="display:flex;gap:12px"><button class="link" data-ir-oc>Ocorrência</button><button class="link" data-edit="${f.id}">Editar</button><button class="link perigo" data-del="${f.id}">Remover</button></div></li>`).join('')
+    : `<li><span class="dica">Nenhum funcionário ainda. Dica: cole vários nomes separados por ponto e vírgula.</span></li>`;
   $$('[data-del]').forEach(b => b.onclick = async () => {
-    await api(`/api/funcionarios/${b.dataset.del}`, {method: 'DELETE'});
-    funcs = funcs.filter(f => f.id !== +b.dataset.del); desenhaFuncs(); carregaContagem();
+    const f = funcs.find(x => x.id === +b.dataset.del);
+    if (!confirm(`Remover ${f.nome} da equipe? As escalas antigas continuam salvas.`)) return;
+    await api(`/api/funcionarios/${f.id}`, {method: 'DELETE'});
+    funcs = funcs.filter(x => x.id !== f.id); desenhaFuncs(); carregaContagem();
   });
+  $$('[data-edit]').forEach(b => b.onclick = () => abreEditFunc(funcs.find(x => x.id === +b.dataset.edit)));
 }
+let editFixa = [], editId = null;
+function abreEditFunc(f) {
+  editId = f.id; editFixa = [...f.folga_fixa];
+  $('#efNome').value = f.nome; $('#efCargo').value = f.cargo || ''; $('#efMat').value = f.matricula || '';
+  $('#efAdm').value = f.admissao ? String(f.admissao).slice(0, 10) : ''; $('#efTel').value = f.telefone || ''; $('#efErro').textContent = '';
+  chipsFixa($('#efFixa'), editFixa); $('#dlgFunc').showModal();
+}
+$('#formEditFunc').onsubmit = async e => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault();
+  try {
+    await api(`/api/funcionarios/${editId}`, {method: 'PUT', body: {nome: $('#efNome').value, cargo: $('#efCargo').value, matricula: $('#efMat').value, admissao: $('#efAdm').value, telefone: $('#efTel').value, folga_fixa: editFixa}});
+    $('#dlgFunc').close(); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); desenhaFuncs(); toast('Cadastro salvo.');
+  } catch (err) { $('#efErro').textContent = err.message; }
+};
 async function carregaContagem() {
   equipes = await api('/api/equipes');
   $$('#listaEquipes button').forEach(b => { const e = equipes.find(x => x.id === +b.dataset.id); if (e) b.querySelector('small').textContent = e.total; });
@@ -409,72 +684,214 @@ async function carregaContagem() {
 let cfg = null;
 function desenhaConfig() {
   cfg = {nome: atual.nome, setor: atual.setor, abertos: [...atual.abertos], minimo: [...atual.minimo]};
-  $('#cfNome').value = cfg.nome; $('#cfSetor').value = cfg.setor;
-  $('#cfDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${cfg.abertos[i] ? 'on' : ''}" data-i="${i}">${d}</button><input type="number" min="0" max="200" value="${cfg.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${cfg.abertos[i] ? '' : 'disabled'}></div>`).join('');
+  const ro = !podeEditar() ? 'disabled' : '';
+  $('#cfNome').value = cfg.nome; $('#cfSetor').value = cfg.setor; $('#cfNome').disabled = $('#cfSetor').disabled = !podeEditar();
+  $('#cfDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${cfg.abertos[i] ? 'on' : ''}" data-i="${i}" ${ro}>${d}</button><input type="number" min="0" max="200" value="${cfg.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${cfg.abertos[i] && podeEditar() ? '' : 'disabled'}></div>`).join('');
   $$('#cfDias .tg').forEach(b => b.onclick = () => { const i = +b.dataset.i; cfg.abertos[i] = cfg.abertos[i] ? 0 : 1; b.classList.toggle('on'); $(`[data-m="${i}"]`).disabled = !cfg.abertos[i]; });
   $$('#cfDias input').forEach(inp => inp.oninput = () => cfg.minimo[+inp.dataset.m] = +inp.value || 0);
 }
 $('#cfSetor').onchange = () => { const s = SETORES[$('#cfSetor').value]; atual = {...atual, setor: $('#cfSetor').value, abertos: [...s.abertos], minimo: [...s.minimo]}; desenhaConfig(); $('#cfNome').value = cfg.nome; };
 $('#btnSalvarCfg').onclick = async () => {
-  const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value}});
-  await carregaEquipes(e.id); toast('Configuração salva.');
+  try {
+    const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value}});
+    await carregaEquipes(); atual = equipes.find(x => x.id === e.id); $('#tEquipe').textContent = atual.nome; toast('Configuração salva.');
+  } catch (err) { toast(err.message); }
 };
 $('#btnExcluir').onclick = async () => {
   if (!confirm(`Excluir a equipe "${atual.nome}" com todos os funcionários e escalas?`)) return;
-  await api(`/api/equipes/${atual.id}`, {method: 'DELETE'}); atual = null; await carregaEquipes();
+  await api(`/api/equipes/${atual.id}`, {method: 'DELETE'}); atual = null; await carregaEquipes(); ir('visao');
 };
 
 // ---------- escala ----------
-const proxSegunda = () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); };
+const proxSegunda = () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 $('#eInicio').value = proxSegunda();
 $('#btnGerar').onclick = async () => {
-  if (!funcs.length) { abreAba('funcionarios'); return toast('Cadastre os funcionários primeiro.'); }
+  if (!funcs.length) { abreAba('funcionarios', true); return toast('Cadastre os funcionários primeiro.'); }
+  if (escalaAtual && $('#eInicio').value < Escala.somaDias(escalaAtual.inicio.slice(0, 10), escalaAtual.semanas * 7) && !confirm('Já existe escala para parte desse período. Gerar uma nova substitui a anterior nesses dias (a antiga fica no histórico). Continuar?')) return;
   $('#btnGerar').disabled = true;
   try {
     escalaAtual = await api(`/api/equipes/${atual.id}/escalas`, {method: 'POST', body: {inicio: $('#eInicio').value, semanas: +$('#eSemanas').value}});
-    escalas.unshift(escalaAtual); semanaAtual = 0; desenhaEscala(); toast('Escala gerada.');
+    escalas.unshift(escalaAtual); semanaAtual = 0; desenhaEscala(); toast('Escala gerada. Férias e atestados lançados já foram respeitados.');
   } catch (err) { toast(err.message); if (err.status === 402) $('#avisoPag').classList.remove('hide'); }
   $('#btnGerar').disabled = false;
 };
-function dataDia(inicio, s, d) { const x = new Date(inicio + 'T12:00:00'); x.setDate(x.getDate() + s * 7 + d); return x.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}); }
+const dataDe = (inicio, s, d) => Escala.somaDias(inicio.slice(0, 10), s * 7 + d);
+function dataDia(inicio, s, d) { const x = new Date(dataDe(inicio, s, d) + 'T12:00:00'); return x.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}); }
 function tabelaSemana(e, s, editavel) {
   const sem = e.dados[s];
-  return `<table class="esc"><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d}<small>${dataDia(e.inicio.slice(0, 10), s, i)}</small></th>`).join('')}</tr></thead><tbody>
+  return `<table class="esc"><thead><tr><th></th>${DIAS.map((d, i) => { const fer = Escala.feriado(dataDe(e.inicio, s, i)); return `<th class="${fer ? 'fer' : ''}" ${fer ? `title="${esc(fer)}"` : ''}>${d}<small>${dataDia(e.inicio, s, i)}${fer ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead><tbody>
   ${sem.map((dias, f) => `<tr><td>${esc(e.funcionarios[f]?.nome)}${e.funcionarios[f]?.cargo ? `<small>${esc(e.funcionarios[f].cargo)}</small>` : ''}</td>
-    ${dias.map((c, d) => !e.abertos[d] ? '<td class="X">fechado</td>' : `<td class="${c}" ${editavel ? `data-f="${f}" data-d="${d}" title="Clique para trocar"` : ''}>${c === 'F' ? 'Folga' : 'Trabalha'}</td>`).join('')}</tr>`).join('')}
+    ${dias.map((c, d) => !e.abertos[d] ? '<td class="X">fechado</td>'
+      : COD[c] ? `<td class="A" title="${esc(COD[c])}">${esc(COD[c])}</td>`
+      : `<td class="${c}" ${editavel ? `data-f="${f}" data-d="${d}" title="Clique para trocar"` : ''}>${c === 'F' ? 'Folga' : 'Trabalha'}</td>`).join('')}</tr>`).join('')}
   <tr class="tot"><td>Presentes / mínimo</td>${DIAS.map((_, d) => { if (!e.abertos[d]) return '<td class="X">—</td>'; const p = sem.filter(x => x[d] === 'T').length; return `<td class="${p >= e.minimo[d] ? 'ok' : 'baixo'}">${p} / ${e.minimo[d]}</td>`; }).join('')}</tr>
   </tbody></table>`;
 }
 function desenhaEscala() {
   const a = $('#areaEscala');
   if (!escalaAtual) {
-    a.innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma escala gerada ainda</h2><p>${funcs.length ? `${funcs.length} funcionário(s) cadastrado(s). Escolha a data de início e clique em <b>Gerar escala</b>.` : 'Cadastre os funcionários na aba <b>Funcionários</b> e volte aqui.'}</p></div>`;
+    a.innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma escala gerada ainda</h2><p>${funcs.length ? (podeEditar() ? `${funcs.length} funcionário(s) cadastrado(s). Escolha a data de início e clique em <b>Gerar escala</b>.` : 'O dono da empresa ainda não gerou a escala desta equipe.') : 'Cadastre os funcionários na aba <b>Funcionários</b> e volte aqui.'}</p></div>`;
     return;
   }
-  const e = escalaAtual, sem = e.dados[semanaAtual];
+  const e = escalaAtual, editavel = podeEditar();
   const descobertos = e.dados.some(s => DIAS.some((_, d) => e.abertos[d] && s.filter(x => x[d] === 'T').length < e.minimo[d]));
+  const fim = Escala.somaDias(e.inicio.slice(0, 10), e.semanas * 7 - 1);
   a.innerHTML = `
+    <p class="dica" style="margin-bottom:10px">De ${br(e.inicio)} a ${br(fim)}</p>
     ${e.alertas.length ? `<div class="alertas">${e.alertas.slice(0, 4).map(x => `<div class="alerta">${esc(x)}</div>`).join('')}</div>` : ''}
     ${descobertos ? '' : '<div class="trava">Trava de Cobertura: todos os dias com o mínimo de pessoas ou mais.</div>'}
     <div class="semanas">${e.dados.map((_, i) => `<button data-s="${i}" class="${i === semanaAtual ? 'on' : ''}">Semana ${i + 1}</button>`).join('')}</div>
-    <div class="rolagem sem-print">${tabelaSemana(e, semanaAtual, true)}</div>
-    <div class="hide todas-semanas">${e.dados.map((_, i) => `<div class="semana-print hide"><h3>Semana ${i + 1}</h3>${tabelaSemana(e, i, false)}</div>`).join('')}</div>
-    <div class="legenda"><span><i style="background:var(--azul-claro)"></i>Trabalha</span><span><i style="background:var(--amarelo)"></i>Folga</span><span>Clique em um dia para trocar trabalho e folga.</span></div>
+    <div class="rolagem sem-print">${tabelaSemana(e, semanaAtual, editavel)}</div>
+    <div class="hide todas-semanas">${e.dados.map((_, i) => `<div class="semana-print hide"><h3>${esc(atual.nome)} · Semana ${i + 1}</h3>${tabelaSemana(e, i, false)}</div>`).join('')}</div>
+    <div class="legenda"><span><i style="background:var(--azul-claro)"></i>Trabalha</span><span><i style="background:var(--amarelo)"></i>Folga</span><span><i style="background:#ece7fb"></i>Férias, atestado, falta</span>${editavel ? '<span>Clique em um dia para trocar trabalho e folga.</span>' : ''}</div>
     <div class="acoes"><button class="btn sec" id="btnImprimir">Imprimir</button><button class="btn sec" id="btnZap">Copiar para o WhatsApp</button></div>
     <p class="hist">Gerada em ${new Date(e.criado_em).toLocaleString('pt-BR')} · ${escalas.length} escala(s) salvas nesta equipe</p>`;
   $$('.semanas button').forEach(b => b.onclick = () => { semanaAtual = +b.dataset.s; desenhaEscala(); });
+  $$('#areaEscala td.A').forEach(td => td.onclick = () => toast('Esse dia tem uma ocorrência lançada. Para mudar, apague em "Férias, faltas e atestados".'));
   $$('#areaEscala td[data-f]').forEach(td => td.onclick = async () => {
-    const r = await api(`/api/escalas/${e.id}`, {method: 'PATCH', body: {semana: semanaAtual, funcionario: +td.dataset.f, dia: +td.dataset.d}});
-    e.dados = r.dados; desenhaEscala();
+    try {
+      const r = await api(`/api/escalas/${e.id}`, {method: 'PATCH', body: {semana: semanaAtual, funcionario: +td.dataset.f, dia: +td.dataset.d}});
+      e.dados = r.dados; desenhaEscala();
+    } catch (err) { toast(err.message); }
   });
   $('#btnImprimir').onclick = () => { $('.todas-semanas').classList.remove('hide'); window.print(); $('.todas-semanas').classList.add('hide'); };
   $('#btnZap').onclick = async () => {
     let t = `*${atual.nome} — Escala 5x2*\n`;
-    e.dados.forEach((s, i) => { t += `\n*Semana ${i + 1}* (a partir de ${dataDia(e.inicio.slice(0, 10), i, 0)})\n`;
-      s.forEach((dias, f) => t += `${e.funcionarios[f].nome}: folga ${dias.map((c, d) => c === 'F' && e.abertos[d] ? DIAS[d] : null).filter(Boolean).join(' e ') || '—'}\n`); });
+    e.dados.forEach((s, i) => { t += `\n*Semana ${i + 1}* (a partir de ${dataDia(e.inicio, i, 0)})\n`;
+      s.forEach((dias, f) => {
+        const folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIAS[d] : null).filter(Boolean);
+        const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
+        t += `${e.funcionarios[f].nome}: ${folgas.length ? 'folga ' + folgas.join(' e ') : 'sem folga'}${fora.length ? ` (${fora.join(', ').toLowerCase()})` : ''}\n`;
+      }); });
     try { await navigator.clipboard.writeText(t); toast('Escala copiada. Cole no grupo da equipe.'); } catch { window.open('https://wa.me/?text=' + encodeURIComponent(t)); }
   };
 }
+
+// ---------- ocorrências ----------
+$('#ocTipo').innerHTML = Object.keys(OC).map(k => `<option value="${k}">${ROTULO[k]}</option>`).join('');
+$('#ocFiltroTipo').innerHTML = '<option value="">Todos</option>' + Object.keys(OC).map(k => `<option value="${k}">${ROTULO[k]}</option>`).join('');
+function ajustaTipo() {
+  const banco = $('#ocTipo').value === 'banco_horas';
+  $('#ocFimBox').classList.toggle('hide', banco); $('#ocHorasBox').classList.toggle('hide', !banco);
+  $('#ocLblIni').textContent = banco ? 'Dia' : 'De';
+  $('#ocDica').textContent = DICA[$('#ocTipo').value] || '';
+}
+$('#ocTipo').onchange = ajustaTipo;
+$('#ocIni').onchange = () => { if (!$('#ocFim').value || $('#ocFim').value < $('#ocIni').value) $('#ocFim').value = $('#ocIni').value; };
+async function abreDlgOc({funcionario_id} = {}) {
+  if (!podeEditar()) return;
+  const lista = await api('/api/funcionarios');
+  if (!lista.length) return toast('Cadastre funcionários primeiro.');
+  const grupos = {}; lista.forEach(f => (grupos[f.equipe] ||= []).push(f));
+  $('#ocFunc').innerHTML = Object.entries(grupos).map(([eq, fs]) => `<optgroup label="${esc(eq)}">${fs.map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')}</optgroup>`).join('');
+  const pre = funcionario_id || (location.hash.startsWith('#equipe') && lista.find(f => f.equipe_id === atual?.id)?.id);
+  if (pre) $('#ocFunc').value = pre;
+  $('#ocIni').value = $('#ocFim').value = hojeIso(); $('#ocHoras').value = ''; $('#ocObs').value = ''; $('#ocErro').textContent = '';
+  ajustaTipo(); $('#dlgOc').showModal();
+}
+$('#formOc').onsubmit = async e => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault(); $('#btnOcSalvar').disabled = true; $('#ocErro').textContent = '';
+  try {
+    await api('/api/ocorrencias', {method: 'POST', body: {funcionario_id: +$('#ocFunc').value, tipo: $('#ocTipo').value, inicio: $('#ocIni').value, fim: $('#ocFim').value, horas: $('#ocHoras').value, obs: $('#ocObs').value}});
+    $('#dlgOc').close(); toast('Lançado. Já aparece na escala e no fechamento.'); rota();
+  } catch (err) { $('#ocErro').textContent = err.message; }
+  $('#btnOcSalvar').disabled = false;
+};
+function opcoesEquipe(sel, todas = 'Todas') {
+  const v = sel.value;
+  sel.innerHTML = `<option value="">${todas}</option>` + equipes.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('');
+  sel.value = v;
+}
+const mesAtual = () => hojeIso().slice(0, 7);
+const limitesMes = m => { const de = m + '-01'; return [de, Escala.somaDias(Escala.somaDias(de, 32).slice(0, 7) + '-01', -1)]; };
+async function telaOcorrencias() {
+  if (!$('#ocMes').value) $('#ocMes').value = mesAtual();
+  opcoesEquipe($('#ocFiltroEq'));
+  const [de, ate] = limitesMes($('#ocMes').value);
+  let lista = await api(`/api/ocorrencias?de=${de}&ate=${ate}${$('#ocFiltroEq').value ? '&equipe=' + $('#ocFiltroEq').value : ''}`);
+  if ($('#ocFiltroTipo').value) lista = lista.filter(o => o.tipo === $('#ocFiltroTipo').value);
+  const dias = o => o.tipo === 'banco_horas' ? `${+o.horas > 0 ? '+' : ''}${String(+o.horas).replace('.', ',')}h` : `${Math.round((Date.parse(o.fim) - Date.parse(o.inicio)) / 864e5) + 1} dia(s)`;
+  $('#ocLista').innerHTML = lista.length ? `<table class="tab"><thead><tr><th>Funcionário</th><th>Equipe</th><th>Tipo</th><th>Período</th><th class="n">Dias / horas</th><th>Observação</th><th>Lançado por</th><th class="edita"></th></tr></thead><tbody>
+    ${lista.map(o => `<tr><td><b>${esc(o.funcionario)}</b></td><td>${esc(o.equipe)}</td><td><span class="tipo tipo-${o.tipo}">${esc(ROTULO[o.tipo])}</span></td>
+      <td>${o.inicio === o.fim ? br(o.inicio) : br(o.inicio) + ' a ' + br(o.fim)}</td><td class="n">${dias(o)}</td><td>${esc(o.obs || '')}</td>
+      <td class="dica">${esc(o.criado_por_nome || '')}</td><td class="edita"><button class="link perigo" data-del-oc="${o.id}">Apagar</button></td></tr>`).join('')}</tbody></table>`
+    : `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nada lançado neste mês</h2><p>Férias, atestados, faltas e banco de horas aparecem aqui.</p>${podeEditar() ? '<button class="btn" data-ir-oc>Lançar ocorrência</button>' : ''}</div>`;
+  $$('[data-del-oc]').forEach(b => b.onclick = async () => {
+    if (!confirm('Apagar esta ocorrência? A escala volta ao normal nesses dias.')) return;
+    try { await api(`/api/ocorrencias/${b.dataset.delOc}`, {method: 'DELETE'}); toast('Apagado.'); telaOcorrencias(); } catch (err) { toast(err.message); }
+  });
+}
+['#ocMes', '#ocFiltroEq', '#ocFiltroTipo'].forEach(s => $(s).onchange = () => telaOcorrencias());
+
+// ---------- fechamento do mês ----------
+let fech = null;
+async function telaFechamento() {
+  if (!$('#fechMes').value) {
+    const d = new Date(); // até o dia 10, abre no mês anterior (época de fechar a folha)
+    $('#fechMes').value = d.getDate() <= 10 ? new Date(d.getFullYear(), d.getMonth() - 1, 15).toISOString().slice(0, 7) : mesAtual();
+  }
+  opcoesEquipe($('#fechEq'), 'Todas as equipes');
+  fech = await api(`/api/relatorio?mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`);
+  const nomeMes = new Date(fech.de + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
+  $('#fechSub').textContent = `${fech.empresa || ''} · ${nomeMes}`;
+  const L = fech.linhas;
+  if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Nenhum funcionário neste filtro.</p>'; $('#fechEspelho').innerHTML = ''; return; }
+  const n = v => v ? `<b>${v}</b>` : '<span class="dica">0</span>';
+  const h = v => v ? `<b>${v > 0 ? '+' : ''}${String(v).replace('.', ',')}h</b>` : '<span class="dica">0</span>';
+  $('#fechResumo').innerHTML = `<table class="tab"><thead><tr><th>Funcionário</th><th>Equipe</th><th>Matr.</th><th class="n">Trabalhados</th><th class="n">Folgas</th><th class="n">Domingos trab.</th><th class="n">Feriados trab.</th><th class="n">Faltas</th><th class="n">Atestado</th><th class="n">Férias</th><th class="n">Afast.</th><th class="n">Folga extra</th><th class="n">Banco mês</th><th class="n">Saldo banco</th><th class="n">Sem escala</th></tr></thead><tbody>
+    ${L.map(l => `<tr><td><b>${esc(l.nome)}</b>${l.cargo ? `<br><span class="dica">${esc(l.cargo)}</span>` : ''}</td><td>${esc(l.equipe)}</td><td>${esc(l.matricula || '')}</td>
+      <td class="n">${n(l.trabalhados)}</td><td class="n">${n(l.folgas)}</td><td class="n">${n(l.domingos)}</td><td class="n">${n(l.feriados)}</td><td class="n">${n(l.faltas)}</td><td class="n">${n(l.atestado)}</td>
+      <td class="n">${n(l.ferias)}</td><td class="n">${n(l.afastamento)}</td><td class="n">${n(l.folga_extra)}</td><td class="n">${h(l.banco_mes)}</td><td class="n">${h(l.banco_saldo)}</td><td class="n">${l.sem_escala ? `<span class="badge-esp">${l.sem_escala}</span>` : n(0)}</td></tr>`).join('')}</tbody></table>
+    ${L.some(l => l.sem_escala) ? '<p class="dica" style="margin-top:10px">"Sem escala" são dias do mês que ainda não têm escala gerada para a pessoa.</p>' : ''}`;
+  $('#fechEspelho').innerHTML = `<table class="espelho"><thead><tr><th>Funcionário</th>${fech.dias.map(d => `<th class="${d.dia === 'Dom' ? 'dom' : ''} ${d.feriado ? 'fer' : ''}" title="${d.feriado ? esc(d.feriado) : ''}">${d.data.slice(8)}<br>${d.dia.slice(0, 1)}</th>`).join('')}</tr></thead><tbody>
+    ${L.map(l => `<tr><td>${esc(l.nome)}</td>${l.codigos.map((c, i) => `<td class="${c ? 'c-' + c : ''} ${fech.dias[i].dia === 'Dom' && !c ? 'dom' : ''}">${CURTO[c] || ''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+['#fechMes', '#fechEq'].forEach(s => $(s).onchange = () => telaFechamento());
+$('#btnImpFech').onclick = () => { document.body.classList.add('print-fech'); window.print(); document.body.classList.remove('print-fech'); };
+$('#btnCsv').onclick = async () => {
+  $('#btnCsv').disabled = true;
+  try {
+    const r = await fetch(`/api/relatorio?formato=csv&mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`, {headers: {'x-conta': conta.id}});
+    if (!r.ok) throw new Error('Não foi possível gerar a planilha.');
+    const url = URL.createObjectURL(await r.blob()), a = document.createElement('a');
+    a.href = url; a.download = `fechamento-${$('#fechMes').value}.csv`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast('Planilha baixada. Abra no Excel ou no Google Planilhas.');
+  } catch (err) { toast(err.message); }
+  $('#btnCsv').disabled = false;
+};
+
+// ---------- acessos ----------
+async function telaAcessos() {
+  const m = await api('/api/membros');
+  $('#listaMembros').innerHTML = m.length ? `<table class="tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Acesso</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody>
+    ${m.map(x => `<tr><td><b>${esc(x.nome)}</b></td><td>${esc(x.email)}</td>
+      <td><select data-papel="${x.id}" style="width:auto"><option value="contador" ${x.papel === 'contador' ? 'selected' : ''}>Contador</option><option value="gestor" ${x.papel === 'gestor' ? 'selected' : ''}>Gestor</option></select></td>
+      <td>${x.ativo ? '<span class="badge-ok">Ativo</span>' : '<span class="badge-esp">Ainda não criou a senha</span>'}</td>
+      <td class="dica">${x.ultimo_acesso ? new Date(x.ultimo_acesso).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : '—'}</td>
+      <td><button class="link perigo" data-rm="${x.id}">Remover</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="dica">Ninguém além de você tem acesso ainda. O contador recebe um e-mail para criar a senha e já entra vendo tudo.</p>';
+  $$('[data-papel]').forEach(s => s.onchange = async () => { try { await api(`/api/membros/${s.dataset.papel}`, {method: 'PATCH', body: {papel: s.value}}); toast('Acesso alterado.'); } catch (err) { toast(err.message); } });
+  $$('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm('Remover este acesso? A pessoa deixa de ver a empresa na hora.')) return; await api(`/api/membros/${b.dataset.rm}`, {method: 'DELETE'}); telaAcessos(); });
+}
+$('#formMembro').onsubmit = async e => {
+  e.preventDefault(); $('#erroMembro').textContent = ''; $('#conviteBox').innerHTML = '';
+  try {
+    const r = await api('/api/membros', {method: 'POST', body: {email: $('#mEmail').value, nome: $('#mNome').value, papel: $('#mPapel').value}});
+    $('#conviteBox').innerHTML = `<div class="convite">Pronto. Mandamos o convite para <b>${esc($('#mEmail').value)}</b>.${r.link ? ` Se preferir, mande o link no WhatsApp: <button type="button" class="link" id="btnCopiaConvite">Copiar link</button>` : ' A pessoa já tem conta e vê sua empresa no menu.'}</div>`;
+    if (r.link) $('#btnCopiaConvite').onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast('Link copiado.'); } catch { prompt('Link de acesso:', r.link); } };
+    $('#mEmail').value = $('#mNome').value = ''; telaAcessos();
+  } catch (err) { $('#erroMembro').textContent = err.message; }
+};
+
+// ---------- histórico ----------
+async function telaHistorico() {
+  const h = await api('/api/historico');
+  $('#listaHist').innerHTML = h.length ? `<table class="tab"><thead><tr><th>Quando</th><th>Quem</th><th>O que</th></tr></thead><tbody>
+    ${h.map(x => `<tr><td class="dica" style="white-space:nowrap">${new Date(x.criado_em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</td><td>${esc(x.quem)}</td><td>${esc(x.acao)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="dica">Nada registrado ainda.</p>';
+}
+
 if (tokenAcesso) telaSenha(); else iniciar();
 </script>
 </body>

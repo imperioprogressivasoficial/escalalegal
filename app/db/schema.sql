@@ -107,3 +107,43 @@ create table if not exists emails (
   erro text
 );
 create index if not exists emails_pendentes_idx on emails (proxima_em) where enviado_em is null;
+
+-- ---------- v3: gestão completa ----------
+alter table funcionarios add column if not exists matricula text;
+alter table funcionarios add column if not exists admissao date;
+alter table funcionarios add column if not exists telefone text;
+
+-- pessoas com acesso à empresa (conta) de outro usuário: gestor (edita) ou contador (consulta e relatórios)
+create table if not exists membros (
+  id serial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  papel text not null check (papel in ('gestor', 'contador')),
+  criado_em timestamptz not null default now(),
+  unique (conta_id, usuario_id)
+);
+create index if not exists membros_usuario_idx on membros (usuario_id);
+
+-- férias, atestado, falta, afastamento, folga extra, banco de horas
+create table if not exists ocorrencias (
+  id serial primary key,
+  funcionario_id int not null references funcionarios(id) on delete cascade,
+  tipo text not null,
+  inicio date not null,
+  fim date not null,
+  horas numeric(6,2),
+  obs text,
+  criado_por int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now()
+);
+create index if not exists ocorrencias_func_idx on ocorrencias (funcionario_id, inicio);
+
+-- quem mudou o quê (aparece no histórico da empresa)
+create table if not exists auditoria (
+  id bigserial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now(),
+  acao text not null
+);
+create index if not exists auditoria_conta_idx on auditoria (conta_id, id desc);
