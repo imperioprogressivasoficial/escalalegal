@@ -57,25 +57,29 @@ if [ -n "$TRAEFIK" ]; then
   ARGS=$(docker inspect "$TRAEFIK" -f '{{join .Args " "}} {{join .Config.Cmd " "}}')
   RESOLVER=$(grep -oE 'certificatesresolvers\.[A-Za-z0-9_-]+\.acme' <<<"$ARGS" | head -1 | cut -d. -f2 || true)
   ENTRY=$(grep -oE 'entrypoints\.[A-Za-z0-9_-]+\.address=:443' <<<"$ARGS" | head -1 | cut -d. -f2 || true)
-  RESOLVER=${RESOLVER:-mytlschallenge}; ENTRY=${ENTRY:-websecure}
+  RESOLVER=${RESOLVER:-letsencrypt}; ENTRY=${ENTRY:-websecure}
   amarelo "Traefik encontrado ($TRAEFIK). Rede: $REDE, entrada: $ENTRY, certificado: $RESOLVER"
+  if [ "$REDE" = host ]; then # Traefik em modo host (template da Hostinger): enxerga a rede do app direto
+    REDE_SVC=""; REDE_LABEL=""; REDE_DEF=""
+  else
+    REDE_SVC="    networks: [default, proxy]"
+    REDE_LABEL="      - traefik.docker.network=$REDE"
+    REDE_DEF=$(printf 'networks:\n  proxy:\n    external: true\n    name: %s' "$REDE")
+  fi
   cat > docker-compose.override.yml <<EOF
 # Gerado pelo deploy/instalar.sh: publica o app pelo Traefik que já roda no VPS
 services:
   app:
-    networks: [default, proxy]
+$REDE_SVC
     labels:
       - traefik.enable=true
-      - traefik.docker.network=$REDE
+$REDE_LABEL
       - traefik.http.routers.escalalegal.rule=Host(\`$DOMAIN\`)
       - traefik.http.routers.escalalegal.entrypoints=$ENTRY
       - traefik.http.routers.escalalegal.tls=true
       - traefik.http.routers.escalalegal.tls.certresolver=$RESOLVER
       - traefik.http.services.escalalegal.loadbalancer.server.port=3000
-networks:
-  proxy:
-    external: true
-    name: $REDE
+$REDE_DEF
 EOF
 elif ss -ltn '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q LISTEN; then
   rm -f docker-compose.override.yml

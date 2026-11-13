@@ -1,0 +1,85 @@
+# Compose para o "Docker Manager" da Hostinger (VPS com template Docker + Traefik).
+# Monta a imagem direto do GitHub (REF = commit ou branch) e publica pelo Traefik do VPS.
+# Os dados ficam em /opt/escalalegal-dados no VPS: sobrevivem a atualizações do projeto.
+x-logs: &logs
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  app:
+    build:
+      context: https://github.com/imperioprogressivasoficial/escalalegal.git#${REF:-main}:app
+    pull_policy: build
+    restart: unless-stopped
+    <<: *logs
+    environment:
+      DATABASE_URL: postgres://escala:${DB_PASS}@db:5432/escala
+      NODE_ENV: production
+      DOMAIN: ${DOMAIN}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASS: ${ADMIN_PASS}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN}
+      CHECKOUT_URL: ${CHECKOUT_URL:-}
+      SUPORTE_WHATSAPP: ${SUPORTE_WHATSAPP:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+      LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.escalalegal.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.escalalegal.entrypoints=websecure
+      - traefik.http.routers.escalalegal.tls=true
+      - traefik.http.routers.escalalegal.tls.certresolver=letsencrypt
+      - traefik.http.services.escalalegal.loadbalancer.server.port=3000
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    <<: *logs
+    environment:
+      POSTGRES_USER: escala
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: escala
+    volumes:
+      - /opt/escalalegal-dados/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escala -d escala"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Backup diário em /opt/escalalegal-dados/backups (guarda 14 dias)
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    <<: *logs
+    environment:
+      PGPASSWORD: ${DB_PASS}
+    volumes:
+      - /opt/escalalegal-dados/backups:/backups
+    depends_on:
+      app: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          f=/backups/escala-$$(date +%Y-%m-%d_%H%M).sql.gz
+          if pg_dump -h db -U escala escala | gzip > $$f.tmp; then mv $$f.tmp $$f; echo "backup ok: $$f"; else rm -f $$f.tmp; echo "backup FALHOU"; fi
+          find /backups -name 'escala-*.sql.gz' -mtime +14 -delete
+          sleep 86400
+        done
