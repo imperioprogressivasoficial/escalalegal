@@ -3,6 +3,10 @@
 #   VPS_HOST     IP do VPS
 #   VPS_USER     usuário SSH (ex.: root)
 #   VPS_SSH_KEY  chave privada SSH com acesso ao VPS
+#   ADMIN_PASS   senha que você quer para o /admin (usada só na primeira instalação)
+# e em Settings > Secrets and variables > Actions > Variables:
+#   VPS_DOMINIO  domínio do app (ex.: escala.seudominio.com.br)
+# Na primeira vez ele mesmo clona o projeto em /opt/escalalegal e instala tudo.
 name: Deploy no VPS
 on:
   workflow_run:
@@ -24,9 +28,20 @@ jobs:
       - name: Atualizar no VPS
         if: steps.seg.outputs.ok == '1'
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          ADMIN_PASS_INICIAL: ${{ secrets.ADMIN_PASS }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 15m
-          script: bash /opt/escalalegal/deploy/atualizar.sh
+          envs: ADMIN_PASS_INICIAL
+          script: |
+            set -e
+            command -v git >/dev/null || (apt-get update -qq && apt-get install -y -qq git)
+            if [ ! -d /opt/escalalegal/.git ]; then
+              git clone https://github.com/${{ github.repository }} /opt/escalalegal
+            fi
+            cd /opt/escalalegal
+            git pull --ff-only
+            bash deploy/instalar.sh "${{ vars.VPS_DOMINIO }}"

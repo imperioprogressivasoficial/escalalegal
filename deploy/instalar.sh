@@ -35,7 +35,9 @@ if [ ! -f .env ]; then
   sed -i "s|^DOMAIN=.*|DOMAIN=$DOMINIO|" .env
   sed -i "s|^DB_PASS=.*|DB_PASS=$(aleatorio 32)|" .env
   sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(aleatorio 64)|" .env
-  sed -i "s|^ADMIN_PASS=.*|ADMIN_PASS=$(aleatorio 20)|" .env
+  SENHA_ADMIN=${ADMIN_PASS_INICIAL:-$(aleatorio 20)}
+  SENHA_ADMIN=$(printf '%s' "$SENHA_ADMIN" | sed -e 's/[\\|&]/\\&/g')
+  sed -i "s|^ADMIN_PASS=.*|ADMIN_PASS=$SENHA_ADMIN|" .env
   sed -i "s|^WEBHOOK_TOKEN=.*|WEBHOOK_TOKEN=$(aleatorio 40)|" .env
   chmod 600 .env
   verde ".env criado com senhas novas."
@@ -105,8 +107,13 @@ verde "===== Escala Legal instalado ====="
 echo "Site:            https://$DOMAIN"
 echo "App:             https://$DOMAIN/app"
 echo "Obrigado:        https://$DOMAIN/obrigado   (página pós-compra do checkout)"
-echo "Admin:           https://$DOMAIN/admin   usuário: ${ADMIN_USER:-admin}   senha: $ADMIN_PASS"
-echo "Webhook compra:  https://$DOMAIN/api/webhook/pagamento?token=$WEBHOOK_TOKEN"
+if [ -t 1 ]; then
+  echo "Admin:           https://$DOMAIN/admin   usuário: ${ADMIN_USER:-admin}   senha: $ADMIN_PASS"
+  echo "Webhook compra:  https://$DOMAIN/api/webhook/pagamento?token=$WEBHOOK_TOKEN"
+else # rodando pelo GitHub Actions: o log é público, não mostra segredos
+  echo "Admin:           https://$DOMAIN/admin   (senha em ADMIN_PASS no /opt/escalalegal/.env)"
+  echo "Webhook compra:  https://$DOMAIN/api/webhook/pagamento?token=(WEBHOOK_TOKEN do .env)"
+fi
 [ -n "${SMTP_HOST:-}" ] || amarelo "Falta configurar o e-mail (SMTP_* no .env) para o acesso chegar sozinho ao comprador."
 [ -n "${CHECKOUT_URL:-}" ] || amarelo "Falta o CHECKOUT_URL no .env (link de pagamento)."
 echo "Depois de editar o .env, rode de novo: bash deploy/instalar.sh"

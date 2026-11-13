@@ -62,7 +62,7 @@ bash /opt/escalalegal/deploy/atualizar.sh
 
 O script baixa a versão nova do GitHub e reinicia sem perder dados.
 
-**Deploy automático (opcional):** em GitHub › Settings › Secrets › Actions, crie `VPS_HOST`, `VPS_USER` e `VPS_SSH_KEY`. A partir daí, todo push na `main` que passar nos testes é publicado sozinho.
+**Deploy automático (recomendado):** em GitHub › Settings › Secrets and variables › Actions, crie os secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` e `ADMIN_PASS`, e a variável `VPS_DOMINIO`. Todo push na `main` que passar nos testes é publicado sozinho. Na primeira vez, ele mesmo clona e instala em `/opt/escalalegal`. Os segredos nunca aparecem no log, que é público.
 
 ## Manutenção
 
