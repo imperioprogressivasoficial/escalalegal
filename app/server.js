@@ -226,6 +226,25 @@ app.get('/api/eu', logado, erro(async (req, res) => {
     contas: [{ id: u.id, empresa: u.empresa || u.nome, papel: 'dono' }, ...rows] });
 }));
 
+// minha conta: nome, WhatsApp, nome da empresa (da própria conta) e senha
+app.put('/api/eu', logado, erro(async (req, res) => {
+  const b = req.body || {};
+  const nome = limpa(b.nome) || req.u.nome, whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, '') || null;
+  const empresa = b.empresa === undefined ? req.u.empresa : (limpa(b.empresa) || req.u.empresa);
+  await q('update usuarios set nome=$1, whatsapp=$2, empresa=$3 where id=$4', [nome, whatsapp, empresa, req.u.id]);
+  res.json({ ok: true });
+}));
+app.post('/api/eu/senha', logado, limite(10), erro(async (req, res) => {
+  const atual = String(req.body?.atual || ''), nova = String(req.body?.nova || '');
+  const { rows } = await q('select senha_hash from usuarios where id=$1', [req.u.id]);
+  if (!(await confereSenha(atual, rows[0].senha_hash))) return res.status(400).json({ erro: 'A senha atual não confere.' });
+  if (nova.length < 6 || nova.length > 200) return res.status(400).json({ erro: 'A senha nova precisa ter pelo menos 6 caracteres.' });
+  // troca a senha e derruba as outras sessões (outros celulares/computadores)
+  const { rows: u } = await q('update usuarios set senha_hash=$1, sessao_v=sessao_v+1 where id=$2 returning id, sessao_v', [await hashSenha(nova), req.u.id]);
+  criaSessao(res, u[0]);
+  res.json({ ok: true });
+}));
+
 // esqueci a senha: sempre responde igual (não revela se o e-mail existe)
 app.post('/api/senha/esqueci', limite(5), erro(async (req, res) => {
   const email = limpa(req.body?.email, 160).toLowerCase();
@@ -366,6 +385,7 @@ app.get('/pixel.js', (_req, res) => {
   res.send(`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`);
 });
 app.get('/api/health', erro(async (_req, res) => { await q('select 1'); res.json({ ok: true }); }));
+app.get('/e/:token', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'escala.html')));
 app.get(['/app', '/app/*'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
 app.use('/api', (_req, res) => res.status(404).json({ erro: 'Rota não encontrada.' }));
 app.use((err, req, res, _next) => { // JSON inválido, corpo grande demais etc.

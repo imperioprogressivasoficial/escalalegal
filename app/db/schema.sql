@@ -147,3 +147,29 @@ create table if not exists auditoria (
   acao text not null
 );
 create index if not exists auditoria_conta_idx on auditoria (conta_id, id desc);
+
+-- ---------- v4: integração contábil e acesso do funcionário ----------
+-- dados da empresa e códigos dos eventos da folha (rubricas do sistema do contador)
+create table if not exists empresa_config (
+  conta_id int primary key references usuarios(id) on delete cascade,
+  razao_social text,
+  cnpj text,
+  eventos jsonb not null default '{}'::jsonb,
+  api_prefixo text,
+  api_hash text unique,
+  api_criado_em timestamptz,
+  atualizado_em timestamptz not null default now()
+);
+
+-- mês fechado: trava alterações e guarda os números como foram entregues ao contador
+create table if not exists fechamentos (
+  conta_id int not null references usuarios(id) on delete cascade,
+  mes text not null,
+  fechado_em timestamptz not null default now(),
+  fechado_por int references usuarios(id) on delete set null,
+  dados jsonb not null,
+  primary key (conta_id, mes)
+);
+
+-- link da escala para os funcionários (só leitura, sem login)
+alter table equipes add column if not exists link_token text unique;

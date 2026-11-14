@@ -123,7 +123,7 @@ test('gestão: contador, gestor, ocorrências, fechamento', { skip: pular }, asy
   r = await chama('/api/relatorio?mes=2027-03&formato=csv', { cookie: sCont, conta: contaId });
   assert.match(r.headers.get('content-type'), /text\/csv/);
   assert.ok(r.txt.startsWith('﻿Equipe;Matrícula;Funcionário'));
-  assert.match(r.txt, /Loja Centro;M0;Ana;;5;2;\d;\d;0;0;7;0;0;0;0;17;FÉRIAS/);
+  assert.match(r.txt, /Loja Centro;M0;Ana;;5;2;\d;\d;0;0;7;0;0;0;0;0;0;17;FÉRIAS/);
 
   // ---- visão geral ----
   r = await chama('/api/visao?data=2027-03-03', { cookie: sDono });
