@@ -613,11 +613,11 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     await fila.enfileirar(email, `${req.u.nome} liberou seu acesso à escala da ${empresa}`, modelo({
       titulo: `Você tem acesso à escala da ${empresa}`,
       paragrafos: [
-        `${req.u.nome} liberou seu acesso como ${PAPEL_NOME[papel].toLowerCase()} no Escala Legal.`,
+        `${req.u.nome} liberou seu acesso como ${PAPEL_NOME[papel].toLowerCase()} na Escala Blindada.`,
         papel === 'contador' ? 'Você pode ver as escalas, folgas, férias, atestados e baixar o fechamento do mês em planilha.' : 'Você pode montar e ajustar escalas, lançar férias, atestados e faltas.',
         u.senha_hash ? 'Entre com o seu e-mail e senha de sempre e escolha a empresa no menu.' : 'Clique no botão para criar sua senha. O link vale 14 dias.',
       ],
-      botao: u.senha_hash ? 'Entrar no Escala Legal' : 'Criar minha senha', link, rodape: rodapeSuporte,
+      botao: u.senha_hash ? 'Entrar na Escala Blindada' : 'Criar minha senha', link, rodape: rodapeSuporte,
     }));
     auditar(req, `Deu acesso de ${PAPEL_NOME[papel].toLowerCase()} para ${email}`);
     res.json({ ok: true, link: u.senha_hash ? null : link });

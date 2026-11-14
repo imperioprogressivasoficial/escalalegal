@@ -1,4 +1,4 @@
-// Escala Legal — app (JS puro). Telas: primeiro acesso guiado, início, unidade (escala, análise,
+// Escala Blindada — app (JS puro). Telas: primeiro acesso guiado, início, unidade (escala, análise,
 // pessoas, funcionamento), férias e faltas, fechamento, espaço do contador, acessos, empresa, minha conta.
 const DIAS = Escala.DIAS, SETORES = Escala.SETORES, OC = Escala.OCORRENCIAS, COD = Escala.COD_NOME;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -198,7 +198,7 @@ function wizDesenha() {
   const w = $('#wiz'), u = wz.unidade, s = seg(u.setor);
   if (wz.passo === 0) {
     w.innerHTML = `${wizBarra()}<h1>Olá, ${esc((eu.nome || '').split(' ')[0])}! Qual é o seu negócio?</h1>
-      <p class="sub">A escala muda de um negócio para outro. Escolha o seu e o Escala Legal já vem com os dias, os horários, as funções e as regras certas.</p>
+      <p class="sub">A escala muda de um negócio para outro. Escolha o seu e a Escala Blindada já vem com os dias, os horários, as funções e as regras certas.</p>
       <div class="segmentos">${SEG_ORDEM.map(k => `<button type="button" class="seg ${wz.segmento === k ? 'on' : ''}" data-seg="${k}"><b>${esc(seg(k).nome)}</b><small>${esc(SEG_EX[k])}</small></button>`).join('')}</div>
       <p class="erro" id="wzErro"></p>
       <div class="wiz-acoes"><span></span><button class="btn" id="wzProx">Continuar</button></div>`;
@@ -212,8 +212,8 @@ function wizDesenha() {
         <div><b class="n">8h</b><span><b>Até 8 horas por dia.</b> Limite de 42h por semana a partir de 16/12/2026 e de 40h a partir de 16/12/2027. Sem reduzir salário.</span></div>
         <div><b class="n">D</b><span><b>Domingo:</b> ${s.comercio ? 'no comércio, cada pessoa folga pelo menos 1 domingo a cada 3 semanas (Lei 10.101).' : `cada pessoa folga pelo menos 1 domingo a cada ${ds} semanas (Portaria do Ministério do Trabalho).`}</span></div>
         ${s.criticas.map(c => `<div><b class="n">!</b><span><b>${esc(c.nome)} todo dia.</b> ${esc(c.explica)}</span></div>`).join('')}
-        ${s.aviso12x36 ? '<div><b class="n">12</b><span><b>Escala 12x36:</b> continua permitida, mas a média de 42h passa das 40h em 2027 e depende da convenção coletiva. O Escala Legal monta a 5x2 de 8h, que já fica dentro da lei. Se sua equipe é 12x36, confirme com o contador.</span></div>' : ''}
-      </div><p class="dica">O Escala Legal já monta a escala seguindo tudo isso.</p></div>
+        ${s.aviso12x36 ? '<div><b class="n">12</b><span><b>Escala 12x36:</b> continua permitida, mas a média de 42h passa das 40h em 2027 e depende da convenção coletiva. A Escala Blindada monta a 5x2 de 8h, que já fica dentro da lei. Se sua equipe é 12x36, confirme com o contador.</span></div>' : ''}
+      </div><p class="dica">A Escala Blindada já monta a escala seguindo tudo isso.</p></div>
       <h2 style="margin:22px 0 4px">Sua empresa</h2><p class="sub">Para acertar os feriados e as regras do seu porte.</p>
       <div class="cartao">
         <label for="wzNome" style="margin-top:0">Nome da empresa</label><input id="wzNome" value="${esc(e.nome)}" placeholder="Ex.: Drogaria Central">
@@ -741,7 +741,7 @@ async function telaContador() {
   $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : 'Todas as empresas que liberarem acesso para você aparecem aqui.';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
-      <p>Peça para o seu cliente entrar no Escala Legal, abrir <b>Contador e gestores</b> e dar acesso para o e-mail <b>${esc(eu.email)}</b>.</p>
+      <p>Peça para o seu cliente entrar na Escala Blindada, abrir <b>Contador e gestores</b> e dar acesso para o e-mail <b>${esc(eu.email)}</b>.</p>
       <p class="dica">Assim que ele liberar, a empresa aparece aqui com as escalas, as faltas e o fechamento de cada mês.</p></div>`;
     return;
   }
