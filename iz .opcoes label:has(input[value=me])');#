@@ -1,0 +1,1 @@
+  await p.click(' await p.selectOption('#wzUf', 'BA'); await p.fill('#wzCidade', 'Salvador'); await p.fill('#wzFer', '24/06, 08/12');

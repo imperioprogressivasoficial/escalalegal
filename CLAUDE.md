@@ -4,7 +4,9 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 
 ## Estrutura
 - `app/server.js`: API Express + Postgres (`pg`). Sessão por cookie assinado (HMAC, com `sessao_v` para derrubar sessões ao trocar senha), senha com scrypt assíncrono. Sem ORM.
-- `app/gestao.js`: rotas da gestão (equipes, funcionários, escalas, ocorrências, visão geral, fechamento, acessos, histórico, configurações, API `/api/v1` com chave, link público `/e/:token`). Conta = empresa do dono; papel vem do cabeçalho `x-conta` (dono, gestor edita, contador só lê e baixa).
+- `app/gestao.js`: rotas da gestão (unidades = tabela `equipes`, funcionários, escalas, ocorrências, visão geral, fechamento, acessos, histórico, dados da empresa, `/api/onboarding`, `/api/contador`, link público `/e/:token`). Conta = empresa do dono; papel vem do cabeçalho `x-conta` (dono, gestor edita, contador só lê e baixa). Não existe integração externa/API: o contador usa o próprio app.
+- `app/public/app.js`: todo o JS do app (primeiro acesso guiado, análise, espaço do contador, menu de celular).
+- `app/public/ajuda.html`: ajuda e a lei (EC 141/2026, Lei 10.101, Lei 605/49, CLT, MEI). Atualizar se a lei mudar.
 - `app/public/escala.html`: página do funcionário (link da equipe, só leitura, sem login).
 - `app/pagamento.js`: interpreta o webhook de qualquer checkout (Kiwify, Hotmart, Eduzz, Cakto, Ticto, JSON simples) → liberar / bloquear / ignorar.
 - `app/email.js`: fila de e-mails no Postgres (tabela `emails`) com nova tentativa; SMTP via nodemailer.
@@ -25,7 +27,10 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - Cada empresa só vê as próprias equipes (checar `req.conta.id` em toda rota de gestão; nunca `req.u.id`).
 - Ocorrências (férias, atestado, falta, afastamento, folga extra, banco de horas) entram na geração e aparecem por cima da escala salva na leitura.
 - Mês fechado (`fechamentos`) congela os números (snapshot) e bloqueia gerar/ajustar escala e lançar/apagar ocorrência no mês. Só o dono reabre. Fechar avisa os contadores por e-mail.
-- Códigos dos eventos da folha ficam em `empresa_config.eventos`; o arquivo de eventos só leva o que tem código.
+- Na interface é sempre "unidade" (loja, filial, setor); no banco continua `equipes`.
+- Dono sem unidade cai no primeiro acesso guiado (`#comecar`): empresa (porte MEI/ME/EPP, UF, cidade, feriados da cidade) → unidade (dias, mínimo, horas/dia) → pessoas → gera a escala e mostra a análise (`Escala.analisar`, em `scheduler.js`).
+- Limite semanal pela data (`limiteSemanal`): 44h até 15/12/2026, 42h até 15/12/2027, 40h depois. Feriados: nacionais + estaduais (`ESTADUAIS`) + municipais informados pela empresa.
+- Contador pode se cadastrar sozinho (`tipo: 'contador'`) e vê as empresas que o liberaram no Espaço do contador.
 
 ## Estilo
 - Português do Brasil em toda a interface e na copy.

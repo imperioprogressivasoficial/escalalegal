@@ -151,7 +151,8 @@
     const necessarios = Math.ceil(totalMin / 5);
     const diasAbertos = e.abertos.filter(Boolean).length;
     // 1. gente suficiente
-    if (n >= necessarios) itens.push({ ok: true, titulo: 'Gente suficiente', texto: `Com ${n} pessoa(s) trabalhando 5 dias, dá para cobrir o mínimo que você definiu (precisa de ${necessarios}).` });
+    const pess = k => `${k} ${k === 1 ? 'pessoa' : 'pessoas'}`;
+    if (n >= necessarios) itens.push({ ok: true, titulo: 'Gente suficiente', texto: `Com ${pess(n)} trabalhando 5 dias, dá para cobrir o mínimo que você definiu (precisa de ${necessarios}).` });
     else itens.push({ ok: false, titulo: `Falta${necessarios - n > 1 ? 'm' : ''} ${necessarios - n} pessoa${necessarios - n > 1 ? 's' : ''}`, texto: `Para cobrir o mínimo de todos os dias com folgas de 2 dias, são precisas ${necessarios} pessoas. Você tem ${n}. Reduza o mínimo de algum dia ou contrate.` });
     // 2. cobertura dia a dia
     const furos = [];
@@ -177,7 +178,9 @@
     const limMin = Math.min(lim, limFim);
     if (horasDia > 8) itens.push({ ok: false, titulo: `${String(horasDia).replace('.', ',')}h por dia passa de 8h`, texto: `Com 5 dias, são ${String(semanais).replace('.', ',')}h na semana. Acima de 8h por dia só com acordo ou convenção coletiva. O jeito simples é 8h por dia = 40h.` });
     else if (semanais > limMin) itens.push({ ok: false, titulo: `${String(semanais).replace('.', ',')}h por semana passa do limite`, texto: `O limite no período é ${limMin}h por semana.` });
-    else itens.push({ ok: true, titulo: `${String(semanais).replace('.', ',')}h por semana`, texto: `Dentro do limite de ${limMin}h${limMin > 40 ? ' (e já dentro das 40h que valem a partir de 16/12/2027)' : ''}.` });
+    else itens.push({ ok: true, titulo: `${String(semanais).replace('.', ',')}h por semana`, texto: semanais <= 40
+      ? 'Já dentro do limite final de 40h da nova lei. Não vai precisar mudar em 2027.'
+      : `Dentro do limite de ${limMin}h deste período. A partir de 16/12/2027 o limite cai para 40h.` });
     // 6. feriados
     const fer = [];
     for (let i = 0; i < e.semanas * 7; i++) { const data = somaDias(e.inicio, i), nome = feriado(data, opts.ctx); if (nome && e.abertos[i % 7]) fer.push({ data, nome, trabalham: e.dados[Math.floor(i / 7)].filter(x => x[i % 7] === 'T').length }); }
