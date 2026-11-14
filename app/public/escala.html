@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Escala da equipe — Escala Legal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,700..800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--azul:#1351b4;--azul-esc:#071d41;--azul-claro:#e8f0fb;--verde:#168821;--amarelo:#ffcd07;--amarelo-claro:#fff5c2;--linha:#dfe3ea;--tinta:#0c1b33;--texto:#3d4a5c;--mut:#6b778a;color-scheme:light}
+*{box-sizing:border-box;margin:0}
+body{font:400 15px/1.5 "Public Sans",system-ui,sans-serif;color:var(--texto);background:#f3f5f8}
+h1,h2{font-family:"Archivo",Arial,sans-serif;font-stretch:88%;color:var(--tinta);line-height:1.1}
+.topo{background:linear-gradient(160deg,var(--azul-esc),#0b2d6b 60%,var(--azul));color:#d6e0f0;padding:20px 16px 26px}
+.marca{font:800 1.1rem/1 "Archivo",Arial,sans-serif;font-stretch:85%;color:#fff}.marca span{color:#7be08a}
+.topo h1{color:#fff;font-size:1.7rem;margin-top:14px}
+.w{max-width:900px;margin:-14px auto 0;padding:0 16px 40px}
+.cartao{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:16px;margin-bottom:12px}
+label{display:block;font-weight:700;font-size:.86rem;color:var(--tinta);margin-bottom:6px}
+select{width:100%;font:inherit;padding:11px 12px;border:1px solid #c9d0db;border-radius:8px;background:#fff}
+.minhas{display:grid;gap:8px;margin-top:12px}
+.sem{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:#f3f5f8}
+.sem b{color:var(--tinta)}
+.folga{background:var(--amarelo);color:#4a3a00;border-radius:99px;padding:3px 10px;font-weight:700;font-size:.86rem;white-space:nowrap}
+.abas{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}
+.abas button{border:1px solid var(--linha);background:#fff;border-radius:99px;padding:7px 14px;font:600 .9rem "Public Sans",sans-serif;cursor:pointer;white-space:nowrap}
+.abas button.on{background:var(--azul);border-color:var(--azul);color:#fff}
+.rol{overflow-x:auto}
+table{border-collapse:separate;border-spacing:3px;width:100%;min-width:560px}
+th{font-size:.75rem;color:var(--mut);font-weight:600;padding:3px}
+th small{display:block;font-weight:400}
+th.fer{color:#8a5a00}
+td{text-align:center;border-radius:6px;padding:8px 3px;font-weight:600;font-size:.8rem}
+td:first-child{text-align:left;color:var(--tinta);white-space:nowrap;padding-right:8px;font-size:.85rem}
+td.T{background:var(--azul-claro);color:var(--azul)}td.F{background:var(--amarelo);color:#4a3a00}
+td.A{background:#ece7fb;color:#4b2a9a;font-size:.72rem}td.X{color:#b0b8c5;font-weight:400}
+tr.eu td{box-shadow:inset 0 0 0 2px var(--verde)}tr.eu td:first-child{box-shadow:none;color:var(--verde)}
+.hoje{outline:2px solid var(--azul);outline-offset:-2px}
+.msg{text-align:center;padding:40px 16px}
+.pe{text-align:center;color:var(--mut);font-size:.8rem;margin-top:18px}
+</style>
+</head>
+<body>
+<header class="topo"><div class="marca">Escala<span>Legal</span></div><h1 id="titulo">Escala da equipe</h1><p id="sub"></p></header>
+<main class="w" id="conteudo"><div class="cartao msg">Carregando a escala…</div></main>
+<script src="/scheduler.js"></script>
+<script>
+const COD = Escala.COD_NOME, $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dm = d => d.slice(8) + '/' + d.slice(5, 7);
+const token = location.pathname.split('/').pop();
+let dados, semana = 0, eu = '';
+try { eu = localStorage.getItem('eu-' + token) || ''; } catch {}
+fetch('/api/publico/escala/' + encodeURIComponent(token)).then(async r => {
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || 'Não foi possível abrir a escala.');
+  dados = j; desenha();
+}).catch(e => { $('#conteudo').innerHTML = `<div class="cartao msg"><h2>Escala indisponível</h2><p style="margin-top:8px">${esc(e.message)}</p></div>`; });
+
+function desenha() {
+  $('#titulo').textContent = dados.equipe;
+  $('#sub').textContent = dados.empresa || '';
+  const p = dados.pessoas.find(x => x.nome === eu);
+  const semanas = [0, 1, 2, 3].filter(s => dados.pessoas.some(x => x.dias.slice(s * 7, s * 7 + 7).some(Boolean)));
+  if (!semanas.includes(semana)) semana = semanas[0] ?? 0;
+  const resumo = p ? semanas.map(s => {
+    const folgas = p.dias.slice(s * 7, s * 7 + 7).map((c, i) => c === 'F' ? `${dados.dias[s * 7 + i].dia} ${dm(dados.dias[s * 7 + i].data)}` : null).filter(Boolean);
+    const fora = [...new Set(p.dias.slice(s * 7, s * 7 + 7).map(c => COD[c]).filter(Boolean))];
+    return `<div class="sem"><span><b>Semana de ${dm(dados.dias[s * 7].data)}</b>${fora.length ? `<br><small>${esc(fora.join(', '))}</small>` : ''}</span><span class="folga">${folgas.length ? 'Folga: ' + folgas.join(' e ') : 'Sem folga marcada'}</span></div>`;
+  }).join('') : '';
+  const ini = semana * 7;
+  $('#conteudo').innerHTML = `
+    <div class="cartao">
+      <label for="quem">Quem é você?</label>
+      <select id="quem"><option value="">Escolha seu nome</option>${dados.pessoas.map(x => `<option ${x.nome === eu ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select>
+      ${p ? `<div class="minhas">${resumo || '<p>Ainda não tem escala para as próximas semanas.</p>'}</div>` : ''}
+    </div>
+    <div class="cartao">
+      ${semanas.length ? `<div class="abas">${semanas.map(s => `<button data-s="${s}" class="${s === semana ? 'on' : ''}">Semana de ${dm(dados.dias[s * 7].data)}</button>`).join('')}</div>
+      <div class="rol"><table><thead><tr><th></th>${dados.dias.slice(ini, ini + 7).map(d => `<th class="${d.feriado ? 'fer' : ''} ${d.data === dados.hoje ? 'hoje' : ''}">${d.dia}<small>${dm(d.data)}${d.feriado ? ' · feriado' : ''}</small></th>`).join('')}</tr></thead>
+      <tbody>${dados.pessoas.map(x => `<tr class="${x.nome === eu ? 'eu' : ''}"><td>${esc(x.nome)}</td>${x.dias.slice(ini, ini + 7).map((c, i) => {
+        const d = dados.dias[ini + i];
+        if (!d.aberto) return '<td class="X">fechado</td>';
+        if (COD[c]) return `<td class="A">${esc(COD[c])}</td>`;
+        return c ? `<td class="${c}">${c === 'F' ? 'Folga' : 'Trabalha'}</td>` : '<td class="X">—</td>';
+      }).join('')}</tr>`).join('')}</tbody></table></div>`
+      : '<p class="msg">A escala das próximas semanas ainda não foi publicada.</p>'}
+    </div>
+    <p class="pe">Escala feita no Escala Legal. Dúvidas sobre sua folga? Fale com seu gestor.</p>`;
+  $('#quem').onchange = e => { eu = e.target.value; try { localStorage.setItem('eu-' + token, eu); } catch {} desenha(); };
+  document.querySelectorAll('.abas button').forEach(b => b.onclick = () => { semana = +b.dataset.s; desenha(); });
+}
+</script>
+</body>
+</html>

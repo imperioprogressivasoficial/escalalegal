@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Escala Legal — painel</title>
+<title>Escala Legal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -120,20 +120,190 @@ dialog{border:0;border-radius:14px;padding:22px;width:min(420px,92vw);box-shadow
 dialog::backdrop{background:rgba(7,29,65,.5)}
 .dlg-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
+/* navegação e empresa */
+.nav{display:grid;gap:2px}
+.nav button{width:100%;text-align:left;background:none;border:0;color:#dce5f3;padding:9px 10px;border-radius:8px;cursor:pointer;font-weight:600}
+.nav button:hover,.equipes button:hover{background:rgba(255,255,255,.07)}
+.nav button.on{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 3px 0 0 var(--amarelo)}
+.conta-sel select{background:#0b2d6b;color:#fff;border-color:rgba(255,255,255,.25);padding:8px 10px;font-weight:600}
+.papel{display:inline-block;background:var(--amarelo);color:#4a3a00;border-radius:99px;padding:1px 8px;font-size:.72rem;font-weight:700;margin-left:4px;vertical-align:1px}
+.so-leitura .edita{display:none!important}
+.leitura-aviso{display:none;background:var(--azul-claro);color:var(--azul);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:600}
+.so-leitura .leitura-aviso{display:block}
+.dica{color:var(--mut);font-size:.86rem}
+.form-linha{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-linha>div{flex:1 1 150px}
+.form-linha label{margin-top:0}
+
+/* visão geral */
+.visao{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.grade-eq{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.eq-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.eq-top h3{font-size:1.15rem}
+.grande{font:800 2.2rem/1 var(--display);font-stretch:85%;color:var(--tinta);margin-top:10px}
+.grande small{font:500 .9rem var(--corpo);color:var(--mut);margin-left:6px}
+.semana7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:12px 0}
+.semana7 div{border-radius:8px;padding:6px 2px;text-align:center;font-size:.72rem;line-height:1.25}
+.semana7 b{display:block;font-size:.95rem;font-variant-numeric:tabular-nums}
+.d-ok{background:var(--verde-claro);color:var(--verde)}.d-baixo{background:var(--vermelho-claro);color:var(--vermelho)}
+.d-sem{background:var(--cinza);color:var(--mut)}.d-fech{border:1px dashed var(--linha);color:var(--mut)}
+.d-hoje{box-shadow:inset 0 0 0 2px var(--azul)}
+.fer-tag{display:block;font-size:.62rem;color:#8a5a00;font-weight:700}
+.rotulo{font-size:.78rem;font-weight:700;color:var(--mut);margin-top:10px}
+.pessoas{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.pessoa{background:var(--cinza);border-radius:99px;padding:3px 10px;font-size:.8rem;color:var(--tinta)}
+.pessoa.aus{background:#ece7fb;color:#4b2a9a}
+.alerta-eq{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--amarelo-claro);border-radius:8px;padding:8px 10px;font-size:.85rem;color:#5a4500;font-weight:600}
+.prox li{list-style:none;padding:9px 0;border-bottom:1px solid var(--linha);font-size:.88rem}
+.prox{padding:0}
+.prox li:last-child{border:0}
+
+/* ocorrências e tabelas */
+.esc td.A{background:#ece7fb;color:#4b2a9a;font-size:.76rem;cursor:not-allowed}
+.esc th.fer,.esc th.fer small{color:#8a5a00}
+.tipo{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.76rem;font-weight:700;white-space:nowrap}
+.tipo-ferias{background:#e3f0ff;color:var(--azul)}.tipo-atestado{background:#ece7fb;color:#4b2a9a}.tipo-falta{background:var(--vermelho-claro);color:var(--vermelho)}
+.tipo-afastamento{background:#eceef2;color:#3d4a5c}.tipo-folga_extra{background:var(--amarelo-claro);color:#5a4500}.tipo-banco_horas{background:var(--verde-claro);color:var(--verde)}
+table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
+.tab th,.tab td{padding:9px 8px;border-bottom:1px solid var(--linha);text-align:left}
+.tab th{color:var(--mut);font-weight:600;font-size:.78rem;white-space:nowrap}
+.tab td.n,.tab th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tab tr:hover td{background:#fafbfc}
+#fechResumo td:nth-child(-n+3){white-space:nowrap}
+.espelho{border-collapse:collapse;font-size:.7rem}
+.espelho th,.espelho td{border:1px solid var(--linha);padding:4px 2px;text-align:center;min-width:26px}
+.espelho th{font-weight:600;color:var(--mut)}
+.espelho td:first-child,.espelho th:first-child{text-align:left;padding:4px 8px;white-space:nowrap;position:sticky;left:0;background:#fff;min-width:140px}
+.espelho .dom{background:#f6f7f9}.espelho th.fer{background:#fff0c2;color:#8a5a00}
+.c-T{background:var(--azul-claro);color:var(--azul)}.c-F{background:var(--amarelo);color:#4a3a00;font-weight:700}
+.c-V{background:#e3f0ff;color:var(--azul);font-weight:700}.c-M{background:#ece7fb;color:#4b2a9a;font-weight:700}
+.c-X{background:var(--vermelho-claro);color:var(--vermelho);font-weight:700}.c-L{background:#eceef2;font-weight:700}.c-E{background:var(--amarelo-claro);color:#5a4500;font-weight:700}
+.sec-tit{font-size:1.1rem;margin-bottom:10px}
+.convite{background:var(--verde-claro);border-radius:10px;padding:12px 14px;margin-top:12px;color:#0f5c17}
+.badge-ok{color:var(--verde);font-weight:700}.badge-esp{color:#8a5a00;font-weight:700}
+
+.baixar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.opcao{text-align:left;border:1px solid var(--linha);background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;display:grid;gap:4px}
+.opcao:hover{border-color:var(--azul);background:var(--azul-claro)}
+.opcao b{color:var(--tinta)}.opcao span{color:var(--mut);font-size:.84rem}
+.status-mes{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.selo{display:inline-block;border-radius:99px;padding:4px 12px;font-weight:700;font-size:.85rem}
+.selo.aberto{background:var(--amarelo-claro);color:#5a4500}.selo.fechado{background:var(--verde-claro);color:var(--verde)}
+pre.codigo{background:#0c1b33;color:#d6e0f0;border-radius:8px;padding:12px;font-size:.8rem;overflow-x:auto;white-space:pre}
+.chave{font-family:ui-monospace,monospace;background:var(--amarelo-claro);border:1px solid #f0d97a;border-radius:8px;padding:10px;word-break:break-all;margin:8px 0}
+
+.passos{margin:10px 0 0;padding-left:20px;display:grid;gap:6px}.passos li.ok{color:var(--verde)}.passos s{color:var(--mut)}
 @media(max-width:860px){
   .entrada{grid-template-columns:1fr}.entrada-lado{padding:28px 22px}.entrada-lado img{width:110px}
   .painel{grid-template-columns:minmax(0,1fr)}
   .lateral{padding:14px}.lat-pe{display:none}
   .equipes{display:flex;overflow-x:auto}.equipes button{white-space:nowrap}
+  .nav{display:flex;overflow-x:auto}.nav button{white-space:nowrap;width:auto}
+  .visao{grid-template-columns:minmax(0,1fr)}.grade-eq{grid-template-columns:minmax(0,1fr)}
   .form-func{grid-template-columns:1fr 1fr}.form-func .dias-chip{grid-column:1/-1;flex-wrap:wrap}
   .grade-conf{grid-template-columns:1fr}
 }
 @media print{
   body{background:#fff}.lateral,.tabs,.controles,.acoes,.aviso-pag,.semanas,.hist,.topo .btn{display:none!important}
   .painel{display:block}.principal{padding:0}.cartao{border:0;padding:0}
+  .sem-print,.leitura-aviso{display:none!important}
+  body.print-fech .vista:not(#v-fechamento){display:none!important}
   .esc td.T,.esc td.F,.esc td.ok,.esc td.baixo{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .sem-print{display:none}.todas-semanas .semana-print{display:block!important;break-inside:avoid;margin-bottom:18px}
 }
+
+/* ===== v5: primeiro acesso, análise, contador, celular ===== */
+textarea{width:100%;border:1px solid #c9d0db;border-radius:8px;padding:10px 12px;background:#fff;font:inherit;color:inherit;resize:vertical}
+textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
+.topo-mobile{display:none}
+.lat-menu{display:grid;gap:18px}
+.ajuda-link{color:#8fb4f0;font-weight:600;text-decoration:none;padding:0 8px;font-size:.9rem}
+
+/* primeiro acesso */
+.wiz{max-width:720px;margin:0 auto}
+.wiz-passos{display:flex;gap:6px;margin-bottom:18px}
+.wiz-passos span{flex:1;height:6px;border-radius:99px;background:var(--linha)}
+.wiz-passos span.on{background:var(--verde)}
+.wiz h1{font-size:clamp(1.6rem,4vw,2.2rem);margin-bottom:8px}
+.wiz .sub{color:var(--mut);margin-bottom:18px}
+.wiz .cartao{padding:22px}
+.wiz-acoes{display:flex;justify-content:space-between;gap:10px;margin-top:20px;flex-wrap:wrap}
+.opcoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.opcoes label{margin:0;display:block;border:1px solid var(--linha);border-radius:10px;padding:12px;cursor:pointer;font-weight:600;background:#fff}
+.opcoes label small{display:block;font-weight:400;color:var(--mut);margin-top:2px}
+.opcoes input{display:none}
+.opcoes label:has(input:checked){border-color:var(--azul);background:var(--azul-claro);box-shadow:inset 0 0 0 1px var(--azul)}
+.nota{background:var(--amarelo-claro);border:1px solid #f0d97a;border-radius:10px;padding:10px 12px;color:#5a4500;font-size:.9rem;margin-top:12px}
+.nota.info{background:var(--azul-claro);border-color:#c6d8f3;color:#0b3a85}
+.lei-pontos{display:grid;gap:10px;margin:16px 0}
+.lei-pontos div{display:flex;gap:12px;align-items:flex-start}
+.lei-pontos b.n{flex:0 0 34px;height:34px;border-radius:50%;background:var(--azul);color:#fff;display:grid;place-items:center;font-family:var(--display)}
+.contagem{font-weight:700;color:var(--tinta);margin-top:8px}
+
+/* análise */
+.diag-topo{display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;margin-bottom:12px}
+.diag-topo.ok{background:var(--verde-claro);color:#0f5c17}.diag-topo.ruim{background:var(--amarelo-claro);color:#5a4500}
+.diag-topo b{font:800 1.25rem/1.15 var(--display);font-stretch:88%;display:block}
+.diag-topo img{width:64px;flex:0 0 64px}
+.diag{list-style:none;padding:0;display:grid;gap:8px}
+.diag li{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:12px;border:1px solid var(--linha);border-radius:10px;background:#fff}
+.diag .ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:.9rem}
+.diag .ic.ok{background:var(--verde-claro);color:var(--verde)}.diag .ic.ruim{background:var(--vermelho-claro);color:var(--vermelho)}.diag .ic.info{background:var(--azul-claro);color:var(--azul)}
+.diag b{color:var(--tinta);display:block}
+.diag span{font-size:.9rem}
+.numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.numeros div{background:#fff;border:1px solid var(--linha);border-radius:10px;padding:12px}
+.numeros b{display:block;font:800 1.6rem/1 var(--display);font-stretch:85%;color:var(--tinta)}
+.numeros span{font-size:.82rem;color:var(--mut)}
+.resumo-escala{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:600}
+.resumo-escala.ok{background:var(--verde-claro);color:#0f5c17}.resumo-escala.ruim{background:var(--amarelo-claro);color:#5a4500}
+
+/* escala no celular: por dia */
+.dias-lista{display:none}
+.dia-card{border:1px solid var(--linha);border-radius:10px;padding:12px;margin-bottom:8px;background:#fff}
+.dia-card h4{font:700 1rem var(--display);color:var(--tinta);display:flex;justify-content:space-between;gap:8px}
+.dia-card h4 small{font:600 .78rem var(--corpo);color:var(--mut)}
+.dia-card h4 .baixo{color:var(--vermelho)}.dia-card h4 .ok{color:var(--verde)}
+.dia-card .grupo{margin-top:8px;font-size:.88rem}
+.dia-card .grupo b{display:block;font-size:.75rem;color:var(--mut);margin-bottom:3px}
+.chip{display:inline-block;border-radius:99px;padding:3px 10px;margin:0 4px 4px 0;font-size:.82rem;font-weight:600;cursor:pointer;border:0}
+.chip.T{background:var(--azul-claro);color:var(--azul)}.chip.F{background:var(--amarelo);color:#4a3a00}.chip.A{background:#ece7fb;color:#4b2a9a;cursor:default}
+
+/* espaço do contador */
+.empresas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.emp-card h3{font-size:1.15rem}
+.emp-card .meta{color:var(--mut);font-size:.85rem;margin:4px 0 10px}
+.emp-card .linha-st{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--linha);font-size:.9rem}
+
+.segmentos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.seg{text-align:left;border:1px solid var(--linha);background:#fff;border-radius:12px;padding:14px;cursor:pointer;display:grid;gap:3px;font:inherit}
+.seg b{color:var(--tinta);font-size:1rem}.seg small{color:var(--mut);font-size:.82rem}
+.seg:hover{border-color:var(--azul)}.seg.on{border-color:var(--azul);background:var(--azul-claro);box-shadow:inset 0 0 0 1px var(--azul)}
+.funcoes-lista{display:grid;gap:6px;margin-top:6px}
+.funcoes-lista div{display:grid;grid-template-columns:1fr minmax(140px,220px);gap:10px;align-items:center;border-bottom:1px solid var(--linha);padding-bottom:6px}
+.funcoes-lista span{font-weight:600;color:var(--tinta)}
+.dia-rot{display:block;font-size:.78rem;font-weight:700;color:var(--mut);margin-bottom:4px}
+
+@media(max-width:860px){
+  .topo-mobile{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:20;background:var(--azul-esc);color:#fff;padding:12px 16px}
+  .topo-mobile button{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
+  .painel{display:block}
+  .lateral{position:fixed;inset:0 25% 0 0;z-index:30;transform:translateX(-105%);transition:transform .2s;overflow-y:auto;box-shadow:0 0 0 100vmax rgba(7,29,65,0)}
+  body.menu-aberto .lateral{transform:none;box-shadow:0 0 0 100vmax rgba(7,29,65,.5)}
+  .lateral .lat-pe{display:flex}
+  .nav,.equipes{display:grid!important;overflow:visible}.nav button,.equipes button{white-space:normal;width:100%}
+  .principal{padding:16px 16px 40px}
+  .topo h1{font-size:1.5rem}
+  .tabs{overflow-x:auto}.tabs button{white-space:nowrap;padding:10px 10px}
+  .rolagem.sem-print{display:none}
+  .dias-lista{display:block}
+  .controles>div{flex:1 1 140px;min-width:0}
+  .controles .btn{width:100%;justify-content:center}
+  .acoes .btn{flex:1 1 auto;justify-content:center}
+  .wiz .cartao{padding:16px}
+  .dias-conf{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media print{.topo-mobile{display:none!important}.dias-lista{display:none!important}}
 </style>
 </head>
 <body>
@@ -142,63 +312,101 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
 <div class="entrada hide" id="telaEntrada">
   <div class="entrada-lado">
     <div class="marca">Escala<span>Legal</span></div>
-    <h1>A escala 5x2 da sua empresa, sem deixar nenhum dia descoberto.</h1>
+    <h1 id="entradaTitulo">A escala 5x2 da sua empresa, dentro da nova lei e sem deixar nenhum dia descoberto.</h1>
     <img src="/img/mascote.svg" alt="Zé Folga, o mascote do Escala Legal">
   </div>
   <div class="entrada-form">
     <form id="formEntrada" novalidate>
       <div class="abas"><button type="button" class="on" data-modo="login">Entrar</button><button type="button" data-modo="cadastro">Criar conta</button></div>
+      <p class="dica so-contador hide" style="margin-bottom:6px">Conta de contador: grátis. Depois, cada cliente libera o acesso dele para o seu e-mail.</p>
       <div class="so-cad hide">
         <label for="cNome">Seu nome</label><input id="cNome" autocomplete="name">
-        <label for="cEmpresa">Nome da empresa</label><input id="cEmpresa" autocomplete="organization">
+        <div class="so-empresa"><label for="cEmpresa">Nome da empresa</label><input id="cEmpresa" autocomplete="organization"></div>
         <label for="cZap">WhatsApp</label><input id="cZap" inputmode="tel" placeholder="(71) 99999-9999">
       </div>
       <label for="cEmail">E-mail</label><input id="cEmail" type="email" autocomplete="email">
       <label for="cSenha">Senha</label><input id="cSenha" type="password" autocomplete="current-password">
       <button class="btn" style="width:100%;justify-content:center;margin-top:18px" id="btnEntrar">Entrar</button>
       <p class="erro" id="erroEntrada"></p>
+      <p class="so-login" style="text-align:center"><button type="button" class="link" id="btnEsqueci">Esqueci minha senha</button></p>
+      <p style="text-align:center;margin-top:14px;font-size:.9rem"><button type="button" class="link" id="btnSouContador">Sou contador</button> · <a class="link" href="/ajuda" style="text-decoration:none">Ajuda e a nova lei</a></p>
+    </form>
+    <form id="formSenha" class="hide" novalidate>
+      <h2 id="sTitulo">Crie sua senha</h2>
+      <p id="sTexto" style="margin-top:6px"></p>
+      <div id="sDados">
+        <label for="sNome">Seu nome</label><input id="sNome" autocomplete="name">
+        <div id="sEmpresaBox"><label for="sEmpresa">Nome da empresa</label><input id="sEmpresa" autocomplete="organization"></div>
+        <label for="sZap">WhatsApp</label><input id="sZap" inputmode="tel" placeholder="(71) 99999-9999">
+      </div>
+      <label for="sSenha">Senha (mínimo 6 caracteres)</label><input id="sSenha" type="password" autocomplete="new-password">
+      <label for="sSenha2">Repita a senha</label><input id="sSenha2" type="password" autocomplete="new-password">
+      <button class="btn" style="width:100%;justify-content:center;margin-top:18px" id="btnSenha">Salvar e entrar</button>
+      <p class="erro" id="erroSenha"></p>
     </form>
   </div>
 </div>
 
 <!-- PAINEL -->
 <div class="painel hide" id="telaPainel">
-  <aside class="lateral">
+  <div class="topo-mobile"><span class="marca">Escala<span>Legal</span></span><button id="btnMenu" aria-label="Abrir menu">Menu</button></div>
+  <aside class="lateral" id="lateral">
     <div class="marca">Escala<span>Legal</span></div>
-    <div>
-      <p class="lat-tit">Equipes</p>
+    <div class="conta-sel hide" id="contaSel"><p class="lat-tit" style="margin-bottom:6px">Empresa</p><select id="selConta" aria-label="Empresa"></select></div>
+    <nav class="nav" id="nav">
+      <button data-ir="contador" class="so-contador-nav hide">Espaço do contador</button>
+      <button data-ir="visao" class="na-empresa">Início</button>
+      <button data-ir="ocorrencias" class="na-empresa">Férias e faltas</button>
+      <button data-ir="fechamento" class="na-empresa">Fechamento do mês</button>
+      <button data-ir="acessos" class="so-dono">Contador e gestores</button>
+      <button data-ir="empresa" class="so-dono">Empresa</button>
+    </nav>
+    <div class="na-empresa">
+      <p class="lat-tit">Unidades</p>
       <ul class="equipes" id="listaEquipes"></ul>
     </div>
-    <button class="nova" id="btnNova">+ Nova equipe</button>
-    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><button class="link" id="btnSair">Sair</button></div></div>
+    <button class="nova edita na-empresa" id="btnNova">+ Nova unidade</button>
+    <a class="ajuda-link" href="/ajuda">Ajuda e a nova lei</a>
+    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><span id="papelEu"></span><br><button class="link" data-ir="conta">Minha conta</button> · <button class="link" id="btnSair">Sair</button></div></div>
   </aside>
   <main class="principal">
-    <div class="aviso-pag hide" id="avisoPag"><span>Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.</span><a class="btn pq" id="btnPagar" href="#" target="_blank" rel="noopener">Liberar acesso por R$ 47</a></div>
-    <div id="semEquipe" class="cartao vazio hide">
-      <img src="/img/mascote.svg" alt="">
-      <h2>Vamos montar sua primeira escala</h2>
-      <p>Crie uma equipe (uma loja, um setor, um turno) e cadastre os funcionários.</p>
-      <button class="btn" id="btnPrimeira">Criar primeira equipe</button>
-    </div>
-    <div id="comEquipe" class="hide">
-      <div class="topo"><div><h1 id="tEquipe"></h1><p id="tSetor"></p></div></div>
-      <nav class="tabs"><button data-aba="escala" class="on">Escala</button><button data-aba="funcionarios">Funcionários</button><button data-aba="config">Dias e cobertura</button></nav>
+    <div class="aviso-pag hide" id="avisoPag"><span id="avisoPagTxt">Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.</span><a class="btn pq so-dono" id="btnPagar" href="#" target="_blank" rel="noopener">Liberar acesso por R$ 47</a></div>
+    <div class="leitura-aviso">Acesso de contador: você vê tudo e baixa o fechamento. Alterações ficam com a empresa.</div>
+
+    <!-- PRIMEIRO ACESSO / NOVA UNIDADE -->
+    <section class="vista hide" id="v-comecar"><div class="wiz" id="wiz"></div></section>
+
+    <!-- INÍCIO -->
+    <section class="vista hide" id="v-visao">
+      <div class="topo"><div><h1 id="vOla"></h1><p id="vData"></p></div><button class="btn sec edita" data-ir-oc>Lançar férias, falta ou atestado</button></div>
+      <div class="visao" id="visaoConteudo">
+        <div class="grade-eq" id="vEquipes"></div>
+        <aside class="cartao"><h3 class="sec-tit">Próximos 30 dias</h3><ul class="prox" id="vProx"></ul></aside>
+      </div>
+    </section>
+
+    <!-- UNIDADE -->
+    <section class="vista hide" id="v-equipe">
+      <div class="topo"><div><h1 id="tEquipe"></h1><p id="tSetor"></p></div><button class="btn sec edita" data-ir-oc>Lançar ocorrência</button></div>
+      <nav class="tabs"><button data-aba="escala" class="on">Escala</button><button data-aba="analise">Análise</button><button data-aba="funcionarios">Pessoas</button><button data-aba="config">Funcionamento</button></nav>
 
       <section data-painel="escala">
-        <div class="controles">
+        <div class="controles edita">
           <div><label for="eInicio">Começa em</label><input id="eInicio" type="date"></div>
           <div><label for="eSemanas">Semanas</label><select id="eSemanas"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option></select></div>
-          <button class="btn azul" id="btnGerar">Gerar escala</button>
+          <div><label>&nbsp;</label><button class="btn azul" id="btnGerar">Gerar escala</button></div>
         </div>
         <div class="cartao" id="areaEscala"></div>
       </section>
 
+      <section data-painel="analise" class="hide"><div id="areaAnalise"></div></section>
+
       <section data-painel="funcionarios" class="hide">
-        <form class="cartao form-func" id="formFunc">
-          <div><label for="fNome">Nome</label><input id="fNome" placeholder="Ex.: Ana Souza"></div>
-          <div><label for="fCargo">Cargo (opcional)</label><input id="fCargo" placeholder="Ex.: Vendedora"></div>
-          <div><label>Folga fixa (opcional)</label><div class="dias-chip" id="fFixa"></div></div>
-          <button class="btn">Adicionar</button>
+        <form class="cartao edita" id="formFunc">
+          <label for="fNome" style="margin-top:0">Adicionar pessoas</label>
+          <textarea id="fNome" rows="3" placeholder="Uma pessoa por linha, com a função depois de um traço:&#10;Ana Souza - Caixa&#10;Carlos Lima"></textarea>
+          <p class="dica" id="fFuncoesDica" style="margin-top:6px"></p>
+          <div class="acoes"><button class="btn">Adicionar</button></div>
         </form>
         <ul class="lista" id="listaFunc"></ul>
       </section>
@@ -206,210 +414,161 @@ dialog::backdrop{background:rgba(7,29,65,.5)}
       <section data-painel="config" class="hide">
         <div class="cartao">
           <div class="grade-conf">
-            <div><label for="cfNome">Nome da equipe</label><input id="cfNome"></div>
-            <div><label for="cfSetor">Setor</label><select id="cfSetor"></select></div>
+            <div><label for="cfNome">Nome da unidade</label><input id="cfNome"></div>
+            <div><label for="cfSetor">Tipo de negócio</label><select id="cfSetor"></select></div>
           </div>
-          <label>Dias abertos e mínimo de pessoas por dia</label>
+          <label>Dias abertos e mínimo de pessoas trabalhando em cada dia</label>
           <div class="dias-conf" id="cfDias"></div>
-          <div class="acoes"><button class="btn" id="btnSalvarCfg">Salvar</button><button class="link perigo" id="btnExcluir">Excluir equipe</button></div>
+          <div id="cfCriticas"></div>
+          <div class="form-linha" style="margin-top:12px">
+            <div><label for="cfAbre">Abre às</label><input id="cfAbre" type="time"></div>
+            <div><label for="cfFecha">Fecha às</label><input id="cfFecha" type="time"></div>
+            <div><label for="cfHoras">Horas por pessoa (sem o almoço)</label><input id="cfHoras" type="number" min="1" max="12" step="0.25"></div>
+          </div>
+          <p class="dica" style="margin-top:6px">8h por dia x 5 dias = 40h na semana: já dentro do limite final da nova lei.</p>
+          <div class="acoes edita"><button class="btn" id="btnSalvarCfg">Salvar</button><button class="link perigo" id="btnExcluir">Excluir unidade</button></div>
         </div>
       </section>
-    </div>
+    </section>
+
+    <!-- FÉRIAS E FALTAS -->
+    <section class="vista hide" id="v-ocorrencias">
+      <div class="topo"><div><h1>Férias e faltas</h1><p>Férias, atestados, faltas, afastamentos e banco de horas. Já aparecem na escala e no fechamento.</p></div><button class="btn edita" data-ir-oc>Lançar</button></div>
+      <div class="cartao form-linha" style="margin-bottom:14px">
+        <div><label for="ocMes">Mês</label><input id="ocMes" type="month"></div>
+        <div><label for="ocFiltroEq">Unidade</label><select id="ocFiltroEq"></select></div>
+        <div><label for="ocFiltroTipo">Tipo</label><select id="ocFiltroTipo"></select></div>
+      </div>
+      <div class="cartao rolagem" id="ocLista"></div>
+    </section>
+
+    <!-- FECHAMENTO -->
+    <section class="vista hide" id="v-fechamento">
+      <div class="topo"><div><h1>Fechamento do mês</h1><p id="fechSub"></p></div></div>
+      <div class="cartao form-linha sem-print" style="margin-bottom:14px">
+        <div><label for="fechMes">Mês</label><input id="fechMes" type="month"></div>
+        <div><label for="fechEq">Unidade</label><select id="fechEq"></select></div>
+        <div style="flex:0 0 auto"><button class="btn" id="btnCsv">Baixar planilha</button></div>
+        <div style="flex:0 0 auto"><button class="btn sec" id="btnImpFech">Imprimir</button></div>
+      </div>
+      <div class="cartao sem-print" id="fechStatus" style="margin-bottom:14px"></div>
+      <div id="fechAvisos" class="sem-print"></div>
+      <div class="cartao rolagem" id="fechResumo" style="margin-bottom:14px"></div>
+      <div class="cartao"><h3 class="sec-tit">Dia a dia</h3><div class="rolagem" id="fechEspelho"></div>
+        <div class="legenda"><span><i class="c-T"></i>T trabalha</span><span><i class="c-F"></i>F folga</span><span><i class="c-V"></i>FÉ férias</span><span><i class="c-M"></i>AT atestado</span><span><i class="c-X"></i>FA falta</span><span><i class="c-L"></i>AF afastamento</span><span><i class="c-E"></i>FX folga extra</span><span>Amarelo: feriado</span></div>
+      </div>
+    </section>
+
+    <!-- ESPAÇO DO CONTADOR -->
+    <section class="vista hide" id="v-contador">
+      <div class="topo"><div><h1>Espaço do contador</h1><p id="contSub">Todas as empresas que liberaram acesso para você.</p></div></div>
+      <div id="contEmpresas"></div>
+    </section>
+
+    <!-- CONTADOR E GESTORES -->
+    <section class="vista hide" id="v-acessos">
+      <div class="topo"><div><h1>Contador e gestores</h1><p>Seu contador vê as escalas, faltas e férias e baixa o fechamento do mês direto daqui, sem você mandar planilha. Gestores montam escalas das unidades.</p></div></div>
+      <form class="cartao" id="formMembro">
+        <div class="form-linha">
+          <div><label for="mEmail">E-mail</label><input id="mEmail" type="email" placeholder="contador@escritorio.com.br"></div>
+          <div><label for="mNome">Nome</label><input id="mNome" placeholder="Ex.: Carla (contabilidade)"></div>
+          <div><label for="mPapel">Acesso</label><select id="mPapel"><option value="contador">Contador: vê tudo e baixa o fechamento</option><option value="gestor">Gestor: monta escalas e lança faltas</option></select></div>
+          <div style="flex:0 0 auto"><button class="btn">Dar acesso</button></div>
+        </div>
+        <p class="erro" id="erroMembro"></p>
+        <div id="conviteBox"></div>
+      </form>
+      <div class="cartao rolagem" id="listaMembros" style="margin-top:14px"></div>
+    </section>
+
+    <!-- EMPRESA -->
+    <section class="vista hide" id="v-empresa">
+      <div class="topo"><div><h1>Empresa</h1><p>Esses dados aparecem no fechamento que vai para o contador.</p></div></div>
+      <form class="cartao" id="formEmpresa" style="max-width:760px;margin-bottom:14px">
+        <div class="form-linha">
+          <div style="flex:2 1 240px"><label for="emNome">Nome da empresa</label><input id="emNome"></div>
+          <div><label for="emCnpj">CNPJ (opcional)</label><input id="emCnpj" inputmode="numeric" placeholder="00.000.000/0000-00"></div>
+        </div>
+        <label for="emRazao">Razão social (opcional)</label><input id="emRazao">
+        <label>Porte</label><div class="opcoes" id="emPorte"></div>
+        <div class="form-linha" style="margin-top:12px">
+          <div><label for="emUf">Estado</label><select id="emUf"></select></div>
+          <div style="flex:2 1 220px"><label for="emCidade">Cidade</label><input id="emCidade"></div>
+        </div>
+        <label for="emFer">Feriados da sua cidade (dia/mês)</label><input id="emFer" placeholder="Ex.: 24/06, 08/12">
+        <p class="dica" style="margin-top:6px">Os feriados nacionais e do seu estado já entram sozinhos. Aqui ficam só os da cidade.</p>
+        <div class="acoes"><button class="btn">Salvar</button></div>
+        <p class="erro" id="erroEmpresa"></p>
+      </form>
+      <div class="cartao rolagem"><h3 class="sec-tit">Histórico de alterações</h3><div id="listaHist"></div></div>
+    </section>
+
+    <!-- MINHA CONTA -->
+    <section class="vista hide" id="v-conta">
+      <div class="topo"><div><h1>Minha conta</h1><p id="contaEmail"></p></div></div>
+      <form class="cartao" id="formConta" style="margin-bottom:14px;max-width:640px">
+        <label for="mcNome" style="margin-top:0">Nome</label><input id="mcNome" autocomplete="name">
+        <label for="mcZap">WhatsApp</label><input id="mcZap" inputmode="tel">
+        <div class="acoes"><button class="btn">Salvar</button></div>
+      </form>
+      <form class="cartao" id="formTrocaSenha" style="max-width:640px">
+        <h3 class="sec-tit">Trocar senha</h3>
+        <label for="mcAtual">Senha atual</label><input id="mcAtual" type="password" autocomplete="current-password">
+        <label for="mcNova">Senha nova (mínimo 6 caracteres)</label><input id="mcNova" type="password" autocomplete="new-password">
+        <p class="dica" style="margin-top:6px">Trocar a senha desconecta sua conta dos outros aparelhos.</p>
+        <div class="acoes"><button class="btn">Trocar senha</button></div>
+        <p class="erro" id="erroSenhaConta"></p>
+      </form>
+    </section>
   </main>
 </div>
 
-<dialog id="dlgNova">
-  <form method="dialog" id="formNova">
-    <h2>Nova equipe</h2>
-    <label for="nNome">Nome</label><input id="nNome" placeholder="Ex.: Loja Shopping Norte" required>
-    <label for="nSetor">Setor</label><select id="nSetor"></select>
-    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Criar</button></div>
+<dialog id="dlgEsqueci">
+  <form method="dialog" id="formEsqueci">
+    <h2>Esqueci minha senha</h2>
+    <p style="margin-top:6px">Digite o e-mail da sua conta (o mesmo da compra). Enviamos um link para você criar uma senha nova.</p>
+    <label for="eqEmail">E-mail</label><input id="eqEmail" type="email" autocomplete="email">
+    <p class="erro" id="erroEsqueci"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Fechar</button><button class="btn" value="ok" id="btnEsqueciEnviar">Enviar link</button></div>
   </form>
 </dialog>
 
-<script src="/scheduler.js"></script>
-<script>
-const DIAS = Escala.DIAS, SETORES = Escala.SETORES;
-const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let eu = null, equipes = [], atual = null, funcs = [], escalas = [], escalaAtual = null, semanaAtual = 0, modo = 'login', fixaNova = [];
+<dialog id="dlgOc">
+  <form method="dialog" id="formOc">
+    <h2>Lançar férias, falta ou atestado</h2>
+    <label for="ocFunc">Quem</label><select id="ocFunc"></select>
+    <label for="ocTipo">O que aconteceu</label><select id="ocTipo"></select>
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="ocIni" id="ocLblIni">De</label><input id="ocIni" type="date"></div>
+      <div id="ocFimBox"><label for="ocFim">Até</label><input id="ocFim" type="date"></div>
+      <div id="ocHorasBox" class="hide"><label for="ocHoras">Horas</label><input id="ocHoras" inputmode="decimal" placeholder="2 ou -1,5"></div>
+    </div>
+    <p class="dica" id="ocDica" style="margin-top:8px"></p>
+    <label for="ocObs">Observação (opcional)</label><input id="ocObs" maxlength="300" placeholder="Ex.: atestado entregue">
+    <p class="erro" id="ocErro"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok" id="btnOcSalvar">Salvar</button></div>
+  </form>
+</dialog>
 
-async function api(url, opts = {}) {
-  const r = await fetch(url, {method: opts.method || 'GET', headers: {'Content-Type': 'application/json'}, body: opts.body ? JSON.stringify(opts.body) : undefined});
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(j.erro || 'Erro'); e.status = r.status; throw e; }
-  return j;
-}
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
-const opcoesSetor = sel => sel.innerHTML = Object.entries(SETORES).map(([k, s]) => `<option value="${k}">${s.nome}</option>`).join('');
-opcoesSetor($('#cfSetor')); opcoesSetor($('#nSetor'));
+<dialog id="dlgFunc">
+  <form method="dialog" id="formEditFunc">
+    <h2>Editar pessoa</h2>
+    <label for="efNome">Nome</label><input id="efNome">
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="efCargo">Função</label><input id="efCargo" list="listaFuncoes"><datalist id="listaFuncoes"></datalist></div>
+      <div><label for="efMat">Matrícula (do contador)</label><input id="efMat"></div>
+    </div>
+    <div class="form-linha" style="margin-top:12px">
+      <div><label for="efAdm">Admissão</label><input id="efAdm" type="date"></div>
+      <div><label for="efTel">WhatsApp</label><input id="efTel" inputmode="tel"></div>
+    </div>
+    <label>Folga fixa (se combinada)</label><div class="dias-chip" id="efFixa"></div>
+    <p class="erro" id="efErro"></p>
+    <div class="dlg-acoes"><button class="btn sec" value="cancel" formnovalidate>Cancelar</button><button class="btn" value="ok">Salvar</button></div>
+  </form>
+</dialog>
 
-// ---------- entrada ----------
-$$('.abas button').forEach(b => b.onclick = () => {
-  modo = b.dataset.modo; $$('.abas button').forEach(x => x.classList.toggle('on', x === b));
-  $('.so-cad').classList.toggle('hide', modo !== 'cadastro');
-  $('#btnEntrar').textContent = modo === 'login' ? 'Entrar' : 'Criar conta';
-  $('#cSenha').autocomplete = modo === 'login' ? 'current-password' : 'new-password';
-});
-$('#formEntrada').onsubmit = async e => {
-  e.preventDefault(); $('#erroEntrada').textContent = ''; $('#btnEntrar').disabled = true;
-  try {
-    if (modo === 'login') await api('/api/login', {method: 'POST', body: {email: $('#cEmail').value, senha: $('#cSenha').value}});
-    else await api('/api/cadastro', {method: 'POST', body: {nome: $('#cNome').value, empresa: $('#cEmpresa').value, whatsapp: $('#cZap').value, email: $('#cEmail').value, senha: $('#cSenha').value}});
-    await iniciar();
-  } catch (err) { $('#erroEntrada').textContent = err.message; }
-  $('#btnEntrar').disabled = false;
-};
-$('#btnSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); location.reload(); };
-
-// ---------- painel ----------
-async function iniciar() {
-  try { eu = await api('/api/eu'); } catch { $('#telaEntrada').classList.remove('hide'); $('#telaPainel').classList.add('hide'); if (new URLSearchParams(location.search).has('cadastro')) $$('.abas button')[1].click(); return; }
-  $('#telaEntrada').classList.add('hide'); $('#telaPainel').classList.remove('hide');
-  $('#nomeEmpresa').textContent = eu.empresa;
-  $('#avisoPag').classList.toggle('hide', eu.acesso_liberado);
-  if (eu.checkout) $('#btnPagar').href = eu.checkout;
-  await carregaEquipes();
-}
-async function carregaEquipes(selecionar) {
-  equipes = await api('/api/equipes');
-  $('#listaEquipes').innerHTML = equipes.map(e => `<li><button data-id="${e.id}"><span>${esc(e.nome)}</span><small>${e.total}</small></button></li>`).join('');
-  $$('#listaEquipes button').forEach(b => b.onclick = () => abreEquipe(+b.dataset.id));
-  $('#semEquipe').classList.toggle('hide', equipes.length > 0);
-  $('#comEquipe').classList.toggle('hide', !equipes.length);
-  if (equipes.length) abreEquipe(selecionar || atual?.id || equipes[0].id);
-}
-async function abreEquipe(id) {
-  atual = equipes.find(e => e.id === id) || equipes[0];
-  $$('#listaEquipes button').forEach(b => b.classList.toggle('on', +b.dataset.id === atual.id));
-  $('#tEquipe').textContent = atual.nome;
-  $('#tSetor').textContent = SETORES[atual.setor]?.nome || '';
-  [funcs, escalas] = await Promise.all([api(`/api/equipes/${atual.id}/funcionarios`), api(`/api/equipes/${atual.id}/escalas`)]);
-  escalaAtual = escalas[0] || null; semanaAtual = 0;
-  desenhaFuncs(); desenhaEscala(); desenhaConfig();
-}
-$$('.tabs button').forEach(b => b.onclick = () => abreAba(b.dataset.aba));
-function abreAba(aba) {
-  $$('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.aba === aba));
-  $$('[data-painel]').forEach(p => p.classList.toggle('hide', p.dataset.painel !== aba));
-}
-
-// nova equipe
-const novaEquipe = () => { $('#nNome').value = ''; $('#dlgNova').showModal(); };
-$('#btnNova').onclick = novaEquipe; $('#btnPrimeira').onclick = novaEquipe;
-$('#formNova').onsubmit = async e => {
-  if (e.submitter?.value !== 'ok') return;
-  const nova = await api('/api/equipes', {method: 'POST', body: {nome: $('#nNome').value, setor: $('#nSetor').value}});
-  await carregaEquipes(nova.id); abreAba('funcionarios'); toast('Equipe criada. Agora cadastre os funcionários.');
-};
-
-// ---------- funcionários ----------
-function chipsFixa(el, sel, onChange) {
-  el.innerHTML = DIAS.map((d, i) => `<button type="button" data-d="${i}" class="${sel.includes(i) ? 'on' : ''}">${d}</button>`).join('');
-  el.querySelectorAll('button').forEach(b => b.onclick = () => {
-    const d = +b.dataset.d, i = sel.indexOf(d);
-    if (i >= 0) sel.splice(i, 1); else { if (sel.length >= 2) sel.shift(); sel.push(d); }
-    chipsFixa(el, sel, onChange); onChange?.(sel);
-  });
-}
-chipsFixa($('#fFixa'), fixaNova);
-$('#formFunc').onsubmit = async e => {
-  e.preventDefault();
-  const nomes = $('#fNome').value.split(/[\n;]+/).map(n => n.trim()).filter(Boolean);
-  if (!nomes.length) return $('#fNome').focus();
-  try {
-    await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: nomes.map(nome => ({nome, cargo: $('#fCargo').value, folga_fixa: fixaNova}))});
-    $('#fNome').value = ''; fixaNova.length = 0; chipsFixa($('#fFixa'), fixaNova);
-    funcs = await api(`/api/equipes/${atual.id}/funcionarios`); desenhaFuncs(); carregaContagem();
-  } catch (err) { toast(err.message); }
-};
-function desenhaFuncs() {
-  $('#listaFunc').innerHTML = funcs.length ? funcs.map(f => `<li>
-    <div><b>${esc(f.nome)}</b> ${f.cargo ? `<small>· ${esc(f.cargo)}</small>` : ''}</div>
-    <div>${f.folga_fixa.length ? `<span class="tag">Folga fixa: ${f.folga_fixa.map(d => DIAS[d]).join(' e ')}</span>` : ''}</div>
-    <button class="link perigo" data-del="${f.id}">Remover</button></li>`).join('')
-    : `<li><span class="mut">Nenhum funcionário ainda. Dica: cole vários nomes separados por ponto e vírgula.</span></li>`;
-  $$('[data-del]').forEach(b => b.onclick = async () => {
-    await api(`/api/funcionarios/${b.dataset.del}`, {method: 'DELETE'});
-    funcs = funcs.filter(f => f.id !== +b.dataset.del); desenhaFuncs(); carregaContagem();
-  });
-}
-async function carregaContagem() {
-  equipes = await api('/api/equipes');
-  $$('#listaEquipes button').forEach(b => { const e = equipes.find(x => x.id === +b.dataset.id); if (e) b.querySelector('small').textContent = e.total; });
-}
-
-// ---------- configuração ----------
-let cfg = null;
-function desenhaConfig() {
-  cfg = {nome: atual.nome, setor: atual.setor, abertos: [...atual.abertos], minimo: [...atual.minimo]};
-  $('#cfNome').value = cfg.nome; $('#cfSetor').value = cfg.setor;
-  $('#cfDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${cfg.abertos[i] ? 'on' : ''}" data-i="${i}">${d}</button><input type="number" min="0" max="200" value="${cfg.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${cfg.abertos[i] ? '' : 'disabled'}></div>`).join('');
-  $$('#cfDias .tg').forEach(b => b.onclick = () => { const i = +b.dataset.i; cfg.abertos[i] = cfg.abertos[i] ? 0 : 1; b.classList.toggle('on'); $(`[data-m="${i}"]`).disabled = !cfg.abertos[i]; });
-  $$('#cfDias input').forEach(inp => inp.oninput = () => cfg.minimo[+inp.dataset.m] = +inp.value || 0);
-}
-$('#cfSetor').onchange = () => { const s = SETORES[$('#cfSetor').value]; atual = {...atual, setor: $('#cfSetor').value, abertos: [...s.abertos], minimo: [...s.minimo]}; desenhaConfig(); $('#cfNome').value = cfg.nome; };
-$('#btnSalvarCfg').onclick = async () => {
-  const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value}});
-  await carregaEquipes(e.id); toast('Configuração salva.');
-};
-$('#btnExcluir').onclick = async () => {
-  if (!confirm(`Excluir a equipe "${atual.nome}" com todos os funcionários e escalas?`)) return;
-  await api(`/api/equipes/${atual.id}`, {method: 'DELETE'}); atual = null; await carregaEquipes();
-};
-
-// ---------- escala ----------
-const proxSegunda = () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); };
-$('#eInicio').value = proxSegunda();
-$('#btnGerar').onclick = async () => {
-  if (!funcs.length) { abreAba('funcionarios'); return toast('Cadastre os funcionários primeiro.'); }
-  $('#btnGerar').disabled = true;
-  try {
-    escalaAtual = await api(`/api/equipes/${atual.id}/escalas`, {method: 'POST', body: {inicio: $('#eInicio').value, semanas: +$('#eSemanas').value}});
-    escalas.unshift(escalaAtual); semanaAtual = 0; desenhaEscala(); toast('Escala gerada.');
-  } catch (err) { toast(err.message); if (err.status === 402) $('#avisoPag').classList.remove('hide'); }
-  $('#btnGerar').disabled = false;
-};
-function dataDia(inicio, s, d) { const x = new Date(inicio + 'T12:00:00'); x.setDate(x.getDate() + s * 7 + d); return x.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}); }
-function tabelaSemana(e, s, editavel) {
-  const sem = e.dados[s];
-  return `<table class="esc"><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d}<small>${dataDia(e.inicio.slice(0, 10), s, i)}</small></th>`).join('')}</tr></thead><tbody>
-  ${sem.map((dias, f) => `<tr><td>${esc(e.funcionarios[f]?.nome)}${e.funcionarios[f]?.cargo ? `<small>${esc(e.funcionarios[f].cargo)}</small>` : ''}</td>
-    ${dias.map((c, d) => !e.abertos[d] ? '<td class="X">fechado</td>' : `<td class="${c}" ${editavel ? `data-f="${f}" data-d="${d}" title="Clique para trocar"` : ''}>${c === 'F' ? 'Folga' : 'Trabalha'}</td>`).join('')}</tr>`).join('')}
-  <tr class="tot"><td>Presentes / mínimo</td>${DIAS.map((_, d) => { if (!e.abertos[d]) return '<td class="X">—</td>'; const p = sem.filter(x => x[d] === 'T').length; return `<td class="${p >= e.minimo[d] ? 'ok' : 'baixo'}">${p} / ${e.minimo[d]}</td>`; }).join('')}</tr>
-  </tbody></table>`;
-}
-function desenhaEscala() {
-  const a = $('#areaEscala');
-  if (!escalaAtual) {
-    a.innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma escala gerada ainda</h2><p>${funcs.length ? `${funcs.length} funcionário(s) cadastrado(s). Escolha a data de início e clique em <b>Gerar escala</b>.` : 'Cadastre os funcionários na aba <b>Funcionários</b> e volte aqui.'}</p></div>`;
-    return;
-  }
-  const e = escalaAtual, sem = e.dados[semanaAtual];
-  const descobertos = e.dados.some(s => DIAS.some((_, d) => e.abertos[d] && s.filter(x => x[d] === 'T').length < e.minimo[d]));
-  a.innerHTML = `
-    ${e.alertas.length ? `<div class="alertas">${e.alertas.slice(0, 4).map(x => `<div class="alerta">${esc(x)}</div>`).join('')}</div>` : ''}
-    ${descobertos ? '' : '<div class="trava">Trava de Cobertura: todos os dias com o mínimo de pessoas ou mais.</div>'}
-    <div class="semanas">${e.dados.map((_, i) => `<button data-s="${i}" class="${i === semanaAtual ? 'on' : ''}">Semana ${i + 1}</button>`).join('')}</div>
-    <div class="rolagem sem-print">${tabelaSemana(e, semanaAtual, true)}</div>
-    <div class="hide todas-semanas">${e.dados.map((_, i) => `<div class="semana-print hide"><h3>Semana ${i + 1}</h3>${tabelaSemana(e, i, false)}</div>`).join('')}</div>
-    <div class="legenda"><span><i style="background:var(--azul-claro)"></i>Trabalha</span><span><i style="background:var(--amarelo)"></i>Folga</span><span>Clique em um dia para trocar trabalho e folga.</span></div>
-    <div class="acoes"><button class="btn sec" id="btnImprimir">Imprimir</button><button class="btn sec" id="btnZap">Copiar para o WhatsApp</button></div>
-    <p class="hist">Gerada em ${new Date(e.criado_em).toLocaleString('pt-BR')} · ${escalas.length} escala(s) salvas nesta equipe</p>`;
-  $$('.semanas button').forEach(b => b.onclick = () => { semanaAtual = +b.dataset.s; desenhaEscala(); });
-  $$('#areaEscala td[data-f]').forEach(td => td.onclick = async () => {
-    const r = await api(`/api/escalas/${e.id}`, {method: 'PATCH', body: {semana: semanaAtual, funcionario: +td.dataset.f, dia: +td.dataset.d}});
-    e.dados = r.dados; desenhaEscala();
-  });
-  $('#btnImprimir').onclick = () => { $('.todas-semanas').classList.remove('hide'); window.print(); $('.todas-semanas').classList.add('hide'); };
-  $('#btnZap').onclick = async () => {
-    let t = `*${atual.nome} — Escala 5x2*\n`;
-    e.dados.forEach((s, i) => { t += `\n*Semana ${i + 1}* (a partir de ${dataDia(e.inicio.slice(0, 10), i, 0)})\n`;
-      s.forEach((dias, f) => t += `${e.funcionarios[f].nome}: folga ${dias.map((c, d) => c === 'F' && e.abertos[d] ? DIAS[d] : null).filter(Boolean).join(' e ') || '—'}\n`); });
-    try { await navigator.clipboard.writeText(t); toast('Escala copiada. Cole no grupo da equipe.'); } catch { window.open('https://wa.me/?text=' + encodeURIComponent(t)); }
-  };
-}
-iniciar();
-</script>
+<script src="/scheduler.js?v=6"></script>
+<script src="/app.js?v=6"></script>
 </body>
 </html>

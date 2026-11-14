@@ -57,3 +57,133 @@ create table if not exists compras (
   criado_em timestamptz not null default now(),
   origem text
 );
+
+-- ---------- v2: entrega de acesso após a compra ----------
+-- conta criada pela compra ainda não tem senha (a pessoa define pelo link do e-mail)
+alter table usuarios alter column senha_hash drop not null;
+alter table usuarios alter column empresa drop not null;
+alter table usuarios add column if not exists sessao_v int not null default 0;
+alter table usuarios add column if not exists origem text;
+alter table usuarios add column if not exists ultimo_acesso timestamptz;
+
+alter table compras add column if not exists status text not null default 'aprovada';
+alter table compras add column if not exists nome text;
+alter table compras add column if not exists transacao text;
+alter table compras add column if not exists atualizado_em timestamptz not null default now();
+
+-- todo evento recebido do checkout fica guardado (auditoria e suporte)
+create table if not exists pagamentos_eventos (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  email text,
+  acao text not null,           -- liberar | bloquear | ignorar | erro
+  evento text,
+  plataforma text,
+  payload jsonb
+);
+create index if not exists pagamentos_eventos_email_idx on pagamentos_eventos (email, criado_em desc);
+
+-- links de criar/redefinir senha (guarda só o hash do token)
+create table if not exists acesso_tokens (
+  token_hash text primary key,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  criado_em timestamptz not null default now(),
+  expira_em timestamptz not null,
+  usado_em timestamptz
+);
+create index if not exists acesso_tokens_usuario_idx on acesso_tokens (usuario_id);
+
+-- fila de e-mails: tenta de novo se o SMTP falhar
+create table if not exists emails (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  para text not null,
+  assunto text not null,
+  html text not null,
+  texto text not null,
+  tentativas int not null default 0,
+  proxima_em timestamptz not null default now(),
+  enviado_em timestamptz,
+  erro text
+);
+create index if not exists emails_pendentes_idx on emails (proxima_em) where enviado_em is null;
+
+-- ---------- v3: gestão completa ----------
+alter table funcionarios add column if not exists matricula text;
+alter table funcionarios add column if not exists admissao date;
+alter table funcionarios add column if not exists telefone text;
+
+-- pessoas com acesso à empresa (conta) de outro usuário: gestor (edita) ou contador (consulta e relatórios)
+create table if not exists membros (
+  id serial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  papel text not null check (papel in ('gestor', 'contador')),
+  criado_em timestamptz not null default now(),
+  unique (conta_id, usuario_id)
+);
+create index if not exists membros_usuario_idx on membros (usuario_id);
+
+-- férias, atestado, falta, afastamento, folga extra, banco de horas
+create table if not exists ocorrencias (
+  id serial primary key,
+  funcionario_id int not null references funcionarios(id) on delete cascade,
+  tipo text not null,
+  inicio date not null,
+  fim date not null,
+  horas numeric(6,2),
+  obs text,
+  criado_por int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now()
+);
+create index if not exists ocorrencias_func_idx on ocorrencias (funcionario_id, inicio);
+
+-- quem mudou o quê (aparece no histórico da empresa)
+create table if not exists auditoria (
+  id bigserial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now(),
+  acao text not null
+);
+create index if not exists auditoria_conta_idx on auditoria (conta_id, id desc);
+
+-- ---------- v4: integração contábil e acesso do funcionário ----------
+-- dados da empresa e códigos dos eventos da folha (rubricas do sistema do contador)
+create table if not exists empresa_config (
+  conta_id int primary key references usuarios(id) on delete cascade,
+  razao_social text,
+  cnpj text,
+  eventos jsonb not null default '{}'::jsonb,
+  api_prefixo text,
+  api_hash text unique,
+  api_criado_em timestamptz,
+  atualizado_em timestamptz not null default now()
+);
+
+-- mês fechado: trava alterações e guarda os números como foram entregues ao contador
+create table if not exists fechamentos (
+  conta_id int not null references usuarios(id) on delete cascade,
+  mes text not null,
+  fechado_em timestamptz not null default now(),
+  fechado_por int references usuarios(id) on delete set null,
+  dados jsonb not null,
+  primary key (conta_id, mes)
+);
+
+-- link da escala para os funcionários (só leitura, sem login)
+alter table equipes add column if not exists link_token text unique;
+
+-- ---------- v5: primeiro acesso guiado, porte, estado e feriados da cidade ----------
+alter table empresa_config add column if not exists porte text;
+alter table empresa_config add column if not exists uf text;
+alter table empresa_config add column if not exists cidade text;
+alter table empresa_config add column if not exists feriados_locais text[] not null default '{}';
+alter table equipes add column if not exists horas_dia numeric(4,2) not null default 8;
+
+-- ---------- v6: escala que se adapta ao segmento ----------
+alter table equipes add column if not exists abre text;
+alter table equipes add column if not exists fecha text;
+-- função que não pode faltar no dia (ex.: farmacêutico): [{ nome, chave, minimo: [7] }]
+alter table equipes add column if not exists criticas jsonb not null default '[]'::jsonb;
+alter table empresa_config add column if not exists segmento text;

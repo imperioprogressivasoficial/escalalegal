@@ -1,0 +1,24 @@
+name: Testes
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: escala, POSTGRES_PASSWORD: escala, POSTGRES_DB: escala }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U escala" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - run: npm test
+        working-directory: app
+        env:
+          DATABASE_URL: postgres://escala:escala@localhost:5432/escala
