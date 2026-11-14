@@ -169,6 +169,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
 .tab th{color:var(--mut);font-weight:600;font-size:.78rem;white-space:nowrap}
 .tab td.n,.tab th.n{text-align:right;font-variant-numeric:tabular-nums}
 .tab tr:hover td{background:#fafbfc}
+#fechResumo td:nth-child(-n+3){white-space:nowrap}
 .espelho{border-collapse:collapse;font-size:.7rem}
 .espelho th,.espelho td{border:1px solid var(--linha);padding:4px 2px;text-align:center;min-width:26px}
 .espelho th{font-weight:600;color:var(--mut)}
@@ -181,6 +182,17 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
 .convite{background:var(--verde-claro);border-radius:10px;padding:12px 14px;margin-top:12px;color:#0f5c17}
 .badge-ok{color:var(--verde);font-weight:700}.badge-esp{color:#8a5a00;font-weight:700}
 
+.baixar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.opcao{text-align:left;border:1px solid var(--linha);background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;display:grid;gap:4px}
+.opcao:hover{border-color:var(--azul);background:var(--azul-claro)}
+.opcao b{color:var(--tinta)}.opcao span{color:var(--mut);font-size:.84rem}
+.status-mes{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.selo{display:inline-block;border-radius:99px;padding:4px 12px;font-weight:700;font-size:.85rem}
+.selo.aberto{background:var(--amarelo-claro);color:#5a4500}.selo.fechado{background:var(--verde-claro);color:var(--verde)}
+pre.codigo{background:#0c1b33;color:#d6e0f0;border-radius:8px;padding:12px;font-size:.8rem;overflow-x:auto;white-space:pre}
+.chave{font-family:ui-monospace,monospace;background:var(--amarelo-claro);border:1px solid #f0d97a;border-radius:8px;padding:10px;word-break:break-all;margin:8px 0}
+
+.passos{margin:10px 0 0;padding-left:20px;display:grid;gap:6px}.passos li.ok{color:var(--verde)}.passos s{color:var(--mut)}
 @media(max-width:860px){
   .entrada{grid-template-columns:1fr}.entrada-lado{padding:28px 22px}.entrada-lado img{width:110px}
   .painel{grid-template-columns:minmax(0,1fr)}
@@ -250,6 +262,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
       <button data-ir="ocorrencias">Férias, faltas e atestados</button>
       <button data-ir="fechamento">Fechamento do mês</button>
       <button data-ir="acessos" class="so-dono">Acessos</button>
+      <button data-ir="configuracoes" class="nao-gestor">Configurações</button>
       <button data-ir="historico">Histórico</button>
     </nav>
     <div>
@@ -257,7 +270,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
       <ul class="equipes" id="listaEquipes"></ul>
     </div>
     <button class="nova edita" id="btnNova">+ Nova equipe</button>
-    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><span id="papelEu"></span><br><button class="link" id="btnSair">Sair</button></div></div>
+    <div class="lat-pe"><img src="/img/mascote.svg" alt=""><div><b id="nomeEmpresa"></b><span id="papelEu"></span><br><button class="link" data-ir="conta">Minha conta</button> · <button class="link" id="btnSair">Sair</button></div></div>
   </aside>
   <main class="principal">
     <div class="aviso-pag hide" id="avisoPag"><span id="avisoPagTxt">Seu acesso ainda não foi liberado. Conclua o pagamento para gerar escalas.</span><a class="btn pq so-dono" id="btnPagar" href="#" target="_blank" rel="noopener">Liberar acesso por R$ 47</a></div>
@@ -272,6 +285,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
         <p>Crie uma equipe (uma loja, um setor, um turno) e cadastre os funcionários.</p>
         <button class="btn edita" id="btnPrimeira">Criar primeira equipe</button>
       </div>
+      <div class="cartao hide" id="passos" style="margin-bottom:14px"></div>
       <div class="visao" id="visaoConteudo">
         <div class="grade-eq" id="vEquipes"></div>
         <aside class="cartao"><h3 class="sec-tit">Próximos 30 dias</h3><ul class="prox" id="vProx"></ul></aside>
@@ -332,8 +346,17 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
       <div class="cartao form-linha sem-print" style="margin-bottom:14px">
         <div><label for="fechMes">Mês</label><input id="fechMes" type="month"></div>
         <div><label for="fechEq">Equipe</label><select id="fechEq"></select></div>
-        <div style="flex:0 0 auto"><button class="btn" id="btnCsv">Baixar planilha (Excel)</button></div>
         <div style="flex:0 0 auto"><button class="btn sec" id="btnImpFech">Imprimir</button></div>
+      </div>
+      <div class="cartao sem-print" id="fechStatus" style="margin-bottom:14px"></div>
+      <div class="cartao sem-print" style="margin-bottom:14px">
+        <h3 class="sec-tit">Enviar para a contabilidade</h3>
+        <div class="baixar">
+          <button class="opcao" data-baixar="csv"><b>Planilha completa</b><span>Excel / Google Planilhas. Resumo por funcionário e dia a dia do mês.</span></button>
+          <button class="opcao" data-baixar="eventos"><b>Arquivo de eventos da folha</b><span>CSV com competência, matrícula, código do evento e quantidade.</span></button>
+          <button class="opcao" data-baixar="eventos-simples"><b>Eventos em TXT simples</b><span>matrícula;código;quantidade, sem cabeçalho. Para importar direto no sistema da folha.</span></button>
+        </div>
+        <div id="fechAvisos"></div>
       </div>
       <div class="cartao rolagem" id="fechResumo" style="margin-bottom:14px"></div>
       <div class="cartao"><h3 class="sec-tit">Espelho do mês</h3><div class="rolagem" id="fechEspelho"></div>
@@ -355,6 +378,44 @@ table.tab{width:100%;border-collapse:collapse;font-size:.88rem}
         <div id="conviteBox"></div>
       </form>
       <div class="cartao rolagem" id="listaMembros" style="margin-top:14px"></div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section class="vista hide" id="v-configuracoes">
+      <div class="topo"><div><h1>Configurações</h1><p>Dados da empresa e ligação com a contabilidade.</p></div></div>
+      <form class="cartao" id="formEmpresa" style="margin-bottom:14px">
+        <h3 class="sec-tit">Dados da empresa</h3>
+        <div class="form-linha">
+          <div style="flex:2 1 260px"><label for="cfgRazao">Razão social</label><input id="cfgRazao" placeholder="Ex.: Loja Modelo Comércio LTDA"></div>
+          <div><label for="cfgCnpj">CNPJ</label><input id="cfgCnpj" inputmode="numeric" placeholder="00.000.000/0000-00"></div>
+        </div>
+        <h3 class="sec-tit" style="margin-top:22px">Códigos dos eventos da folha</h3>
+        <p class="dica">Use os códigos (rubricas) do sistema de folha da sua contabilidade. Deixe em branco o que não deve ir no arquivo. O contador também pode preencher esta parte.</p>
+        <table class="tab" style="margin-top:8px;max-width:640px"><thead><tr><th>Evento</th><th>Unidade</th><th style="width:150px">Código na folha</th></tr></thead><tbody id="cfgEventos"></tbody></table>
+        <div class="acoes"><button class="btn">Salvar configurações</button></div>
+        <p class="erro" id="erroEmpresa"></p>
+      </form>
+      <div class="cartao so-dono" id="cfgApi"></div>
+    </section>
+
+    <!-- MINHA CONTA -->
+    <section class="vista hide" id="v-conta">
+      <div class="topo"><div><h1>Minha conta</h1><p id="contaEmail"></p></div></div>
+      <form class="cartao" id="formConta" style="margin-bottom:14px;max-width:640px">
+        <h3 class="sec-tit">Seus dados</h3>
+        <label for="mcNome">Nome</label><input id="mcNome" autocomplete="name">
+        <label for="mcZap">WhatsApp</label><input id="mcZap" inputmode="tel">
+        <div id="mcEmpresaBox"><label for="mcEmpresa">Nome da empresa (como aparece no sistema)</label><input id="mcEmpresa" autocomplete="organization"></div>
+        <div class="acoes"><button class="btn">Salvar</button></div>
+      </form>
+      <form class="cartao" id="formTrocaSenha" style="max-width:640px">
+        <h3 class="sec-tit">Trocar senha</h3>
+        <label for="mcAtual">Senha atual</label><input id="mcAtual" type="password" autocomplete="current-password">
+        <label for="mcNova">Senha nova (mínimo 6 caracteres)</label><input id="mcNova" type="password" autocomplete="new-password">
+        <p class="dica" style="margin-top:6px">Trocar a senha desconecta sua conta dos outros celulares e computadores.</p>
+        <div class="acoes"><button class="btn">Trocar senha</button></div>
+        <p class="erro" id="erroSenhaConta"></p>
+      </form>
     </section>
 
     <!-- HISTÓRICO -->
@@ -521,6 +582,7 @@ async function iniciar() {
   gravarConta(conta.id);
   document.body.classList.toggle('so-leitura', conta.papel === 'contador');
   $$('.so-dono').forEach(x => x.classList.toggle('hide', conta.papel !== 'dono'));
+  $$('.nao-gestor').forEach(x => x.classList.toggle('hide', conta.papel === 'gestor'));
   $('#contaSel').classList.toggle('hide', eu.contas.length < 2);
   $('#selConta').innerHTML = eu.contas.map(c => `<option value="${c.id}" ${c.id === conta.id ? 'selected' : ''}>${esc(c.empresa || 'Minha empresa')}${c.papel !== 'dono' ? ` (${PAPEL[c.papel]})` : ''}</option>`).join('');
   $('#selConta').onchange = () => { gravarConta(+$('#selConta').value); location.hash = 'visao'; location.reload(); };
@@ -544,7 +606,7 @@ document.addEventListener('click', e => {
 async function rota() {
   if (!conta) return;
   let [v, id, aba] = (location.hash.slice(1) || 'visao').split('/');
-  if (!document.getElementById('v-' + v) || (v === 'acessos' && conta.papel !== 'dono')) v = 'visao';
+  if (!document.getElementById('v-' + v) || (v === 'acessos' && conta.papel !== 'dono') || (v === 'configuracoes' && conta.papel === 'gestor')) v = 'visao';
   if (v === 'equipe' && !equipes.some(e => e.id === +id)) v = 'visao';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
   $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.ir === v));
@@ -557,6 +619,8 @@ async function rota() {
     else if (v === 'fechamento') await telaFechamento();
     else if (v === 'acessos') await telaAcessos();
     else if (v === 'historico') await telaHistorico();
+    else if (v === 'configuracoes') await telaConfiguracoes();
+    else if (v === 'conta') telaConta();
   } catch (err) { toast(err.message); }
 }
 
@@ -577,7 +641,23 @@ $('#formNova').onsubmit = async e => {
 };
 
 // ---------- visão geral ----------
+async function primeirosPassos() {
+  if (conta.papel !== 'dono') return $('#passos').classList.add('hide');
+  const [membros, emp] = await Promise.all([api('/api/membros'), api('/api/empresa')]);
+  const p = [
+    ['Criar uma equipe', equipes.length > 0, 'visao', 'btnPrimeira'],
+    ['Cadastrar os funcionários', equipes.some(e => e.total > 0), equipes[0] ? `equipe/${equipes[0].id}/funcionarios` : 'visao'],
+    ['Gerar a primeira escala', equipes.some(e => e.ultima), equipes[0] ? `equipe/${equipes[0].id}` : 'visao'],
+    ['Dar acesso ao seu contador', membros.some(m => m.papel === 'contador'), 'acessos'],
+    ['Informar os códigos da folha (você ou o contador)', Object.keys(emp.eventos || {}).length > 0, 'configuracoes'],
+  ];
+  const feitos = p.filter(x => x[1]).length;
+  $('#passos').classList.toggle('hide', feitos === p.length);
+  $('#passos').innerHTML = `<div class="eq-top"><h3>Primeiros passos</h3><span class="dica">${feitos} de ${p.length}</span></div>
+    <ol class="passos">${p.map(([t, ok, rota]) => `<li class="${ok ? 'ok' : ''}">${ok ? `<s>${t}</s>` : `<button class="link" data-ir="${rota}">${t}</button>`}</li>`).join('')}</ol>`;
+}
 async function telaVisao() {
+  primeirosPassos().catch(() => {});
   const h = new Date().getHours();
   $('#vOla').textContent = `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}, ${(eu.nome || '').split(' ')[0]}`;
   $('#semEquipe').classList.toggle('hide', equipes.length > 0);
@@ -744,7 +824,7 @@ function desenhaEscala() {
     <div class="rolagem sem-print">${tabelaSemana(e, semanaAtual, editavel)}</div>
     <div class="hide todas-semanas">${e.dados.map((_, i) => `<div class="semana-print hide"><h3>${esc(atual.nome)} · Semana ${i + 1}</h3>${tabelaSemana(e, i, false)}</div>`).join('')}</div>
     <div class="legenda"><span><i style="background:var(--azul-claro)"></i>Trabalha</span><span><i style="background:var(--amarelo)"></i>Folga</span><span><i style="background:#ece7fb"></i>Férias, atestado, falta</span>${editavel ? '<span>Clique em um dia para trocar trabalho e folga.</span>' : ''}</div>
-    <div class="acoes"><button class="btn sec" id="btnImprimir">Imprimir</button><button class="btn sec" id="btnZap">Copiar para o WhatsApp</button></div>
+    <div class="acoes"><button class="btn sec" id="btnImprimir">Imprimir</button><button class="btn sec" id="btnZap">Copiar para o WhatsApp</button>${editavel ? '<button class="btn sec" id="btnLinkEq">Link para a equipe</button>' : ''}</div>
     <p class="hist">Gerada em ${new Date(e.criado_em).toLocaleString('pt-BR')} · ${escalas.length} escala(s) salvas nesta equipe</p>`;
   $$('.semanas button').forEach(b => b.onclick = () => { semanaAtual = +b.dataset.s; desenhaEscala(); });
   $$('#areaEscala td.A').forEach(td => td.onclick = () => toast('Esse dia tem uma ocorrência lançada. Para mudar, apague em "Férias, faltas e atestados".'));
@@ -754,6 +834,13 @@ function desenhaEscala() {
       e.dados = r.dados; desenhaEscala();
     } catch (err) { toast(err.message); }
   });
+  if ($('#btnLinkEq')) $('#btnLinkEq').onclick = async () => {
+    try {
+      const {link} = await api(`/api/equipes/${atual.id}/link`, {method: 'POST', body: {}});
+      try { await navigator.clipboard.writeText(link); toast('Link copiado. Mande no grupo: cada um escolhe o nome e vê as próprias folgas.'); }
+      catch { prompt('Link da escala para a equipe:', link); }
+    } catch (err) { toast(err.message); }
+  };
   $('#btnImprimir').onclick = () => { $('.todas-semanas').classList.remove('hide'); window.print(); $('.todas-semanas').classList.add('hide'); };
   $('#btnZap').onclick = async () => {
     let t = `*${atual.nome} — Escala 5x2*\n`;
@@ -834,7 +921,27 @@ async function telaFechamento() {
   opcoesEquipe($('#fechEq'), 'Todas as equipes');
   fech = await api(`/api/relatorio?mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`);
   const nomeMes = new Date(fech.de + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
-  $('#fechSub').textContent = `${fech.empresa || ''} · ${nomeMes}`;
+  $('#fechSub').textContent = `${fech.empresa || ''}${fech.cnpj ? ' · CNPJ ' + fech.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : ''} · ${nomeMes}`;
+  const nomeMesCurto = $('#fechMes').value.split('-').reverse().join('/');
+  const futuro = $('#fechMes').value > mesAtual();
+  $('#fechStatus').innerHTML = fech.fechado
+    ? `<div class="status-mes"><div><span class="selo fechado">Mês fechado</span> <span class="dica">em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números estão congelados e escalas, férias e faltas deste mês não podem mais ser alteradas.</span></div>${conta.papel === 'dono' ? '<button class="btn sec pq" id="btnReabrir">Reabrir mês</button>' : ''}</div>`
+    : `<div class="status-mes"><div><span class="selo aberto">Mês aberto</span> <span class="dica">${futuro ? 'Este mês ainda não começou.' : 'Confira os números e feche o mês para enviar à contabilidade. Depois de fechado, ninguém altera mais as escalas deste mês.'}</span></div>${podeEditar() && !futuro ? '<button class="btn pq" id="btnFecharMes">Fechar mês e avisar o contador</button>' : ''}</div>`;
+  if ($('#btnFecharMes')) $('#btnFecharMes').onclick = async () => {
+    const semEscala = fech.linhas.filter(l => l.sem_escala).length;
+    if (semEscala && !confirm(`Atenção: ${semEscala} funcionário(s) têm dias sem escala em ${nomeMesCurto}. Esses dias vão para o contador como "sem escala". Gere as escalas que faltam antes de fechar.\n\nFechar mesmo assim?`)) return;
+    if (!confirm(`Fechar ${nomeMesCurto}? Os números ficam congelados, o contador recebe um e-mail e as escalas do mês não podem mais ser alteradas.`)) return;
+    try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? `Mês fechado. ${r.contadores_avisados} contador(es) avisado(s) por e-mail.` : 'Mês fechado. Dica: dê acesso ao seu contador em Acessos.'); telaFechamento(); }
+    catch (err) { toast(err.message); }
+  };
+  if ($('#btnReabrir')) $('#btnReabrir').onclick = async () => {
+    if (!confirm(`Reabrir ${nomeMesCurto}? Será possível alterar escalas e ocorrências do mês. Feche de novo e avise o contador depois.`)) return;
+    await api('/api/fechamentos/' + $('#fechMes').value, {method: 'DELETE'}); toast('Mês reaberto.'); telaFechamento();
+  };
+  const avisos = [];
+  if (!fech.eventos_configurados) avisos.push(`Os códigos dos eventos da folha ainda não foram informados.${conta.papel !== 'gestor' ? ' <button class="link" data-ir="configuracoes">Informar agora</button>' : ''}`);
+  if (fech.sem_matricula) avisos.push(`${fech.sem_matricula} funcionário(s) sem matrícula. Sem matrícula o sistema da folha não reconhece a pessoa: preencha em Funcionários › Editar.`);
+  $('#fechAvisos').innerHTML = avisos.map(x => `<div class="alerta" style="margin-top:10px">${x}</div>`).join('');
   const L = fech.linhas;
   if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Nenhum funcionário neste filtro.</p>'; $('#fechEspelho').innerHTML = ''; return; }
   const n = v => v ? `<b>${v}</b>` : '<span class="dica">0</span>';
@@ -849,17 +956,23 @@ async function telaFechamento() {
 }
 ['#fechMes', '#fechEq'].forEach(s => $(s).onchange = () => telaFechamento());
 $('#btnImpFech').onclick = () => { document.body.classList.add('print-fech'); window.print(); document.body.classList.remove('print-fech'); };
-$('#btnCsv').onclick = async () => {
-  $('#btnCsv').disabled = true;
-  try {
-    const r = await fetch(`/api/relatorio?formato=csv&mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`, {headers: {'x-conta': conta.id}});
-    if (!r.ok) throw new Error('Não foi possível gerar a planilha.');
-    const url = URL.createObjectURL(await r.blob()), a = document.createElement('a');
-    a.href = url; a.download = `fechamento-${$('#fechMes').value}.csv`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast('Planilha baixada. Abra no Excel ou no Google Planilhas.');
-  } catch (err) { toast(err.message); }
-  $('#btnCsv').disabled = false;
-};
+async function baixar(formato) {
+  const layout = formato === 'eventos-simples' ? '&layout=simples' : '';
+  const fmt = formato === 'csv' ? 'csv' : 'eventos';
+  const r = await fetch(`/api/relatorio?formato=${fmt}${layout}&mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`, {headers: {'x-conta': conta.id}});
+  if (!r.ok) throw new Error('Não foi possível gerar o arquivo.');
+  const nome = (/filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '') || [])[1] || 'fechamento.csv';
+  const url = URL.createObjectURL(await r.blob()), a = document.createElement('a');
+  a.href = url; a.download = nome; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+$$('[data-baixar]').forEach(b => b.onclick = async () => {
+  if (b.dataset.baixar !== 'csv' && fech && !fech.eventos_configurados) {
+    toast('Primeiro informe os códigos dos eventos em Configurações.'); if (conta.papel !== 'gestor') ir('configuracoes'); return;
+  }
+  b.disabled = true;
+  try { await baixar(b.dataset.baixar); toast('Arquivo baixado.'); } catch (err) { toast(err.message); }
+  b.disabled = false;
+});
 
 // ---------- acessos ----------
 async function telaAcessos() {
@@ -882,6 +995,71 @@ $('#formMembro').onsubmit = async e => {
     if (r.link) $('#btnCopiaConvite').onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast('Link copiado.'); } catch { prompt('Link de acesso:', r.link); } };
     $('#mEmail').value = $('#mNome').value = ''; telaAcessos();
   } catch (err) { $('#erroMembro').textContent = err.message; }
+};
+
+// ---------- configurações ----------
+async function telaConfiguracoes() {
+  const c = await api('/api/empresa');
+  const dono = conta.papel === 'dono';
+  $('#cfgRazao').value = c.razao_social; $('#cfgCnpj').value = c.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  $('#cfgRazao').disabled = $('#cfgCnpj').disabled = !dono;
+  $('#cfgEventos').innerHTML = c.catalogo.map(e => `<tr><td>${esc(e.nome)}</td><td class="dica">${e.un}</td><td><input data-ev="${e.k}" value="${esc(c.eventos[e.k] || '')}" maxlength="20" placeholder="—"></td></tr>`).join('');
+  if (!dono) return;
+  const exemplo = `curl -H "Authorization: Bearer SUA_CHAVE" \\\n  "${c.api_url}/fechamento?mes=${mesAtual()}&formato=eventos&layout=simples"`;
+  $('#cfgApi').innerHTML = `<h3 class="sec-tit">Integração com o sistema da contabilidade</h3>
+    <p class="dica">Uma chave de acesso para o sistema da contabilidade, o n8n ou uma planilha puxarem o fechamento sozinhos, sem ninguém baixar arquivo.</p>
+    ${c.api ? `<p style="margin-top:10px">Chave ativa: <code>${esc(c.api.prefixo)}</code> <span class="dica">criada em ${new Date(c.api.criado_em).toLocaleDateString('pt-BR')}</span></p>` : '<p style="margin-top:10px">Nenhuma chave ativa.</p>'}
+    <div id="chaveNova"></div>
+    <div class="acoes"><button class="btn sec" id="btnChave">${c.api ? 'Gerar chave nova' : 'Gerar chave'}</button>${c.api ? '<button class="link perigo" id="btnDesligaChave">Desligar integração</button>' : ''}</div>
+    <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">Como o contador usa</summary>
+      <p class="dica" style="margin:8px 0">Endereços (sempre com o cabeçalho <code>Authorization: Bearer SUA_CHAVE</code>):</p>
+      <table class="tab"><tbody>
+        <tr><td><code>GET ${esc(c.api_url)}/fechamento?mes=AAAA-MM</code></td><td>Fechamento do mês em JSON</td></tr>
+        <tr><td><code>…&formato=csv</code></td><td>Planilha completa</td></tr>
+        <tr><td><code>…&formato=eventos</code></td><td>Arquivo de eventos (CSV com cabeçalho)</td></tr>
+        <tr><td><code>…&formato=eventos&layout=simples</code></td><td>matrícula;código;quantidade</td></tr>
+        <tr><td><code>GET ${esc(c.api_url)}/fechamentos</code></td><td>Meses já fechados</td></tr>
+        <tr><td><code>GET ${esc(c.api_url)}/funcionarios</code></td><td>Funcionários com matrícula</td></tr>
+        <tr><td><code>GET ${esc(c.api_url)}/ocorrencias?de=AAAA-MM-DD&ate=AAAA-MM-DD</code></td><td>Férias, faltas, atestados, banco de horas</td></tr>
+      </tbody></table>
+      <pre class="codigo" style="margin-top:10px">${esc(exemplo)}</pre>
+    </details>`;
+  $('#btnChave').onclick = async () => {
+    if (c.api && !confirm('Gerar uma chave nova desliga a atual. Quem usa a chave antiga vai precisar da nova. Continuar?')) return;
+    const r = await api('/api/empresa/chave', {method: 'POST'});
+    await telaConfiguracoes();
+    $('#chaveNova').innerHTML = `<p style="margin-top:10px"><b>Copie agora.</b> Por segurança, ela não aparece de novo.</p><div class="chave">${esc(r.chave)}</div><button class="btn pq" id="btnCopiaChave">Copiar chave</button>`;
+    $('#btnCopiaChave').onclick = async () => { try { await navigator.clipboard.writeText(r.chave); toast('Chave copiada.'); } catch { prompt('Chave:', r.chave); } };
+  };
+  if ($('#btnDesligaChave')) $('#btnDesligaChave').onclick = async () => {
+    if (!confirm('Desligar a integração? O sistema da contabilidade para de receber os dados.')) return;
+    await api('/api/empresa/chave', {method: 'DELETE'}); toast('Integração desligada.'); telaConfiguracoes();
+  };
+}
+$('#formEmpresa').onsubmit = async e => {
+  e.preventDefault(); $('#erroEmpresa').textContent = '';
+  const eventos = {}; $$('[data-ev]').forEach(i => eventos[i.dataset.ev] = i.value);
+  try { await api('/api/empresa', {method: 'PUT', body: {razao_social: $('#cfgRazao').value, cnpj: $('#cfgCnpj').value, eventos}}); toast('Configurações salvas.'); }
+  catch (err) { $('#erroEmpresa').textContent = err.message; }
+};
+
+// ---------- minha conta ----------
+function telaConta() {
+  $('#contaEmail').textContent = eu.email;
+  $('#mcNome').value = eu.nome || ''; $('#mcZap').value = eu.whatsapp || ''; $('#mcEmpresa').value = eu.empresa || '';
+  $('#mcEmpresaBox').classList.toggle('hide', !eu.empresa);
+}
+$('#formConta').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api('/api/eu', {method: 'PUT', body: {nome: $('#mcNome').value, whatsapp: $('#mcZap').value, ...(eu.empresa ? {empresa: $('#mcEmpresa').value} : {})}});
+    eu = await api('/api/eu'); if (conta.papel === 'dono') $('#nomeEmpresa').textContent = eu.empresa || eu.nome; toast('Dados salvos.');
+  } catch (err) { toast(err.message); }
+};
+$('#formTrocaSenha').onsubmit = async e => {
+  e.preventDefault(); $('#erroSenhaConta').textContent = '';
+  try { await api('/api/eu/senha', {method: 'POST', body: {atual: $('#mcAtual').value, nova: $('#mcNova').value}}); $('#mcAtual').value = $('#mcNova').value = ''; toast('Senha trocada.'); }
+  catch (err) { $('#erroSenhaConta').textContent = err.message; }
 };
 
 // ---------- histórico ----------

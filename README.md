@@ -5,6 +5,21 @@
 - `/obrigado`: página pós-compra (configure no checkout como "página de obrigado").
 - `/admin`: painel com clientes, liberação manual, link de acesso para mandar no WhatsApp e histórico de pagamentos.
 
+## O que o sistema faz
+
+| Quem | O que faz |
+|---|---|
+| **Dono** | Tudo: equipes, funcionários, escalas, férias/faltas/atestados, fechamento do mês, acessos, configurações, chave de integração. |
+| **Gestor** | Monta escalas, cadastra funcionários, lança ocorrências e fecha o mês. Não mexe em acessos nem configurações. |
+| **Contador** | Vê tudo e não altera nada. Baixa a planilha e o arquivo de eventos da folha, preenche os códigos da folha e recebe e-mail quando o mês é fechado. |
+| **Funcionário** | Abre o link da equipe (sem login), escolhe o nome e vê as próprias folgas das próximas semanas. |
+
+Ligação com a contabilidade:
+- **Fechamento do mês:** dias trabalhados, folgas, domingos e feriados trabalhados, faltas, atestados, férias, afastamentos e banco de horas por funcionário, com o espelho dia a dia.
+- **Arquivo de eventos da folha:** competência, matrícula, código do evento e quantidade, nos códigos que o contador informar. Sai em CSV com cabeçalho ou em TXT simples (`matrícula;código;quantidade`).
+- **Fechar mês:** congela os números, trava alterações no mês e avisa o contador por e-mail.
+- **API com chave** (`/api/v1/fechamento`, `/fechamentos`, `/funcionarios`, `/ocorrencias`): o sistema da contabilidade ou o n8n puxam os dados sozinhos.
+
 ## Como o acesso chega ao cliente
 
 1. A pessoa paga no checkout.
