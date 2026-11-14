@@ -1,5 +1,5 @@
 # Compose para o "Docker Manager" da Hostinger (VPS com template Docker + Traefik).
-# Monta a imagem direto do GitHub (REF = commit ou branch) e publica pelo Traefik do VPS.
+# Publicar versão nova = recriar o projeto "escalalegal" com REF = hash do commit (no .env do projeto).
 # Os dados ficam em /opt/escalalegal-dados no VPS: sobrevivem a atualizações do projeto.
 x-logs: &logs
   logging:
@@ -8,11 +8,22 @@ x-logs: &logs
 
 services:
   app:
-    build:
-      context: https://github.com/imperioprogressivasoficial/escalalegal.git#${REF:-main}:app
-    pull_policy: build
+    # O Docker Manager da Hostinger não monta imagem (build). Então o container usa a imagem
+    # oficial do Node e, ao iniciar, baixa o código do GitHub fixado no commit REF.
+    image: node:22-alpine
     restart: unless-stopped
     <<: *logs
+    user: node
+    working_dir: /home/node
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        mkdir -p /home/node/src && cd /home/node/src
+        wget -qO- https://codeload.github.com/imperioprogressivasoficial/escalalegal/tar.gz/${REF} | tar xz --strip-components=1
+        cd app && npm ci --omit=dev --no-audit --no-fund
+        exec node server.js
     environment:
       DATABASE_URL: postgres://escala:${DB_PASS}@db:5432/escala
       NODE_ENV: production
@@ -38,7 +49,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 180s
     labels:
       - traefik.enable=true
       - traefik.http.routers.escalalegal.rule=Host(`${DOMAIN}`)
@@ -73,10 +84,11 @@ services:
     volumes:
       - /opt/escalalegal-dados/backups:/backups
     depends_on:
-      app: { condition: service_healthy }
+      db: { condition: service_healthy }
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        sleep 300
         while true; do
           f=/backups/escala-$$(date +%Y-%m-%d_%H%M).sql.gz
           if pg_dump -h db -U escala escala | gzip > $$f.tmp; then mv $$f.tmp $$f; echo "backup ok: $$f"; else rm -f $$f.tmp; echo "backup FALHOU"; fi

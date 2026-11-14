@@ -16,7 +16,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `app/public/index.html`: página de vendas. Botões de compra abrem um modal que salva o lead (`/api/leads`) e redireciona para `CHECKOUT_URL`.
 - `app/public/app.html`: o app (SPA em JS puro): login/cadastro, equipes, funcionários, dias e cobertura, gerar/ajustar/imprimir escala.
 - `app/views/admin.html`: painel `/admin` (Basic Auth) para liberar/bloquear clientes.
-- `deploy/hostinger/docker-compose.yml`: compose usado no Docker Manager da Hostinger (VPS 1969277, Traefik em modo host, dados em `/opt/escalalegal-dados`). Publicar = recriar o projeto `escalalegal` com `REF` = commit novo.
+- `deploy/hostinger/docker-compose.yml`: compose usado no Docker Manager da Hostinger (VPS 1969277, Traefik em modo host, dados em `/opt/escalalegal-dados`). Publicar = recriar o projeto `escalalegal` (vps_docker_create com o conteúdo deste arquivo) com `REF` = commit novo. O Docker Manager não faz build: o container baixa o código do GitHub no commit REF ao iniciar.
 - `docker-compose.yml`: app + Postgres + backup diário (+ Caddy opcional). Deploy no VPS do Bruno em `/opt/escalalegal`.
 
 ## Regras de negócio
