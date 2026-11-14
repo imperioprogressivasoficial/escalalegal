@@ -28,6 +28,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - Ocorrências (férias, atestado, falta, afastamento, folga extra, banco de horas) entram na geração e aparecem por cima da escala salva na leitura.
 - Mês fechado (`fechamentos`) congela os números (snapshot) e bloqueia gerar/ajustar escala e lançar/apagar ocorrência no mês. Só o dono reabre. Fechar avisa os contadores por e-mail.
 - Na interface é sempre "unidade" (loja, filial, setor); no banco continua `equipes`.
+- A escala se adapta ao segmento (`SETORES` em `scheduler.js`: mercado, farmácia, loja, restaurante, padaria, salão, clínica, academia, posto, escritório, portaria, outro). Cada um traz dias, horário, mínimo, funções e `criticas` (função que não pode faltar no dia, ex.: farmacêutico — Lei 13.021/2014). O motor recebe `grupos` (quem tem o cargo da crítica) e garante o mínimo. Domingo: comércio 1 a cada 3 semanas (Lei 10.101), demais 1 a cada 7 (Portaria MTP 671/2021, art. 58). 12x36 não é gerada: só aviso.
 - Dono sem unidade cai no primeiro acesso guiado (`#comecar`): empresa (porte MEI/ME/EPP, UF, cidade, feriados da cidade) → unidade (dias, mínimo, horas/dia) → pessoas → gera a escala e mostra a análise (`Escala.analisar`, em `scheduler.js`).
 - Limite semanal pela data (`limiteSemanal`): 44h até 15/12/2026, 42h até 15/12/2027, 40h depois. Feriados: nacionais + estaduais (`ESTADUAIS`) + municipais informados pela empresa.
 - Contador pode se cadastrar sozinho (`tipo: 'contador'`) e vê as empresas que o liberaram no Espaço do contador.

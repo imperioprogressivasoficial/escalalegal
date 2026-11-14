@@ -275,6 +275,15 @@ textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
 .emp-card .meta{color:var(--mut);font-size:.85rem;margin:4px 0 10px}
 .emp-card .linha-st{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--linha);font-size:.9rem}
 
+.segmentos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.seg{text-align:left;border:1px solid var(--linha);background:#fff;border-radius:12px;padding:14px;cursor:pointer;display:grid;gap:3px;font:inherit}
+.seg b{color:var(--tinta);font-size:1rem}.seg small{color:var(--mut);font-size:.82rem}
+.seg:hover{border-color:var(--azul)}.seg.on{border-color:var(--azul);background:var(--azul-claro);box-shadow:inset 0 0 0 1px var(--azul)}
+.funcoes-lista{display:grid;gap:6px;margin-top:6px}
+.funcoes-lista div{display:grid;grid-template-columns:1fr minmax(140px,220px);gap:10px;align-items:center;border-bottom:1px solid var(--linha);padding-bottom:6px}
+.funcoes-lista span{font-weight:600;color:var(--tinta)}
+.dia-rot{display:block;font-size:.78rem;font-weight:700;color:var(--mut);margin-bottom:4px}
+
 @media(max-width:860px){
   .topo-mobile{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:20;background:var(--azul-esc);color:#fff;padding:12px 16px}
   .topo-mobile button{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
@@ -395,7 +404,8 @@ textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
       <section data-painel="funcionarios" class="hide">
         <form class="cartao edita" id="formFunc">
           <label for="fNome" style="margin-top:0">Adicionar pessoas</label>
-          <textarea id="fNome" rows="3" placeholder="Uma pessoa por linha. Se quiser, o cargo depois de um traço:&#10;Ana Souza - vendedora&#10;Carlos Lima"></textarea>
+          <textarea id="fNome" rows="3" placeholder="Uma pessoa por linha, com a função depois de um traço:&#10;Ana Souza - Caixa&#10;Carlos Lima"></textarea>
+          <p class="dica" id="fFuncoesDica" style="margin-top:6px"></p>
           <div class="acoes"><button class="btn">Adicionar</button></div>
         </form>
         <ul class="lista" id="listaFunc"></ul>
@@ -405,11 +415,16 @@ textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
         <div class="cartao">
           <div class="grade-conf">
             <div><label for="cfNome">Nome da unidade</label><input id="cfNome"></div>
-            <div><label for="cfSetor">Ramo</label><select id="cfSetor"></select></div>
+            <div><label for="cfSetor">Tipo de negócio</label><select id="cfSetor"></select></div>
           </div>
           <label>Dias abertos e mínimo de pessoas trabalhando em cada dia</label>
           <div class="dias-conf" id="cfDias"></div>
-          <div style="max-width:260px"><label for="cfHoras">Horas de trabalho por dia (sem o almoço)</label><input id="cfHoras" type="number" min="1" max="12" step="0.25"></div>
+          <div id="cfCriticas"></div>
+          <div class="form-linha" style="margin-top:12px">
+            <div><label for="cfAbre">Abre às</label><input id="cfAbre" type="time"></div>
+            <div><label for="cfFecha">Fecha às</label><input id="cfFecha" type="time"></div>
+            <div><label for="cfHoras">Horas por pessoa (sem o almoço)</label><input id="cfHoras" type="number" min="1" max="12" step="0.25"></div>
+          </div>
           <p class="dica" style="margin-top:6px">8h por dia x 5 dias = 40h na semana: já dentro do limite final da nova lei.</p>
           <div class="acoes edita"><button class="btn" id="btnSalvarCfg">Salvar</button><button class="link perigo" id="btnExcluir">Excluir unidade</button></div>
         </div>
@@ -540,7 +555,7 @@ textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
     <h2>Editar pessoa</h2>
     <label for="efNome">Nome</label><input id="efNome">
     <div class="form-linha" style="margin-top:12px">
-      <div><label for="efCargo">Cargo</label><input id="efCargo"></div>
+      <div><label for="efCargo">Função</label><input id="efCargo" list="listaFuncoes"><datalist id="listaFuncoes"></datalist></div>
       <div><label for="efMat">Matrícula (do contador)</label><input id="efMat"></div>
     </div>
     <div class="form-linha" style="margin-top:12px">
@@ -553,7 +568,7 @@ textarea:focus{outline:3px solid #ffcd0799;outline-offset:1px}
   </form>
 </dialog>
 
-<script src="/scheduler.js?v=5"></script>
-<script src="/app.js?v=5"></script>
+<script src="/scheduler.js?v=6"></script>
+<script src="/app.js?v=6"></script>
 </body>
 </html>

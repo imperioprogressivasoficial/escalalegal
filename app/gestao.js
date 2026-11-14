@@ -4,7 +4,7 @@
 // "Conta" = a empresa (o usuário dono). Quem entra pode ser o dono, um gestor (edita tudo)
 // ou o contador (só consulta e baixa relatórios). O front manda a conta escolhida no cabeçalho x-conta.
 const crypto = require('crypto');
-const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias } = require('./public/scheduler.js');
+const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe } = require('./public/scheduler.js');
 
 const TIPOS = Object.keys(OCORRENCIAS);
 const COD_AUSENCIA = new Set(Object.values(OCORRENCIAS).map(o => o.cod).filter(Boolean));
@@ -93,11 +93,18 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
 
   // ---------- equipes ----------
   function validaEquipe(b) {
-    const setor = SETORES[b.setor] ? b.setor : 'varejo';
+    const setor = SETORES[b.setor] ? b.setor : 'outro';
     const abertos = Array.isArray(b.abertos) && b.abertos.length === 7 ? b.abertos.map(x => (x ? 1 : 0)) : SETORES[setor].abertos;
     const minimo = Array.isArray(b.minimo) && b.minimo.length === 7 ? b.minimo.map(x => Math.max(0, Math.min(200, Math.round(+x) || 0))) : SETORES[setor].minimo;
     const horas_dia = Math.max(1, Math.min(12, Math.round((+String(b.horas_dia ?? 8).replace(',', '.') || 8) * 4) / 4));
-    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia };
+    const hora = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
+    const abre = hora(b.abre) || SETORES[setor].abre, fecha = hora(b.fecha) || SETORES[setor].fecha;
+    // função que não pode faltar: vem do segmento e a empresa ajusta o mínimo por dia
+    const base = Array.isArray(b.criticas) ? b.criticas : SETORES[setor].criticas;
+    const criticas = base.slice(0, 3).map(c => ({ nome: limpa(c?.nome, 40), chave: limpa(c?.chave, 20).toLowerCase(),
+      minimo: Array.isArray(c?.minimo) && c.minimo.length === 7 ? c.minimo.map((x, d) => abertos[d] ? Math.max(0, Math.min(50, Math.round(+x) || 0)) : 0) : [0, 0, 0, 0, 0, 0, 0],
+      explica: limpa(c?.explica, 300) })).filter(c => c.nome && c.chave);
+    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas };
   }
   app.get('/api/equipes', L, erro(async (req, res) => {
     const { rows } = await q(`select e.*, (select count(*)::int from funcionarios f where f.equipe_id=e.id and f.ativo) total,
@@ -108,15 +115,15 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const e = validaEquipe(req.body || {});
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
     if (n[0].c >= 50) return res.status(400).json({ erro: 'Limite de 50 unidades por conta.' });
-    const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia) values ($1,$2,$3,$4,$5,$6) returning *',
-      [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia]);
+    const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
+      [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas)]);
     auditar(req, `Criou a unidade ${e.nome}`);
     res.json(rows[0]);
   }));
   app.put('/api/equipes/:id', LE, minhaEquipe, erro(async (req, res) => {
     const e = validaEquipe({ ...req.equipe, ...req.body });
-    const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4, horas_dia=$5 where id=$6 returning *',
-      [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, req.equipe.id]);
+    const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4, horas_dia=$5, abre=$6, fecha=$7, criticas=$8 where id=$9 returning *',
+      [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), req.equipe.id]);
     auditar(req, `Alterou o funcionamento da unidade ${e.nome}`);
     res.json(rows[0]);
   }));
@@ -182,7 +189,9 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const mapa = mapaOcorrencias(await ocorrenciasDe(fs.map(f => f.id), inicio, somaDias(inicio, semanas * 7 - 1)));
     const ausencias = Array.from({ length: semanas }, (_, s) => fs.map(f => Array.from({ length: 7 }, (_, d) =>
       mapa.get(f.id + '|' + somaDias(inicio, s * 7 + d)) || null)));
-    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias });
+    const grupos = gruposDaUnidade(fs, equipe.criticas || []);
+    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
+      grupos, domingoSemanas: domingoSemanasDe(equipe.setor) });
     const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas)
       values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
     [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
@@ -515,8 +524,10 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     if (!pessoas.length) return res.status(400).json({ erro: 'Informe pelo menos uma pessoa da equipe.' });
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
     if (n[0].c >= 50) return res.status(400).json({ erro: 'Limite de 50 unidades por conta.' });
-    const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia) values ($1,$2,$3,$4,$5,$6) returning *',
-      [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia]);
+    const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
+      [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia, u.abre, u.fecha, JSON.stringify(u.criticas)]);
+    if (b.empresa || !(await configDe(req.conta.id)).segmento) await q(`insert into empresa_config (conta_id, segmento) values ($1,$2)
+      on conflict (conta_id) do update set segmento=coalesce(empresa_config.segmento, excluded.segmento)`, [req.conta.id, u.setor]);
     await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa) select $1, x.nome, x.cargo, '[]'::jsonb
       from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text)`, [eq.id, JSON.stringify(pessoas)]);
     auditar(req, `Cadastrou a unidade ${u.nome} com ${pessoas.length} pessoa(s)`);

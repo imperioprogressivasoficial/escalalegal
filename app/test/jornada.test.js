@@ -23,7 +23,7 @@ test('análise aponta o que está errado em linguagem simples', () => {
   const a = analisar({ inicio: '2027-01-04', semanas: 4, funcionarios: fs, abertos: s.abertos, minimo: s.minimo, dados: escala }, { horasDia: 9 });
   const titulos = a.itens.map(i => i.titulo).join(' | ');
   assert.match(titulos, /Falta 1 pessoa/); // varejo pede 4, tem 3
-  assert.match(titulos, /dia\(s\) abaixo do mínimo/);
+  assert.match(titulos, /\d+ dias? abaixo do mínimo/);
   assert.match(titulos, /9h por dia passa de 8h/);
   assert.ok(a.problemas >= 3);
   const ok = analisar({ inicio: '2027-01-04', semanas: 4, funcionarios: fs, abertos: [1, 1, 1, 1, 1, 0, 0], minimo: [1, 1, 1, 1, 1, 0, 0],

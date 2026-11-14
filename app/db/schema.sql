@@ -180,3 +180,10 @@ alter table empresa_config add column if not exists uf text;
 alter table empresa_config add column if not exists cidade text;
 alter table empresa_config add column if not exists feriados_locais text[] not null default '{}';
 alter table equipes add column if not exists horas_dia numeric(4,2) not null default 8;
+
+-- ---------- v6: escala que se adapta ao segmento ----------
+alter table equipes add column if not exists abre text;
+alter table equipes add column if not exists fecha text;
+-- função que não pode faltar no dia (ex.: farmacêutico): [{ nome, chave, minimo: [7] }]
+alter table equipes add column if not exists criticas jsonb not null default '[]'::jsonb;
+alter table empresa_config add column if not exists segmento text;
