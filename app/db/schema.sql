@@ -173,3 +173,10 @@ create table if not exists fechamentos (
 
 -- link da escala para os funcionários (só leitura, sem login)
 alter table equipes add column if not exists link_token text unique;
+
+-- ---------- v5: primeiro acesso guiado, porte, estado e feriados da cidade ----------
+alter table empresa_config add column if not exists porte text;
+alter table empresa_config add column if not exists uf text;
+alter table empresa_config add column if not exists cidade text;
+alter table empresa_config add column if not exists feriados_locais text[] not null default '{}';
+alter table equipes add column if not exists horas_dia numeric(4,2) not null default 8;

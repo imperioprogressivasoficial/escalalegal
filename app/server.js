@@ -179,7 +179,8 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
   const b = req.body || {};
   const nome = limpa(b.nome), empresa = limpa(b.empresa), email = limpa(b.email, 160).toLowerCase();
   const whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, ''), senha = String(b.senha || '');
-  if (!nome || !empresa) return res.status(400).json({ erro: 'Informe seu nome e o nome da empresa.' });
+  const contador = b.tipo === 'contador';
+  if (!nome || (!empresa && !contador)) return res.status(400).json({ erro: contador ? 'Informe seu nome.' : 'Informe seu nome e o nome da empresa.' });
   if (!emailValido(email)) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
   if (senha.length < 6 || senha.length > 200) return res.status(400).json({ erro: 'A senha precisa ter pelo menos 6 caracteres.' });
   const { rows: existe } = await q('select id, nome, email, senha_hash from usuarios where email=$1', [email]);
@@ -193,10 +194,10 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
   const { rows: compra } = await q("select 1 from compras where email=$1 and status='aprovada'", [email]);
   try {
     const { rows } = await q(`insert into usuarios (nome, empresa, email, whatsapp, senha_hash, acesso_liberado, liberado_em, origem, ultimo_acesso)
-      values ($1,$2,$3,$4,$5,$6, case when $6 then now() end, 'cadastro', now()) returning id, sessao_v`,
-    [nome, empresa, email, whatsapp, await hashSenha(senha), !!compra[0]]);
+      values ($1,$2,$3,$4,$5,$6, case when $6 then now() end, $7, now()) returning id, sessao_v`,
+    [nome, empresa || null, email, whatsapp, await hashSenha(senha), !!compra[0], contador ? 'contador' : 'cadastro']);
     criaSessao(res, rows[0]);
-    enviar(N8N_WEBHOOK_URL, { evento: 'cadastro', nome, empresa, email, whatsapp, pago: !!compra[0] });
+    enviar(N8N_WEBHOOK_URL, { evento: contador ? 'cadastro_contador' : 'cadastro', nome, empresa, email, whatsapp, pago: !!compra[0] });
     res.json({ ok: true });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ erro: 'Este e-mail já tem conta. Use "Entrar".' });
@@ -222,7 +223,9 @@ app.get('/api/eu', logado, erro(async (req, res) => {
   const { sessao_v, ...u } = req.u;
   const { rows } = await q(`select m.conta_id id, coalesce(c.empresa, c.nome) empresa, m.papel from membros m
     join usuarios c on c.id=m.conta_id where m.usuario_id=$1 order by c.empresa`, [u.id]);
+  const { rows: o } = await q('select origem from usuarios where id=$1', [u.id]);
   res.json({ ...u, acesso_liberado: u.acesso_liberado || LIBERAR_TUDO === '1', checkout: CHECKOUT_URL,
+    contador: o[0]?.origem === 'contador' || rows.some(r => r.papel === 'contador'),
     contas: [{ id: u.id, empresa: u.empresa || u.nome, papel: 'dono' }, ...rows] });
 }));
 

@@ -141,7 +141,7 @@ test('gestão: contador, gestor, ocorrências, fechamento', { skip: pular }, asy
   const hist = (await chama('/api/historico', { cookie: sCont, conta: contaId })).json;
   assert.ok(hist.some(h => /Lançou férias para Ana/.test(h.acao) && h.quem === 'Bruno Dono'));
   assert.ok(hist.some(h => /Cadastrou Gabi/.test(h.acao) && h.quem === 'Gil Gestor'));
-  assert.ok(hist.some(h => /Baixou o fechamento de 03\/2027/.test(h.acao) && h.quem === 'Carla Contadora'));
+  assert.ok(hist.some(h => /Baixou a planilha do fechamento de 03\/2027/.test(h.acao) && h.quem === 'Carla Contadora'));
 
   // dono remove o acesso do contador: perde na hora
   const membros = (await chama('/api/membros', { cookie: sDono })).json;
