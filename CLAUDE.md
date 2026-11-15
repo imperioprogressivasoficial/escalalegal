@@ -16,6 +16,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `app/public/obrigado.html`: página pós-compra.
 - `app/test/`: `npm test` (node:test). O teste de fluxo precisa de `DATABASE_URL`.
 - `deploy/instalar.sh` / `deploy/atualizar.sh`: instalação e atualização no VPS (detecta Traefik, Caddy ou outro proxy).
+- `app/jornada.js`: estado da jornada lido do banco (unidade, colaboradores, escala gerada/publicada, nomes "Caixa 1", sexo, contabilidade, competência) → UM próximo passo por papel. `GET /api/jornada` (gestao.js) alimenta o cartão do Início e a faixa "Próximo passo" de Escala/Colaboradores/Fechamento (`pintaGuia` em app.js; um destaque por tela) e vai no `contexto` do assistente (`etapa`, `proximo_passo`, `jornada`). Mudou o prompt? `node suporte/prompt.js` e cole no n8n.
 - `app/public/scheduler.js`: motor da escala (roda no navegador e no Node). Regras: 2 folgas/semana, cobertura mínima por dia, folgas consecutivas quando possível, rodízio de domingo, folga fixa.
 - `app/public/index.html`: página de vendas. Botões de compra abrem um modal que salva o lead (`/api/leads`) e redireciona para `CHECKOUT_URL`.
 - `app/public/app.html`: o app (SPA em JS puro): login/cadastro, equipes, funcionários, dias e cobertura, gerar/ajustar/imprimir escala.

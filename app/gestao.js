@@ -14,6 +14,7 @@ const diasEntre = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 const hojeBR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // horário de Brasília
 const PAPEL_NOME = { dono: 'Dono', gestor: 'Gestor', contador: 'Contador' };
 
+const { jornada } = require('./jornada.js');
 module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte, VALOR_COMISSAO = 0 }) {
   // ---------- conta e permissões ----------
   const naConta = erro(async (req, res, next) => {
@@ -651,6 +652,10 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
         (select count(*)::int from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=$1 and f.ativo) pessoas,
         (select count(*)::int from membros where conta_id=$1 and papel='contador') contadores`, [req.conta.id]);
     res.json({ cadastro_ok: !!r.cadastro_em, unidades: r.unidades, pessoas: r.pessoas, escala_enviada: !!r.enviada_em || r.links > 0, contador: r.contadores > 0 });
+  }));
+  // estado da jornada (próximo passo por papel), lido dos dados reais da empresa: app/jornada.js
+  app.get('/api/jornada', L, erro(async (req, res) => {
+    res.json(await jornada(q, req.conta.id, req.conta.papel));
   }));
   app.post('/api/inicio/enviada', LE, erro(async (req, res) => {
     await q(`insert into empresa_config (conta_id, escala_enviada_em) values ($1, now())

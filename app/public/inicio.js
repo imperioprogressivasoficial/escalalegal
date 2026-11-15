@@ -336,22 +336,18 @@ const cartaoImg = ({ ir, href, img, tit, sub, cls = '', alvo }) => {
 };
 const CAPA_MAT = { kit_rh: 'mat-kit', calculadora: 'mat-calc', plaquinhas: 'mat-placas' };
 const reais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
-// a ordem do próximo passo: gerar → publicar → identificar → contabilidade → fechar competência
-function proximoPasso(p) {
-  const dono = conta.papel === 'dono', ed = podeEditar();
-  const auto = funcs.some(f => f.cargo && !cargoVisivel(f));
-  const d = new Date(), fimMes = d.getDate() >= new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - 2;
-  if (!p.unidades) return dono ? { k: 'gerar', tit: 'Gerar escala', txt: 'Dias de funcionamento, funções e quantidade de colaboradores. A escala é gerada dentro da lei.', btn: 'Gerar escala', ir: 'comecar' } : null;
-  if (ed && !p.escala_enviada) return { k: 'publicar', tit: 'Publicar escala', txt: 'Compartilhe com a equipe por WhatsApp, link, PDF ou impressão.', btn: 'Publicar escala', ir: 'escala/publicar' };
-  if (ed && auto) return { k: 'identificar', tit: 'Identificar colaboradores', txt: 'Substitua "Caixa 1", "Caixa 2" pelo nome de cada colaborador.', btn: 'Identificar colaboradores', ir: 'colaboradores' };
-  if (dono && !p.contador) return { k: 'contabilidade', tit: 'Liberar acesso da contabilidade', txt: 'A contabilidade acompanha a escala e recebe o fechamento, sem custo adicional.', btn: 'Liberar acesso', ir: 'fechamento/contabilidade' };
-  if (ed && fimMes) return { k: 'fechar', tit: 'Fechar competência', txt: 'Confira o mês de referência e envie para a contabilidade.', btn: 'Fechar competência', ir: 'fechamento' };
-  return null;
+// o próximo passo vem da jornada (GET /api/jornada, app/jornada.js): o mesmo em todas as telas e no assistente
+const CAPA_PASSO = { cadastro: 'gerar', gerar: 'gerar', aguardando: 'gerar', colaboradores: 'identificar', identificar: 'identificar', sexo: 'identificar',
+  publicar: 'publicar', contabilidade: 'contabilidade', fechar: 'fechar', consultar: 'fechar', baixar: 'fechar' };
+function proximoPasso() {
+  const p = typeof jor !== 'undefined' && jor?.proximo;
+  return p ? { ...p, capa: CAPA_PASSO[p.k] || 'gerar' } : null;
 }
 async function telaInicio() {
   const v = $('#v-inicio'), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
-  const [p, extras] = await Promise.all([api('/api/inicio'), api('/api/extras').catch(() => [])]);
+  const [p, extras] = await Promise.all([api('/api/inicio'), api('/api/extras').catch(() => []), jor ? null : carregaJornada()]);
   progresso = p;
+  const ps = proximoPasso();
   // faixa de banners em imagem
   const bannersImg = [
     { k: 'escala', ir: p.unidades ? 'escala' : 'comecar', alt: 'Sua escala 5x2 pronta em 2 minutos. Responda umas perguntas e a semana sai dentro da nova lei.' },
@@ -359,7 +355,7 @@ async function telaInicio() {
     !cont && { k: 'enviar', ir: 'escala/publicar', alt: 'Publique a escala por WhatsApp, PDF, Excel ou link. Cada colaborador vê as próprias folgas no celular.' },
     { k: 'kit', ir: 'materiais', alt: 'Kit RH, calculadora e plaquinhas: termo aditivo, folha de ponto e avisos prontos para imprimir.' },
     dono && { k: 'contador', ir: 'fechamento/contabilidade', alt: 'Acesso da contabilidade, sem custo: acompanha a escala e recebe o fechamento.' },
-  ].filter(Boolean);
+  ].filter(b => b && !(ps && b.ir === ps.ir) && !(b.k === 'contador' && (!p.escala_enviada || p.contador)));
   let faixaFechada = false; try { faixaFechada = sessionStorage.getItem('faixaFechada') === '1'; } catch {}
   const carrosselImg = faixaFechada ? '' : `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
@@ -368,8 +364,7 @@ async function telaInicio() {
       <div class="bn-ctl"><span id="bnN" aria-live="polite">1/${bannersImg.length}</span><button type="button" id="bnAnt" aria-label="Destaque anterior">‹</button><button type="button" id="bnProx" aria-label="Próximo destaque">›</button><button type="button" class="bn-x" id="bnX" aria-label="Esconder os destaques">×</button></div>
     </section>`;
   // um cartão de próximo passo, com a capa do passo
-  const ps = proximoPasso(p);
-  const passo = ps ? `<section class="prox" aria-labelledby="tProx"><span class="prox-capa">${capa('passo-' + ps.k, true)}</span>
+  const passo = ps ? `<section class="prox" aria-labelledby="tProx"><span class="prox-capa">${capa('passo-' + ps.capa, true)}</span>
       <div class="prox-txt"><em class="nf-etq">Próximo passo</em><h2 id="tProx">${ps.tit}</h2><p>${ps.txt}</p><button class="btn" data-ir="${ps.ir}">${ps.btn} <span aria-hidden="true">→</span></button></div></section>` : '';
   // Aulas: o vídeo do app e as 8 da nova lei
   const lic = typeof licoes === 'function' ? licoes() : [];
@@ -393,7 +388,7 @@ async function telaInicio() {
 let enviadaMarcada = false;
 window.marcaEnviada = () => {
   if (enviadaMarcada || !podeEditar() || progresso?.escala_enviada) return;
-  enviadaMarcada = true; api('/api/inicio/enviada', { method: 'POST' }).catch(() => { enviadaMarcada = false; });
+  enviadaMarcada = true; api('/api/inicio/enviada', { method: 'POST' }).then(() => { if (jor?.fatos) jor.fatos.publicada = true; }).catch(() => { enviadaMarcada = false; });
 };
 
 // ================= menu lateral (computador) e gaveta (celular) =================
@@ -402,9 +397,8 @@ window.marcaEnviada = () => {
 function itensMenu() {
   const mc = ehModoContador(), cont = conta.papel === 'contador', dono = conta.papel === 'dono', ed = podeEditar();
   // grupo: [rota principal, título, subitens [[rota, título]]]
-  const escala = ['escala', 'Escala', [['escala/semana', 'Semana'], ['escala', 'Dia'], ['escala/pessoa', 'Por colaborador'], ['escala/mes', 'Mês'], ['escala/agenda', 'Agenda'], ['escala/publicar', 'Publicar escala']]];
-  const colab = ['colaboradores', 'Colaboradores', [['colaboradores', 'Lista'], ['colaboradores/ausencias', 'Ausências e férias']]];
-  const fech = ['fechamento', 'Fechamento', [['fechamento', 'Fechar competência'], ...(dono ? [['fechamento/contabilidade', 'Acesso da contabilidade'], ['empresa/historico', 'Histórico']] : [])]];
+  // Escala, Colaboradores e Fechamento são um item só: os modos e as abas ficam no topo da própria tela
+  const escala = ['escala', 'Escala'], colab = ['colaboradores', 'Colaboradores'], fech = ['fechamento', 'Fechamento'];
   const config = ['configuracoes', 'Configurações', [...(!mc && ed ? [['funcionamento', 'Funcionamento']] : []), ['unidades', 'Unidades e empresas'], ...(!mc ? [['setores', 'Setores']] : []), ...(dono ? [['empresa', 'Dados da empresa']] : []),
     ['configuracoes/aparencia', 'Aparência'], ['conta', 'Minha conta'], ['instalar', 'Tela inicial']]];
   const principal = mc ? [['contador', 'Suas empresas']] : cont ? [fech, escala, colab] : [['inicio', 'Início'], escala, colab, fech];
@@ -441,7 +435,7 @@ function abreGrupo(g, abrir, salvar = true) {
 }
 // destaca o item da tela atual (o subitem exato quando houver) e abre o grupo dela
 function marcaLateral(v, extra) {
-  const grupoDe = { funcionamento: 'configuracoes', unidades: 'configuracoes', setores: 'configuracoes', empresa: extra === 'historico' ? 'fechamento' : 'configuracoes', conta: 'configuracoes', instalar: 'configuracoes', comecar: 'inicio', cadastro: 'inicio' };
+  const grupoDe = { funcionamento: 'configuracoes', unidades: 'configuracoes', setores: 'configuracoes', empresa: 'configuracoes', conta: 'configuracoes', instalar: 'configuracoes', comecar: 'inicio', cadastro: 'inicio' };
   const exato = extra && extra !== 'dia' ? `${v}/${extra}` : v;
   const grupo = grupoDe[v] || v;
   $$('#lateral .lat-item').forEach(b => { b.classList.remove('on'); b.removeAttribute('aria-current'); });

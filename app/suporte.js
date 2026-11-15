@@ -2,7 +2,7 @@
 //
 //   GET  /suporte/faq.js           a base de dúvidas para o widget (app/public/suporte.js)
 //   POST /api/suporte/mensagem     conversa com o assistente (logado). O servidor junta o contexto
-//                                  (nome, empresa, papel, tela, situação do acesso) e chama o webhook do n8n
+//                                  (nome, empresa, papel, tela, situação do acesso e a etapa da jornada de app/jornada.js) e chama o webhook do n8n
 //                                  (SUPORTE_N8N_URL) com o cabeçalho x-suporte-token (SUPORTE_N8N_TOKEN).
 //                                  Nunca vai senha, token, e-mail ou cookie para o n8n.
 //   POST /api/suporte/chamado      "Falar com o suporte no WhatsApp": registra o chamado e devolve o link wa.me
@@ -18,6 +18,7 @@
 // Chamado = uma linha por conversa (conversa_id único): repetir a escalada só atualiza resumo e conversa.
 const path = require('path');
 const FAQ = require('./suporte/faq.js');
+const { jornada, resumoJornada } = require('./jornada.js');
 const ARQ_FAQ = { 'faq.js': 'faq.js', 'faq-vendas.js': 'faq-vendas.js' };
 
 const PEDE_PESSOA = /\b(falar|conversar|atendimento)\s+(com\s+)?(uma?\s+)?(pessoa|humano|atendente|algu[eé]m|suporte|dono)\b|\batendente\b|\bhumano\b/i;
@@ -108,9 +109,12 @@ module.exports = function suporte({ app, q, erro, limpa, logado, limite, admin, 
     if (!mensagem) return res.status(400).json({ erro: 'Escreva a sua dúvida.' });
     const conversa = [...conversaDe(b.historico), { de: 'cliente', texto: mensagem }];
     const pedePessoa = PEDE_PESSOA.test(mensagem);
+    // onde a empresa está na jornada (lido do banco, não do navegador): a IA aponta o próximo passo certo
+    const jor = await jornada(q, req.sup.conta_id, req.sup.papel).catch(() => null);
     let r = await perguntaN8n({
       modo: 'suporte', conversa_id: `u${req.u.id}-${conversa_id}`, mensagem,
-      contexto: { nome: req.u.nome || '', empresa: req.sup.empresa, papel: req.sup.papel, tela: TELA(b.tela) || 'inicio', acesso: req.sup.liberado ? 'pago e liberado' : 'pagamento pendente' },
+      contexto: { nome: req.u.nome || '', empresa: req.sup.empresa, papel: req.sup.papel, tela: TELA(b.tela) || 'inicio', acesso: req.sup.liberado ? 'pago e liberado' : 'pagamento pendente',
+        ...(jor && { etapa: jor.etapa, proximo_passo: jor.proximo ? { titulo: jor.proximo.tit, botao: jor.proximo.btn, tela: jor.proximo.ir } : null, jornada: resumoJornada(jor) }) },
     });
     if (!r) r = { resposta: 'O assistente não está disponível agora. Fale com o suporte no WhatsApp: uma pessoa responde por lá.', resolvido: false, escalar: true, resumo: '', indisponivel: true };
     if (pedePessoa || ASSUNTO_SENSIVEL.test(mensagem)) r.escalar = true;

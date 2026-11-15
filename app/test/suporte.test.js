@@ -103,7 +103,11 @@ test('assistente, limite, chamados e /admin', { skip: pular }, async t => {
   const ultimo = recebidos.at(-1);
   assert.equal(ultimo.headers['x-suporte-token'], 'token-do-n8n');
   assert.equal(ultimo.body.conversa_id, `u${eu.id}-conversa-um-123`);
-  assert.deepEqual(ultimo.body.contexto, { nome: 'Maria Suporte', empresa: 'Mercado da Maria', papel: 'dono', tela: 'escala/semana', acesso: 'pago e liberado' });
+  const { etapa, proximo_passo, jornada, ...ctx } = ultimo.body.contexto;
+  assert.deepEqual(ctx, { nome: 'Maria Suporte', empresa: 'Mercado da Maria', papel: 'dono', tela: 'escala/semana', acesso: 'pago e liberado' });
+  // a IA recebe onde a empresa está na jornada (lido do banco): conta nova, sem unidade, começa pelo cadastro
+  assert.equal(etapa, 'cadastro'); assert.equal(proximo_passo.tela, 'cadastro');
+  assert.match(jornada, /unidades: 0; colaboradores: 0; escala gerada: não/);
   const enviado = JSON.stringify(ultimo.body);
   assert.doesNotMatch(enviado, /senha123|@teste\.com|sid=|tk-teste/);
   assert.equal((await q('select 1 from suporte_chamados where usuario_id=$1', [eu.id])).length, 0);

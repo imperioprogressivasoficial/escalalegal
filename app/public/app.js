@@ -262,6 +262,35 @@ document.addEventListener('click', e => {
 const ALIAS = { resultado: 'escala', personalizar: 'escala', tabela: 'escala/mes', ocorrencias: 'colaboradores/ausencias', pessoas: 'colaboradores',
   equipe: 'colaboradores', 'equipe/faltas': 'colaboradores/ausencias', mes: 'fechamento', 'mes/contador': 'fechamento/contabilidade', acessos: 'fechamento/contabilidade',
   loja: 'funcionamento', lojas: 'unidades', mais: 'configuracoes' };
+// ===== guia da jornada =====
+// GET /api/jornada (app/jornada.js) lê os dados reais da empresa e devolve UM próximo passo para o papel de quem entrou.
+// Cada tela principal mostra no máximo esse passo; o que ainda não serve para a etapa fica escondido.
+let jor = null;
+async function carregaJornada() { try { jor = await api('/api/jornada'); } catch { jor = null; } return jor; }
+const fato = k => jor?.fatos?.[k];
+const raizTela = r => String(r || '').split('/')[0];
+// a faixa só aparece quando o passo é em outra tela; na tela do passo, o próprio botão dela fica em destaque
+function pintaGuia(vista, v) {
+  const sec = document.getElementById('v-' + vista); if (!sec) return;
+  const velha = sec.querySelector(':scope > .guia'); if (velha) velha.outerHTML = '';
+  $$(`#v-${vista} [data-guia-sec]`).forEach(b => { b.classList.remove('sec'); if (b.dataset.guiaSec === 'azul') b.classList.add('azul'); delete b.dataset.guiaSec; });
+  const p = jor?.proximo;
+  if (!p || !['escala', 'colaboradores', 'fechamento'].includes(v)) return;
+  const aqui = raizTela(p.tela) === v && (p.tela === v || rotaAtual === p.tela);
+  if (aqui && v !== 'colaboradores') return;
+  const el = document.createElement('aside');
+  el.className = 'guia'; el.setAttribute('aria-label', 'Próximo passo');
+  el.innerHTML = `<div><small>Próximo passo</small><b>${esc(p.tit)}</b><span>${esc(p.txt)}</span></div>${aqui ? '' : `<button class="btn" data-ir="${esc(p.ir)}">${esc(p.btn)}</button>`}`;
+  const abas = sec.querySelector(':scope > .abas');
+  const antes = sec.querySelector(':scope > #escModos') || (abas ? abas.nextElementSibling : sec.firstElementChild);
+  if (antes) sec.insertBefore(el, antes); else sec.append(el);
+  // um destaque por tela: com a faixa, os botões em destaque da própria tela viram secundários
+  if (!aqui) $$(`#v-${vista} .btn:not(.sec)`).forEach(b => { if (!b.closest('.guia') && !b.closest('.vazio') && !b.closest('.avaliador')) { b.dataset.guiaSec = b.classList.contains('azul') ? 'azul' : '-'; b.classList.add('sec'); b.classList.remove('azul'); } });
+}
+(() => { const st = document.createElement('style'); st.textContent = `.guia{display:flex;align-items:center;gap:12px 14px;flex-wrap:wrap;border:1px solid var(--linha);border-left:4px solid #1351b4;background:var(--sup);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.guia>div{flex:1 1 220px;display:grid;gap:2px}.guia small{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1351b4}
+.guia b{color:var(--tinta)}.guia span{color:var(--texto);font-size:.92rem}.guia .btn{flex:0 0 auto}
+@media(max-width:520px){.guia .btn{width:100%}}`; document.head.append(st); })();
 // rota -> seção da página
 const VISTA = { configuracoes: () => 'mais', colaboradores: x => x === 'ausencias' ? 'ocorrencias' : 'pessoas', fechamento: x => x === 'contabilidade' ? 'acessos' : 'fechamento' };
 let rotaAtual = '';
@@ -296,6 +325,7 @@ async function rota() {
   document.body.classList.toggle('modo-foco', foco);
   document.body.classList.toggle('ini-escuro', v === 'inicio');
   window.scrollTo(0, 0);
+  if (['inicio', 'escala', 'colaboradores', 'fechamento'].includes(v)) { await carregaJornada(); pintaAbas(v, extra); }
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'cadastro') await telaCadastro();
@@ -316,12 +346,13 @@ async function rota() {
     else if (v === 'contador') await telaContador();
     else if (v === 'empresa') { await telaEmpresa(); if (extra === 'historico') $('#listaHist')?.scrollIntoView({block: 'start'}); }
     else if (v === 'conta') telaConta();
+    pintaGuia(vista, v);
   } catch (err) { toast(err.message); }
 }
 // abas no topo de Colaboradores (colaboradores | ausências) e de Fechamento (competência | contabilidade)
 function pintaAbas(v, extra) {
   const abas = { colaboradores: [['colaboradores', 'Colaboradores'], ['colaboradores/ausencias', 'Ausências e férias']],
-    fechamento: conta.papel === 'dono' ? [['fechamento', 'Fechar competência'], ['fechamento/contabilidade', 'Acesso da contabilidade']] : [] }[v];
+    fechamento: conta.papel === 'dono' && (!jor || fato('publicada') || fato('contador') || extra === 'contabilidade') ? [['fechamento', 'Fechar competência'], ['fechamento/contabilidade', 'Acesso da contabilidade']] : [] }[v];
   $$('[data-abas]').forEach(el => {
     const lista = el.dataset.abas === v ? abas || [] : [];
     el.innerHTML = lista.length > 1 ? lista.map(([r, t]) => `<button type="button" data-ir="${r}" class="${r === (extra ? v + '/' + extra : v) ? 'on' : ''}" ${r === (extra ? v + '/' + extra : v) ? 'aria-current="page"' : ''}>${t}</button>`).join('') : '';
@@ -725,7 +756,7 @@ function htmlAvaliador() {
   if (!itens.length) return '';
   return `<div class="cartao avaliador" role="region" aria-label="Por que a escala não fecha"><h3>Por que a escala não fecha</h3>
     <ul>${itens.map(i => `<li><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></li>`).join('')}</ul>
-    <div class="av-acoes"><button class="btn" data-ir="funcionamento" data-foco="cfDias">Ajustar mínimo por dia</button><button class="btn sec" data-ir="colaboradores" data-foco="addNome">Adicionar colaborador</button><button class="btn sec" data-ir="funcionamento">Ver funcionamento</button></div></div>`;
+    <div class="av-acoes"><button class="btn" data-ir="funcionamento" data-foco="cfDias">Ajustar mínimo por dia</button><button class="btn sec" data-ir="colaboradores" data-foco="addNome">Adicionar colaborador</button></div></div>`;
 }
 $('#semAnt').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? -28 : -7); diaSel = null; telaEscala(); };
 $('#semProx').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? 28 : 7); diaSel = null; telaEscala(); };
@@ -783,7 +814,7 @@ async function desenhaMes() {
   const sems = await carregaPeriodo();
   if (!sems.length) { $('#escCorpo').innerHTML = '<div class="vazio"><h2>Ainda não há escala neste período</h2></div>'; return; }
   $('#escCorpo').innerHTML = `${chipsSetor()}${sems.map(w => `<h3 class="mes-sem">Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}</h3>${gradeSemana(w, false)}`).join('')}
-    <div class="acoes-esc"><button class="btn" id="btnExportar">Publicar escala</button></div>${htmlPrejuizo(resumoPeriodo(sems))}`;
+    <div class="acoes-esc"><button class="btn ${fato('publicada') ? 'sec' : ''}" id="btnExportar">Publicar escala</button></div>${htmlPrejuizo(resumoPeriodo(sems))}`;
   $('#btnExportar').onclick = () => folhaExportar();
   ligaChipsSetor(desenhaMes);
 }
@@ -829,7 +860,7 @@ function desenhaSemana() {
     }
   }
   $('#escCorpo').innerHTML = `${status}${a.problemas ? htmlAvaliador() : ''}${chipsSetor()}${modoEsc === 'dia' ? `<div class="dias">${pills}</div>` : ''}${corpo}
-    <div class="acoes-esc"><button class="btn" id="btnExportar">Publicar escala</button>${ed ? '<button class="btn sec" data-faltar>Lançar ausência</button>' : ''}</div>
+    <div class="acoes-esc"><button class="btn ${fato('publicada') || (a.problemas && htmlAvaliador()) ? 'sec' : ''}" id="btnExportar">Publicar escala</button>${ed ? '<button class="btn sec" data-faltar>Lançar ausência</button>' : ''}</div>
     ${htmlComoMontada(e, s)}`;
   $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; desenhaSemana(); });
   ligaChipsSetor(desenhaSemana);
@@ -950,7 +981,8 @@ function telaPessoas() {
   if (!atual) return ir('comecar');
   const fs = seg(atual.setor).funcoes;
   $('#pesSub').textContent = `${plural(funcs.length, 'colaborador', 'colaboradores')} em ${atual.nome}. Toque em um colaborador para editar nome, função ou folga fixa.`;
-  const linha = f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo && !cargoVisivel(f) ? f.cargo + ' · toque para identificar' : f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`;
+  const pedeSexo = jor?.etapa === 'sexo' && atual.abertos?.[6];
+  const linha = f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo && !cargoVisivel(f) ? f.cargo + ' · toque para identificar' : f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : '', pedeSexo && !f.sexo ? 'falta informar o sexo' : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`;
   // com setores: um bloco por setor (e "Sem setor" no fim)
   const blocos = setoresU.length ? [...setoresU.map(s => [s.nome, funcs.filter(f => f.setor_id === s.id)]), ['Sem setor', funcs.filter(f => !setoresU.some(s => s.id === f.setor_id))]].filter(([, l]) => l.length) : [[null, funcs]];
   $('#listaP').innerHTML = funcs.length ? blocos.map(([t, l]) => (t ? `<li class="lista-sec" aria-hidden="true">${esc(t)} <em>${l.length}</em></li>` : '') + l.map(linha).join('')).join('')
@@ -1166,6 +1198,9 @@ async function telaOcorrencias() {
 let fech = null;
 ['#fechMes', '#fechEq'].forEach(s => $(s).onchange = () => telaFechamento());
 async function telaFechamento() {
+  const semEscala = jor && !fato('escala') && conta.papel !== 'contador';
+  $$('#v-fechamento > :not(.abas):not(h1):not(.guia)').forEach(el => el.classList.toggle('hide', semEscala));
+  if (semEscala) return;
   if (!$('#fechMes').value) { const d = new Date(); $('#fechMes').value = d.getDate() <= 10 ? new Date(d.getFullYear(), d.getMonth() - 1, 15).toISOString().slice(0, 7) : mesAtual(); }
   const v = $('#fechEq').value;
   $('#fechEq').innerHTML = '<option value="">Todas as unidades</option>' + equipes.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('');
@@ -1176,7 +1211,7 @@ async function telaFechamento() {
   const nomeMesCurto = $('#fechMes').value.split('-').reverse().join('/'), futuro = $('#fechMes').value > mesAtual();
   $('#fechStatus').innerHTML = fech.fechado
     ? `<div class="status-mes"><div><span class="selo fechado">Competência fechada</span></div><p class="dica">Fechado em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números não mudam mais.</p>${conta.papel === 'dono' ? '<button class="btn sec" id="btnReabrir">Reabrir competência</button>' : ''}</div>`
-    : `<div class="status-mes"><div><span class="selo aberto">Competência aberta</span></div><p class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou esta competência. Os números podem mudar.' : 'No fim do mês, confira e feche a competência. A contabilidade recebe um aviso e os números ficam guardados.'}</p>${podeEditar() && !futuro ? '<button class="btn" id="btnFecharMes">Fechar competência</button>' : ''}</div>`;
+    : `<div class="status-mes"><div><span class="selo aberto">Competência aberta</span></div><p class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou esta competência. Os números podem mudar.' : 'No fim do mês, confira e feche a competência. A contabilidade recebe um aviso e os números ficam guardados.'}</p>${podeEditar() && !futuro ? `<button class="btn ${!jor || jor.etapa === 'fechar' || $('#fechMes').value < mesAtual() ? '' : 'sec'}" id="btnFecharMes">Fechar competência</button>` : ''}</div>`;
   if ($('#btnFecharMes')) $('#btnFecharMes').onclick = async () => {
     if (!confirm(`Fechar a competência ${nomeMesCurto}? A contabilidade é avisada e as escalas do mês não mudam mais.`)) return;
     try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? 'Competência fechada. A contabilidade foi avisada.' : 'Competência fechada. Libere o acesso da contabilidade para ela receber o fechamento.'); telaFechamento(); }
@@ -1188,6 +1223,9 @@ async function telaFechamento() {
   };
   $('#fechAvisos').innerHTML = '';
   const L = fech.linhas;
+  // sem ninguém no mês, baixar e imprimir não têm o que entregar
+  $('#btnCsv').closest('.acoes').classList.toggle('hide', !L.length);
+  $('#fechEspelho').closest('.cartao').classList.toggle('hide', !L.length);
   if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Ninguém neste mês.</p>'; $('#fechEspelho').innerHTML = ''; return; }
   const n = v => v ? `<b>${v}</b>` : '<span class="dica">0</span>';
   const h = v => v ? `<b>${v > 0 ? '+' : ''}${String(v).replace('.', ',')}h</b>` : '<span class="dica">0</span>';
