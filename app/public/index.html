@@ -690,6 +690,7 @@ $('#formCompra').addEventListener('submit', async e => {
   const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')));
   try { await fetch('/api/leads', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome, email, whatsapp: zap, setor: 'checkout', utm, ref: IND})}); } catch {}
   if (window.rastrear) { rastrear('Lead'); rastrear('InitiateCheckout', {value: 97, currency: 'BRL'}); }
+  if (window.__se5x2 === 0) return; // cópia em outro domínio: não abre pagamento (o guarda já mandou para o site real)
   if (CHECKOUT) {
     const u = new URL(CHECKOUT); u.searchParams.set('email', email); u.searchParams.set('name', nome); u.searchParams.set('phone', zap);
     if (IND) { u.searchParams.set('src', 'ind_' + IND); u.searchParams.set('sck', 'ind_' + IND); u.searchParams.set('utm_campaign', 'ind_' + IND); }

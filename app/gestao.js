@@ -699,8 +699,14 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const { rows: n } = await q('select count(*)::int c from membros where conta_id=$1', [req.conta.id]);
     if (n[0].c >= 20) return res.status(400).json({ erro: 'Limite de 20 acessos por empresa.' });
     let { rows: [u] } = await q('select * from usuarios where email=$1', [email]);
-    if (!u) ({ rows: [u] } = await q(`insert into usuarios (nome, email, origem) values ($1,$2,'convite')
-      on conflict (email) do update set email=excluded.email returning *`, [nome || email.split('@')[0], email]));
+    // o link de criar senha só volta para quem convidou se a conta acabou de nascer neste convite.
+    // Conta que já existia sem senha (comprou e não criou a senha, ou foi convidada por outra empresa) recebe só por e-mail:
+    // devolver o link deixaria qualquer um tomar a conta de outra pessoa.
+    let novo = false;
+    if (!u) {
+      const r = await q(`insert into usuarios (nome, email, origem) values ($1,$2,'convite') on conflict (email) do nothing returning *`, [nome || email.split('@')[0], email]);
+      if (r.rows[0]) { u = r.rows[0]; novo = true; } else ({ rows: [u] } = await q('select * from usuarios where email=$1', [email]));
+    }
     await q(`insert into membros (conta_id, usuario_id, papel) values ($1,$2,$3)
       on conflict (conta_id, usuario_id) do update set papel=excluded.papel`, [req.conta.id, u.id, papel]);
     const empresa = req.conta.empresa || req.u.nome;
@@ -715,7 +721,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       botao: u.senha_hash ? 'Entrar na Sua Escala 5x2' : 'Criar minha senha', link, rodape: rodapeSuporte,
     }));
     auditar(req, `Deu acesso de ${PAPEL_NOME[papel].toLowerCase()} para ${email}`);
-    res.json({ ok: true, link: u.senha_hash ? null : link });
+    res.json({ ok: true, link: novo ? link : null });
   }));
   app.patch('/api/membros/:mid', L, soDono, erro(async (req, res) => {
     const papel = ['gestor', 'contador'].includes(req.body?.papel) ? req.body.papel : null;

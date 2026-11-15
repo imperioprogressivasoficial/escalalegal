@@ -27,7 +27,7 @@ test('indicação vira comissão, reembolso cancela; empresa extra usa o acesso 
 
   // 1) indicado pelo formulário da página de vendas (lead com o código) e compra aprovada
   const b = `bruno${id}@t.com`;
-  await chama('/api/leads', { method: 'POST', body: { nome: 'Bruno', whatsapp: '71999990000', email: b, ref: ind.codigo } });
+  await chama('/api/leads', { method: 'POST', h: { origin: base }, body: { nome: 'Bruno', whatsapp: '71999990000', email: b, ref: ind.codigo } });
   await webhook({ email: b, nome: 'Bruno' });
   // 2) indicado pelo rastreio do checkout (sck=ind_CODIGO), sem passar pelo formulário
   const c = `carla${id}@t.com`;
@@ -52,7 +52,7 @@ test('indicação vira comissão, reembolso cancela; empresa extra usa o acesso 
   r = (await chama('/api/indicacao', { cookie: a })).json;
   assert.equal(+r.a_receber, 0); assert.equal(+r.recebido, ind.valor_por_venda);
   // ninguém ganha comissão por si mesmo
-  await chama('/api/leads', { method: 'POST', body: { nome: 'Ana', whatsapp: '71999990000', email: `ana${id}@t.com`, ref: ind.codigo } });
+  await chama('/api/leads', { method: 'POST', h: { origin: base }, body: { nome: 'Ana', whatsapp: '71999990000', email: `ana${id}@t.com`, ref: ind.codigo } });
   await webhook({ email: `ana${id}@t.com` });
   assert.equal((await chama('/api/indicacao', { cookie: a })).json.vendas, 1);
 

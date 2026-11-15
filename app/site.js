@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-module.exports = function site({ app, APP_URL, PRODUCAO }) {
+module.exports = function site({ app, APP_URL, PRODUCAO, seg }) {
   const E = process.env;
   const PIXEL = /^\d+$/.test(E.META_PIXEL_ID || '') ? E.META_PIXEL_ID : '';
   const GA = /^G-[A-Z0-9]+$/i.test(E.GA_ID || '') ? E.GA_ID : '';
@@ -47,7 +47,10 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
     if (E.GOOGLE_SITE_VERIFICATION) head += `\n<meta name="google-site-verification" content="${esc(E.GOOGLE_SITE_VERIFICATION)}">`;
     if (E.META_DOMAIN_VERIFICATION) head += `\n<meta name="facebook-domain-verification" content="${esc(E.META_DOMAIN_VERIFICATION)}">`;
     if (rota === '/') head += `\n<script type="application/ld+json">${JSON.stringify(dadosEstruturados(h))}</script>`;
-    h = h.replace('<!--HEAD-->', head)
+    // guarda anticlone primeiro (cópia em outro domínio volta para cá) e a marca d'água que identifica o original
+    const marca = seg ? `<!-- Sua Escala 5x2 · original em ${APP_URL} · ${seg.MARCA} -->\n` : '';
+    h = h.replace('<!--HEAD-->', marca + (seg ? seg.guarda() : '') + head)
+      .replace(/<html(\s|>)/, `<html data-se="${seg ? seg.MARCA : ''}"$1`)
       .replaceAll('{{EMPRESA_LINHA}}', linhaEmpresa).replaceAll('{{EMPRESA_NOME}}', esc(empresa.nome))
       .replaceAll('{{EMPRESA_CNPJ}}', empresa.cnpj ? `, CNPJ ${esc(empresa.cnpj)}` : '').replaceAll('{{CONTATO}}', contato)
       .replaceAll('{{PRECO}}', PRECO.toFixed(2).replace('.', ',')).replaceAll('{{ANO}}', String(new Date().getFullYear())).replaceAll('{{SITE}}', APP_URL);
@@ -76,7 +79,8 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
   app.get('/cookies', (_req, res) => res.redirect(301, '/privacidade#cookies'));
 
   // ---------- robots.txt, sitemap.xml, llms.txt ----------
-  app.get('/robots.txt', (_req, res) => res.type('text/plain').send(
+  const naoCopiar = (seg ? seg.ROBOTS_BLOQUEADOS : []).map(b => `User-agent: ${b}\nDisallow: /\n\n`).join('');
+  app.get('/robots.txt', (_req, res) => res.type('text/plain').send(naoCopiar +
     `User-agent: *\nAllow: /\nDisallow: /app\nDisallow: /admin\nDisallow: /api/\nDisallow: /e/\nDisallow: /obrigado\n\nSitemap: ${APP_URL}/sitemap.xml\n`));
   app.get('/sitemap.xml', (_req, res) => {
     const itens = [['/', 'index.html', '1.0'], ['/ajuda', 'ajuda.html', '0.8'], ['/privacidade', 'privacidade.html', '0.3'], ['/termos', 'termos.html', '0.3']];
@@ -111,7 +115,9 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
 
   // ---------- rastreio com aviso de cookies ----------
   // Só carrega Pixel/Analytics/GTM depois do "Aceitar" (modo de consentimento do Google começa negado).
-  const rastreio = () => `(function(){
+  // o rastreio também confere o domínio: uma cópia que puxa este arquivo do nosso servidor volta para o site real
+  const guardaJs = seg && seg.guarda() ? seg.guarda().replace(/^<script[^>]*>|<\/script>$/g, '') + '\n' : '';
+  const rastreio = () => `${guardaJs}(function(){
 var C=${JSON.stringify({ pixel: PIXEL, ga: GA, gtm: GTM, capi: !!CAPI })};
 window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}window.gtag=gtag;
 var fila=[],ok=false,K='consentimento',ativo=C.pixel||C.ga||C.gtm;

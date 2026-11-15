@@ -33,17 +33,12 @@ const fila = criaFila(q);
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? +TRUST_PROXY : TRUST_PROXY);
-app.use((req, res, next) => {
-  res.set({
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'SAMEORIGIN',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  });
-  if (PRODUCAO) res.set('Strict-Transport-Security', 'max-age=31536000');
-  if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
-  next();
-});
+// cabeçalhos de segurança (CSP, anti-iframe, HSTS), copiadores de página, imagens em outro domínio e origem da API
+const seg = require('./seguranca.js')({ DOMAIN, APP_URL, PRODUCAO });
+app.use(seg.cabecalhos);
+app.use(seg.bloqueiaCopiadores);
+app.use(seg.protegeArquivos);
+app.use(seg.confereOrigem);
 // endereço antigo (ou www): páginas vão para o domínio principal. API e webhook seguem funcionando onde chegarem.
 app.use((req, res, next) => {
   const host = String(req.hostname || '');
@@ -53,7 +48,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '300kb' }));
 // site público (metas, robots, sitemap, llms, rastreio, 404) antes dos arquivos estáticos
-const site = require('./site.js')({ app, APP_URL, PRODUCAO });
+const site = require('./site.js')({ app, APP_URL, PRODUCAO, seg });
 app.use('/img', express.static(path.join(__dirname, 'public', 'img'), { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: PRODUCAO ? '10m' : 0 }));
 
@@ -75,9 +70,19 @@ const limite = (max = 20, janela = 60_000) => (req, res, next) => {
   if (h.length >= max) return res.status(429).json({ erro: 'Muitas tentativas. Aguarde um pouco e tente de novo.' });
   h.push(now); hits.set(k, h); next();
 };
+// ---------- tentativas erradas (senha do login, troca de senha e /admin) ----------
+// Conta só as falhas: depois de N erros em 15 minutos, bloqueia aquela chave (e-mail ou IP) por 15 minutos.
+const falhas = new Map();
+const JANELA_FALHAS = 15 * 60_000;
+const contaFalhas = k => (falhas.get(k) || []).filter(t => Date.now() - t < JANELA_FALHAS);
+const travado = (k, max) => contaFalhas(k).length >= max;
+const falhou = k => { const h = contaFalhas(k); h.push(Date.now()); falhas.set(k, h.slice(-100)); };
+const acertou = k => falhas.delete(k);
+const MAX_POR_EMAIL = 8, MAX_POR_IP = 30, MAX_ADMIN = 10;
 setInterval(() => {
   const now = Date.now();
   for (const [k, h] of hits) if (!h.length || now - h[h.length - 1] > 15 * 60_000) hits.delete(k);
+  for (const [k, h] of falhas) if (!h.length || now - h[h.length - 1] > JANELA_FALHAS) falhas.delete(k);
 }, 5 * 60_000).unref();
 
 // ---------- senha e sessão ----------
@@ -86,9 +91,10 @@ async function hashSenha(senha) {
   const sal = crypto.randomBytes(16).toString('hex');
   return sal + ':' + (await scrypt(senha, sal, 64)).toString('hex');
 }
+const SAL_FALSO = crypto.randomBytes(16).toString('hex');
 async function confereSenha(senha, salvo) {
   const [sal, h] = String(salvo || '').split(':');
-  if (!sal || !h) return false;
+  if (!sal || !h) { await scrypt(String(senha), SAL_FALSO, 64); return false; } // mesmo tempo com ou sem conta
   const teste = await scrypt(senha, sal, 64);
   return crypto.timingSafeEqual(teste, Buffer.from(h, 'hex'));
 }
@@ -151,6 +157,11 @@ async function enviaLiberado(u) {
     paragrafos: [primeiroNome(u.nome) ? `Olá, ${primeiroNome(u.nome)}!` : 'Olá!', 'Entre com seu e-mail e senha para gerar a escala 5x2.'],
     botao: 'Entrar na Sua Escala 5x2', link: `${APP_URL}/app`, rodape: rodapeSuporte,
   }));
+}
+// no login e no cadastro: no máximo um link a cada 2 minutos por conta (evita encher a caixa de alguém)
+async function enviaRedefinirSemRepetir(u) {
+  const { rows } = await q("select 1 from acesso_tokens where usuario_id=$1 and criado_em > now() - interval '2 minutes' limit 1", [u.id]);
+  if (!rows[0]) await enviaRedefinir(u);
 }
 async function enviaRedefinir(u) {
   const link = await criaLink(u.id, 24);
@@ -221,7 +232,7 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
   const { rows: existe } = await q('select id, nome, email, senha_hash from usuarios where email=$1', [email]);
   if (existe[0]) {
     if (!existe[0].senha_hash) { // comprou antes de criar a conta: a senha é criada pelo link do e-mail
-      await enviaRedefinir(existe[0]);
+      await enviaRedefinirSemRepetir(existe[0]);
       return res.status(409).json({ erro: 'Este e-mail já tem acesso comprado. Enviamos um link para você criar sua senha. Confira sua caixa de entrada e o spam.' });
     }
     return res.status(409).json({ erro: 'Este e-mail já tem conta. Use "Entrar".' });
@@ -244,13 +255,20 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
 
 app.post('/api/login', limite(10), erro(async (req, res) => {
   const email = limpa(req.body?.email, 160).toLowerCase(), senha = String(req.body?.senha || '').slice(0, 200);
+  const kEmail = 'login:' + email, kIp = 'login-ip:' + req.ip;
+  if (travado(kEmail, MAX_POR_EMAIL) || travado(kIp, MAX_POR_IP))
+    return res.status(429).json({ erro: 'Muitas tentativas com senha errada. Espere 15 minutos ou use "Esqueci minha senha".' });
   const { rows } = await q('select id, nome, email, senha_hash, sessao_v from usuarios where email=$1', [email]);
   const u = rows[0];
   if (u && !u.senha_hash) {
-    await enviaRedefinir(u);
+    await enviaRedefinirSemRepetir(u);
     return res.status(401).json({ erro: 'Você ainda não criou sua senha. Enviamos um link para o seu e-mail agora.' });
   }
-  if (!u || !(await confereSenha(senha, u.senha_hash))) return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+  if (!(await confereSenha(senha, u?.senha_hash)) || !u) {
+    falhou(kEmail); falhou(kIp);
+    return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+  }
+  acertou(kEmail);
   q('update usuarios set ultimo_acesso=now() where id=$1', [u.id]).catch(() => {});
   criaSessao(res, u); res.json({ ok: true });
 }));
@@ -276,8 +294,11 @@ app.put('/api/eu', logado, erro(async (req, res) => {
 }));
 app.post('/api/eu/senha', logado, limite(10), erro(async (req, res) => {
   const atual = String(req.body?.atual || ''), nova = String(req.body?.nova || '');
+  const k = 'troca:' + req.u.id;
+  if (travado(k, MAX_POR_EMAIL)) return res.status(429).json({ erro: 'Muitas tentativas com senha errada. Espere 15 minutos.' });
   const { rows } = await q('select senha_hash from usuarios where id=$1', [req.u.id]);
-  if (!(await confereSenha(atual, rows[0].senha_hash))) return res.status(400).json({ erro: 'A senha atual não confere.' });
+  if (!(await confereSenha(atual, rows[0].senha_hash))) { falhou(k); return res.status(400).json({ erro: 'A senha atual não confere.' }); }
+  acertou(k);
   if (nova.length < 6 || nova.length > 200) return res.status(400).json({ erro: 'A senha nova precisa ter pelo menos 6 caracteres.' });
   // troca a senha e derruba as outras sessões (outros celulares/computadores)
   const { rows: u } = await q('update usuarios set senha_hash=$1, sessao_v=sessao_v+1 where id=$2 returning id, sessao_v', [await hashSenha(nova), req.u.id]);
@@ -359,7 +380,7 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
 }));
 
 // ---------- leads (formulário da página de vendas) ----------
-app.post('/api/leads', limite(10), erro(async (req, res) => {
+app.post('/api/leads', seg.soDaNossaPagina, limite(10), erro(async (req, res) => {
   const b = req.body || {};
   const nome = limpa(b.nome), whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, '');
   if (!nome || whatsapp.length < 10) return res.status(400).json({ erro: 'Informe nome e WhatsApp com DDD.' });
@@ -373,8 +394,12 @@ app.post('/api/leads', limite(10), erro(async (req, res) => {
 
 // ---------- admin ----------
 function adminAuth(req, res, next) {
-  const [u, ...resto] = Buffer.from((req.headers.authorization || '').split(' ')[1] || '', 'base64').toString().split(':');
+  const k = 'admin:' + req.ip;
+  if (travado(k, MAX_ADMIN)) return res.status(429).type('text/plain').send('Muitas tentativas erradas. Espere 15 minutos.');
+  const cab = req.headers.authorization || '';
+  const [u, ...resto] = Buffer.from(cab.split(' ')[1] || '', 'base64').toString().split(':');
   if (ADMIN_PASS && iguais(u, ADMIN_USER) && iguais(resto.join(':'), ADMIN_PASS)) return next();
+  if (cab) { falhou(k); console.warn('admin: senha errada de', req.ip); }
   res.set('WWW-Authenticate', 'Basic realm="admin", charset="UTF-8"').status(401).send('Acesso restrito');
 }
 const admin = [limite(120), adminAuth];

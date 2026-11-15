@@ -9,6 +9,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - Escala sem botão "Gerar": `GET /api/equipes/:id/semana` monta sozinha a semana que não tem escala e refaz as semanas futuras quando a equipe ou o funcionamento muda (a semana em curso nunca é refeita sozinha). Férias/afastamento chamam `POST /api/equipes/:id/refazer`.
 - `app/public/ajuda.html`: ajuda e a lei (EC 141/2026, Lei 10.101, Lei 605/49, CLT, MEI). Atualizar se a lei mudar.
 - `app/public/escala.html`: página do funcionário (link da equipe, só leitura, sem login).
+- `app/seguranca.js`: cabeçalhos (CSP com Google Fonts, rastreio e vturb; `frame-ancestors 'none'`, HSTS em produção), bloqueio de copiadores de página (HTTrack, Wget, Scrapy... só nas páginas; curl e buscadores liberados), imagens barradas quando puxadas por outro domínio, Origin conferido em todo POST/PUT/PATCH/DELETE da API (menos o webhook) e `/api/leads` só do nosso domínio, e o guarda anticlone (script no `<head>` e no `/rastreio.js`: fora do DOMAIN/`DOMINIOS_PERMITIDOS` manda para o site real levando `ind`/utm) com marca d'água (`data-se`). Ao incluir um serviço externo novo na página, libere o domínio na CSP.
 - `app/pagamento.js`: interpreta o webhook de qualquer checkout (Kiwify, Hotmart, Eduzz, Cakto, Ticto, JSON simples) → liberar / bloquear / ignorar.
 - `app/email.js`: fila de e-mails no Postgres (tabela `emails`) com nova tentativa; SMTP via nodemailer.
 - `app/db/schema.sql`: tabelas `usuarios`, `equipes`, `funcionarios`, `escalas`, `compras`, `leads`, `pagamentos_eventos`, `acesso_tokens`, `emails`. Roda a cada boot (idempotente: só `create if not exists` / `add column if not exists`).
@@ -34,6 +35,8 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 ## Regras de negócio
 - Gerar escala exige `acesso_liberado` (pago). Compra aprovada no webhook (`POST /api/webhook/pagamento?token=WEBHOOK_TOKEN`) cria a conta sem senha e envia por e-mail o link `/app?acesso=TOKEN` para criar a senha (token guardado só como hash, uso único). Reembolso/chargeback bloqueia. Todo evento fica em `pagamentos_eventos`.
 - Cadastro com e-mail de conta comprada e sem senha não cria conta: reenvia o link (evita sequestro da compra).
+- Convite de acesso só devolve o link de criar senha quando a conta nasceu naquele convite; conta que já existia recebe só por e-mail.
+- Login: 8 senhas erradas por e-mail (ou 30 por IP) em 15 min travam por 15 min; /admin trava o IP depois de 10 erros.
 - Cada empresa só vê as próprias equipes (checar `req.conta.id` em toda rota de gestão; nunca `req.u.id`).
 - Ocorrências (férias, atestado, falta, afastamento, folga extra, banco de horas) entram na geração e aparecem por cima da escala salva na leitura.
 - Mês fechado (`fechamentos`) congela os números (snapshot) e bloqueia gerar/ajustar escala e lançar/apagar ocorrência no mês. Só o dono reabre. Fechar avisa os contadores por e-mail.
