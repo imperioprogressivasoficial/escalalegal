@@ -291,6 +291,10 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .indique-passos li{display:flex;gap:16px;align-items:center;background:#fff;border:1px solid var(--linha);border-radius:18px;padding:18px 20px;font-size:1.08rem;color:var(--tinta)}
 .indique-passos b{flex:0 0 44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--grad-verde);color:#fff;font:900 1.3rem var(--display)}
 .indique-passos i{display:inline-block;vertical-align:middle;margin-left:8px}
+.vsl-sec{padding-top:clamp(56px,7vw,90px)}
+.vsl{max-width:980px;margin:0 auto;border-radius:22px;overflow:hidden;box-shadow:0 40px 90px -40px rgba(6,21,51,.55);background:#061533;aspect-ratio:16/9}
+.vsl video{width:100%;height:100%;display:block}
+.centro-cta{display:flex;justify-content:center;margin-top:26px}
 @media(max-width:980px){.indique-grid{grid-template-columns:1fr;gap:28px}}
 @media(max-width:980px){.formatos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.formatos{gap:10px}.formato{padding:16px}.formato h3{font-size:1.1rem}.formato p{font-size:.9rem}.formatos-mini i{width:46px;height:46px}}
@@ -327,7 +331,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <header class="topo" id="topo">
   <div class="wrap">
     <a class="marca" href="#"><img src="img/mascote.svg" alt="">SuaEscala<span>5x2</span></a>
-    <nav class="menu" aria-label="Principal"><a href="#como">Como funciona</a><a href="#app">O sistema</a><a href="#formatos">Formatos</a><a href="#lei">A lei</a><a href="#duvidas">Dúvidas</a><a href="/app">Entrar</a><a class="btn btn-p" href="#preco">Quero a Sua Escala 5x2</a></nav>
+    <nav class="menu" aria-label="Principal"><a href="#video">Vídeo</a><a href="#como">Como funciona</a><a href="#app">O sistema</a><a href="#formatos">Formatos</a><a href="#lei">A lei</a><a href="#duvidas">Dúvidas</a><a href="/app">Entrar</a><a class="btn btn-p" href="#preco">Quero a Sua Escala 5x2</a></nav>
   </div>
 </header>
 
@@ -360,6 +364,14 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <div class="fato"><b>40 horas</b><span>de limite semanal a partir de 16/12/2027</span></div>
       <div class="fato"><b>0%</b><span>de redução de salário permitida pela lei</span></div>
     </div>
+  </div>
+</section>
+
+<section class="sec vsl-sec" id="video">
+  <div class="wrap">
+    <div class="cab-sec centro" style="text-align:center"><span class="etq">Em 3 minutos</span><h2>Veja a notícia e o app por dentro</h2></div>
+    <div class="vsl" data-r><video controls playsinline preload="none" poster="/img/vsl-capa.jpg" src="/video/vsl.mp4" aria-label="Vídeo: o fim da escala 6x1 e como a Sua Escala 5x2 funciona por dentro"></video></div>
+    <div class="centro-cta"><a class="btn" href="#preco" data-comprar>Quero a Sua Escala 5x2 <small>R$&nbsp;97 · vitalício</small></a></div>
   </div>
 </section>
 
