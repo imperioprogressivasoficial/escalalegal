@@ -24,6 +24,8 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `docker-compose.yml`: app + Postgres + backup diário (+ Caddy opcional). Deploy no VPS do Bruno em `/opt/escalalegal`.
 
 - `app/public/exportar.js`: a tabela pronta (`#tabela`) e as saídas: WhatsApp (imagem), PDF, Excel .xlsx, CSV, Google Planilhas (`=IMPORTDATA` do link `/api/publico/planilha/:token`), JPG, texto, link da equipe, imprimir. Tudo gerado no aparelho, sem biblioteca.
+- `app/public/cadastro.js` (navegador e Node): cadastro completo da empresa (nome fantasia, razão social, porte, CNPJ com dígito, responsável, CEP/UF/cidade, segmento, nº de funcionários e unidades, como conheceu) logo depois de criar a senha; `POST /api/empresa/cadastro`, `GET /api/cep/:cep` (ViaCEP no servidor).
+- `app/public/inicio.js`: tela inicial tipo área de membros (`GET /api/inicio`): boas-vindas, "Comece por aqui" (5 slides), progresso, atalhos; barra lateral no computador, Início | Escala | Equipe | Mais no celular.
 - `app/public/aula.js`: aula da nova lei (`#aula`), 8 lições com exemplo e teste rápido.
 - `app/public/extras.js`: colocar na tela inicial (PWA: `manifest.webmanifest`, `sw.js`, `#instalar`), Indique para quem conhece (`#indique`) e cadastrar outra empresa.
 - Logos dos formatos em `app/public/img/formatos/`: logos oficiais baixados do Wikimedia Commons (WhatsApp, Adobe Acrobat para PDF, Excel 2025, Google Planilhas, Google Fotos para imagem); CSV, link, texto, imprimir e tela inicial são desenhos próprios. Prints do app na página de vendas sempre dentro das molduras oficiais da Apple (Apple Design Resources: iPhone 17 Pro Cosmic Orange e MacBook Pro M5 14" Space Black), em `img/iphone-*.webp` e `img/mac-*.webp`.
@@ -33,6 +35,8 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `marketing/video/`: vídeo em motion (Reels) e o projeto para gerar de novo.
 
 ## Regras de negócio
+- Só cria conta de empresa quem comprou: `/api/cadastro` recusa dono sem compra aprovada (Kiwify, webhook) a não ser com `LIBERAR_TUDO=1`. Contador continua com cadastro livre. Checkout: Kiwify `https://pay.kiwify.com.br/Xs4K7Kx` (produto 6f254d50-…); a página de vendas não tem pop-up: botões descem até `#preco` e o botão do preço vai direto ao checkout com UTMs e indicação.
+- Domínio: `suaescala5x2.com` (DOMAIN); `www` e o antigo `escala.n8nimperio.tech` redirecionam (webhook continua aceito no antigo).
 - Gerar escala exige `acesso_liberado` (pago). Compra aprovada no webhook (`POST /api/webhook/pagamento?token=WEBHOOK_TOKEN`) cria a conta sem senha e envia por e-mail o link `/app?acesso=TOKEN` para criar a senha (token guardado só como hash, uso único). Reembolso/chargeback bloqueia. Todo evento fica em `pagamentos_eventos`.
 - Cadastro com e-mail de conta comprada e sem senha não cria conta: reenvia o link (evita sequestro da compra).
 - Convite de acesso só devolve o link de criar senha quando a conta nasceu naquele convite; conta que já existia recebe só por e-mail.
