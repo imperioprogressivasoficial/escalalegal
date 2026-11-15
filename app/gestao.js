@@ -37,6 +37,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     ? next() : res.status(402).json({ erro: 'O acesso desta empresa ainda não foi liberado. Conclua o pagamento para gerar escalas.', checkout: CHECKOUT_URL });
   const L = [logado, naConta], LE = [logado, naConta, edita];
   const { notificar } = require('./notificacoes.js')({ app, q, erro, L });
+  const foto = require('./foto.js')({ app, q, erro, logado });
   const br = d => d.split('-').reverse().slice(0, 2).join('/');
 
   const minhaEquipe = erro(async (req, res, next) => {
@@ -756,7 +757,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
 
   // ---------- acessos: gestor e contador ----------
   app.get('/api/membros', L, soDono, erro(async (req, res) => {
-    const { rows } = await q(`select m.id, m.papel, m.criado_em, u.nome, u.email, u.senha_hash is not null ativo, u.ultimo_acesso
+    await foto.garante().catch(() => {});
+    const { rows } = await q(`select m.id, m.papel, m.criado_em, u.id usuario_id, u.foto_em, u.nome, u.email, u.senha_hash is not null ativo, u.ultimo_acesso
       from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 order by m.criado_em`, [req.conta.id]);
     res.json(rows);
   }));

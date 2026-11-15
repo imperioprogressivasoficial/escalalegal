@@ -390,7 +390,7 @@ function pintaLateral() {
   const mc = ehModoContador();
   const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
   el.innerHTML = `<div class="lat-emp"><img class="lat-logo" src="/img/logo-escuro-completo.webp?v=1" alt="" width="814" height="148"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
-      <div class="lat-quem so-gaveta"><i aria-hidden="true">${esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
+      <div class="lat-quem so-gaveta"><i aria-hidden="true">${typeof meuAvatar === 'function' ? meuAvatar() : esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
       <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
     <nav aria-label="Seções">${itensMenu().map(([r, t]) => `<button type="button" class="lat-item" data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}</nav>
     <div class="lat-pe"><button type="button" class="lat-sair-btn" data-sair>Sair do app</button><span>${esc(eu.email)}</span></div>`;
@@ -635,4 +635,63 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   setInterval(carregaNotificacoes, 90e3);
   document.addEventListener('visibilitychange', carregaNotificacoes);
+});
+
+// ================= foto de perfil (Mais › Minha conta) =================
+// Corta no centro com zoom, reduz para 256x256 (WebP; JPEG se o navegador não gerar WebP) e manda para o servidor.
+let fotoEm = null;
+const iniciaisDe = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toUpperCase() || '?';
+const avatar = (id, nome, v) => `<span class="av"><b>${esc(iniciaisDe(nome))}</b>${v ? `<img src="/api/usuarios/${id}/foto?v=${encodeURIComponent(new Date(v).getTime())}" alt="" onerror="this.remove()">` : ''}</span>`;
+const meuAvatar = () => avatar(eu.id, eu.nome || eu.email, fotoEm);
+async function carregaFoto() {
+  try { fotoEm = (await api('/api/eu/foto/info')).foto_em; } catch { fotoEm = null; }
+  pintaAvatares();
+}
+function pintaAvatares() {
+  if (!eu) return;
+  if ($('#btnUser')) $('#btnUser').innerHTML = meuAvatar();
+  const q = $('#lateral .lat-quem i'); if (q) q.innerHTML = meuAvatar();
+  if ($('#fpAvatar')) { $('#fpAvatar').innerHTML = meuAvatar(); $('#fpTirar').classList.toggle('hide', !fotoEm); }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  let img = null;
+  const cv = $('#fpCanvas'), ctx = cv.getContext('2d');
+  const desenha = () => {
+    if (!img) return;
+    const z = +$('#fpZoom').value, esc0 = Math.max(256 / img.width, 256 / img.height) * z;
+    const w = img.width * esc0, h = img.height * esc0;
+    const sobra = Math.max(0, h - 256);
+    ctx.clearRect(0, 0, 256, 256); ctx.drawImage(img, (256 - w) / 2, (256 - h) / 2 - (+$('#fpY').value) * sobra / 2, w, h);
+  };
+  $('#fpArquivo').onchange = () => {
+    const f = $('#fpArquivo').files[0]; $('#fpErro').textContent = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { $('#fpErro').textContent = 'Escolha uma imagem.'; return; }
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => { img = im; $('#fpZoom').value = 1; $('#fpY').value = im.height > im.width ? -0.6 : 0; $('#fpCorte').classList.remove('hide'); desenha(); URL.revokeObjectURL(url); };
+    im.onerror = () => { $('#fpErro').textContent = 'Não foi possível abrir essa imagem.'; };
+    im.src = url;
+  };
+  $('#fpZoom').oninput = desenha; $('#fpY').oninput = desenha;
+  $('#fpCancelar').onclick = () => { img = null; $('#fpCorte').classList.add('hide'); $('#fpArquivo').value = ''; };
+  const blob = (tipo, q) => new Promise(r => cv.toBlob(r, tipo, q));
+  $('#fpSalvar').onclick = async () => {
+    const b = $('#fpSalvar'); b.disabled = true; $('#fpErro').textContent = '';
+    try {
+      let arq = null;
+      for (const q of [0.85, 0.7, 0.55]) { arq = await blob('image/webp', q); if (!arq || arq.type !== 'image/webp') break; if (arq.size <= 40 * 1024) break; }
+      if (!arq || arq.type !== 'image/webp') arq = await blob('image/jpeg', 0.82);
+      const r = await fetch('/api/eu/foto', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': arq.type }, body: arq });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Não foi possível salvar a foto.');
+      fotoEm = j.foto_em; img = null; $('#fpCorte').classList.add('hide'); $('#fpArquivo').value = '';
+      pintaAvatares(); toast('Foto salva.');
+    } catch (err) { $('#fpErro').textContent = err.message; }
+    b.disabled = false;
+  };
+  $('#fpTirar').onclick = async () => {
+    if (!confirm('Remover a foto de perfil?')) return;
+    await api('/api/eu/foto', { method: 'DELETE' }).catch(() => {});
+    fotoEm = null; pintaAvatares(); toast('Foto removida.');
+  };
 });

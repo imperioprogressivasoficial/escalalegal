@@ -811,6 +811,18 @@ body.modo-foco .topo-sino{display:none}
   .not-fundo:not([hidden]){display:block;position:fixed;inset:0;background:rgba(7,29,65,.5);z-index:44;animation:vistaEntra .2s both}
 }
 @keyframes folhaSobe{from{transform:translateY(100%)}to{transform:none}}
+/* foto de perfil e avatares */
+.av{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden}
+.av b{font:inherit;color:inherit}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.btn-user .av{width:38px;height:38px}
+.lat-quem i .av{width:34px;height:34px}
+.fp-linha{display:flex;gap:16px;align-items:center;margin-top:10px}
+.fp-av{flex:none;width:84px;height:84px;border-radius:50%;background:var(--amarelo);color:#3b2f00;font:800 1.6rem var(--display);display:grid}
+.fp-acoes{display:grid;gap:6px;justify-items:start}
+.fp-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#fpCanvas{display:block;width:200px;height:200px;border-radius:50%;margin:14px auto 4px;background:#e9eef5}
+.membros .m-av{display:inline-grid;width:30px;height:30px;vertical-align:middle;margin-right:8px;background:var(--azul-claro);color:var(--azul);border-radius:50%;font:800 .75rem var(--display)}
 /* ===== simplificação: abas, modos da escala, próximo passo, capas ===== */
 .abas{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--linha);overflow-x:auto;scrollbar-width:none}
 .abas:empty{display:none}
@@ -1146,6 +1158,15 @@ body.ini-escuro{background:#0b1220}
       <button class="voltar" data-ir="mais">‹ Voltar</button>
       <h1>Minha conta</h1>
       <p class="sub" id="contaEmail"></p>
+      <section class="cartao foto-perfil" style="margin-bottom:12px" aria-labelledby="tFoto"><h3 id="tFoto">Foto de perfil</h3>
+        <div class="fp-linha"><span id="fpAvatar" class="fp-av"></span><div class="fp-acoes"><label class="btn sec pq" for="fpArquivo">Escolher foto</label>
+          <input id="fpArquivo" type="file" accept="image/*" class="fp-input"><button type="button" class="link perigo hide" id="fpTirar">Remover foto</button>
+          <p class="dica">Aparece no topo do app e para a sua equipe.</p></div></div>
+        <div id="fpCorte" class="hide"><canvas id="fpCanvas" width="256" height="256" aria-label="Prévia da foto"></canvas>
+          <label for="fpZoom">Zoom</label><input id="fpZoom" type="range" min="1" max="3" step="0.01" value="1">
+          <label for="fpY">Posição (para cima ou para baixo)</label><input id="fpY" type="range" min="-1" max="1" step="0.01" value="0">
+          <div class="lado" style="margin-top:12px"><button type="button" class="btn sec" id="fpCancelar">Cancelar</button><button type="button" class="btn" id="fpSalvar">Salvar foto</button></div></div>
+        <p class="erro" id="fpErro"></p></section>
       <form class="cartao" id="formConta" style="margin-bottom:12px">
         <label for="mcNome" style="margin-top:0">Nome</label><input id="mcNome" autocomplete="name">
         <label for="mcZap">WhatsApp</label><input id="mcZap" inputmode="tel">
@@ -1189,13 +1210,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=27"></script>
-<script src="/cadastro.js?v=27"></script>
-<script src="/exportar.js?v=27"></script>
-<script src="/aula.js?v=27"></script>
-<script src="/extras.js?v=27"></script>
-<script src="/inicio.js?v=27"></script>
-<script src="/extras-materiais.js?v=27"></script>
-<script src="/app.js?v=27"></script>
+<script src="/scheduler.js?v=28"></script>
+<script src="/cadastro.js?v=28"></script>
+<script src="/exportar.js?v=28"></script>
+<script src="/aula.js?v=28"></script>
+<script src="/extras.js?v=28"></script>
+<script src="/inicio.js?v=28"></script>
+<script src="/extras-materiais.js?v=28"></script>
+<script src="/app.js?v=28"></script>
 </body>
 </html>

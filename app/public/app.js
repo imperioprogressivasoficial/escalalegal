@@ -137,6 +137,7 @@ async function iniciar() {
   await carregaEquipes();
   rota();
   carregaNotificacoes();
+  carregaFoto();
 }
 async function carregaEquipes() {
   if (ehModoContador()) { equipes = []; atual = null; return pintaTopo(); }
@@ -151,7 +152,7 @@ function pintaTopo() {
   sel.innerHTML = equipes.map(e => `<option value="${e.id}" ${e.id === atual?.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('');
   $('#topoQuem').classList.toggle('hide', equipes.length > 1);
   const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
-  $('#btnUser').textContent = ini; $('#muNome').textContent = eu.nome || ''; $('#muEmail').textContent = eu.email || '';
+  $('#btnUser').innerHTML = typeof meuAvatar === 'function' ? meuAvatar() : ini; $('#muNome').textContent = eu.nome || ''; $('#muEmail').textContent = eu.email || '';
   $('#topoQuem').textContent = ehModoContador() ? eu.nome : conta.papel === 'contador' ? (conta.empresa || '') : (atual?.nome || conta.empresa || '');
 }
 async function trocaUnidade(id) {
@@ -1006,7 +1007,7 @@ async function telaContador() {
 // ================= acessos =================
 async function telaAcessos() {
   const m = await api('/api/membros');
-  $('#listaMembros').innerHTML = m.map(x => `<li><div><b>${esc(x.nome)}</b> · ${esc(x.email)}</div>
+  $('#listaMembros').innerHTML = m.map(x => `<li><div><span class="m-av">${avatar(x.usuario_id, x.nome, x.foto_em)}</span><b>${esc(x.nome)}</b> · ${esc(x.email)}</div>
       <div class="form-linha"><div><select data-papel="${x.id}"><option value="contador" ${x.papel === 'contador' ? 'selected' : ''}>Contador</option><option value="gestor" ${x.papel === 'gestor' ? 'selected' : ''}>Gerente</option></select></div>
       <div style="flex:0 0 auto">${x.ativo ? '<span class="badge-ok">Ativo</span>' : '<span class="badge-esp">Ainda não entrou</span>'}</div>
       <div style="flex:0 0 auto"><button class="link perigo" data-rm="${x.id}">Tirar acesso</button></div></div></li>`).join('');
@@ -1068,7 +1069,7 @@ $('#formEmpresa').onsubmit = async e => {
 };
 
 // ================= minha conta =================
-function telaConta() { $('#contaEmail').textContent = eu.email; $('#mcNome').value = eu.nome || ''; $('#mcZap').value = eu.whatsapp || ''; }
+function telaConta() { pintaAvatares(); $('#contaEmail').textContent = eu.email; $('#mcNome').value = eu.nome || ''; $('#mcZap').value = eu.whatsapp || ''; }
 $('#formConta').onsubmit = async e => {
   e.preventDefault();
   try { await api('/api/eu', {method: 'PUT', body: {nome: $('#mcNome').value, whatsapp: $('#mcZap').value}}); eu = await api('/api/eu'); toast('Salvo.'); } catch (err) { toast(err.message); }
