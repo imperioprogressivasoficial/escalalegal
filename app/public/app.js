@@ -1,4 +1,4 @@
-// Escala Blindada — app (JS puro). Um mecanismo só: abriu, vê a semana. Quem trabalha, quem folga.
+// Sua Escala Blindada — app (JS puro). Um mecanismo só: abriu, vê a semana. Quem trabalha, quem folga.
 // Toca no nome para trocar a folga ou lançar falta. A escala se monta e se ajusta sozinha.
 const DIAS = Escala.DIAS, SETORES = Escala.SETORES, COD = Escala.COD_NOME;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -188,11 +188,12 @@ async function rota() {
   } catch (err) { toast(err.message); }
 }
 
-// ================= primeiro acesso =================
+// ================= primeiro acesso: quiz (uma pergunta por tela) =================
 let wz = null;
 function wizInicio(soUnidade) {
   const base = soUnidade && atual ? atual.setor : '';
-  wz = {passo: 0, soUnidade, setor: base, empresa: {nome: conta.empresa || eu.empresa || '', porte: conta.porte || '', uf: conta.uf || '', cidade: ''}, texto: '', marcados: new Set(), mudar: false, nomeUn: ''};
+  wz = {i: 0, soUnidade, setor: base, empresa: {nome: conta.empresa || eu.empresa || '', porte: conta.porte || '', uf: conta.uf || '', cidade: ''},
+    texto: '', marcados: new Set(), nomeUn: '', minMudou: false};
   if (base) aplicaSetor(base);
   wizDesenha();
 }
@@ -200,129 +201,148 @@ function aplicaSetor(k) {
   const s = seg(k); wz.setor = k;
   wz.un = {abertos: [...s.abertos], minimo: [...s.minimo], abre: s.abre, fecha: s.fecha, horas_dia: 8, criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))};
 }
-const passosWiz = () => wz.soUnidade ? [0, 2] : [0, 1, 2];
-function barra() { const p = passosWiz(); return `<div class="passos">${p.map(x => `<span class="${x <= wz.passo ? 'on' : ''}"></span>`).join('')}</div>`; }
+const nomesWz = () => wz.texto.split('\n').map(l => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 200);
+const artigo = s => ['farmácia', 'clínica', 'academia', 'padaria', 'loja'].includes(s.local) ? 'a' : 'o';
+// a lista de perguntas muda conforme as respostas (ex.: farmácia pergunta quem é farmacêutico)
+function perguntas() {
+  const q = [];
+  if (!wz.soUnidade) q.push('oi');
+  q.push('negocio', 'nome');
+  if (!wz.soUnidade) q.push('uf', 'cidade', 'porte');
+  q.push('dias', 'horario', 'minimo', 'pessoas');
+  if (wz.un?.criticas.length) q.push('critica');
+  return q;
+}
 function wizDesenha() {
-  const w = $('#v-comecar');
-  if (wz.passo === 0) {
-    w.innerHTML = `${barra()}<h1>${wz.soUnidade ? 'Qual é o tipo desta unidade?' : `Oi, ${esc(nomeCurto(eu.nome))}! Qual é o seu negócio?`}</h1>
-      <p class="sub">Toque no seu. A escala já vem com as regras certas para ele.</p>
-      <div class="segs">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>
-      ${wz.soUnidade ? '<p style="text-align:center;margin-top:18px"><button class="link" data-ir="mais">Cancelar</button></p>' : ''}`;
-    $$('[data-seg]').forEach(b => b.onclick = () => { aplicaSetor(b.dataset.seg); wz.passo = wz.soUnidade ? 2 : 1; wizDesenha(); });
-  } else if (wz.passo === 1) {
-    const e = wz.empresa;
-    w.innerHTML = `${barra()}<h1>Onde fica sua empresa?</h1>
-      <p class="sub">Para colocar os feriados certos na escala.</p>
-      <div class="cartao">
-        <label for="wzNome" style="margin-top:0">Nome da empresa</label><input id="wzNome" value="${esc(e.nome)}" placeholder="Ex.: Mercado Bom Preço">
-        <div class="form-linha">
-          <div style="flex:0 1 110px"><label for="wzUf">Estado</label><select id="wzUf"><option value="">—</option>${Escala.UFS.map(x => `<option ${e.uf === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-          <div style="flex:2 1 160px"><label for="wzCidade">Cidade</label><input id="wzCidade" value="${esc(e.cidade)}" placeholder="Ex.: Salvador"></div>
-        </div>
-        <label>Tamanho da empresa</label>
-        <div class="portes">${Object.entries(PORTES).filter(([k]) => k !== 'media').map(([k, [n, d]]) => `<button type="button" data-porte="${k}" class="${e.porte === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}</div>
-        <div id="wzNota"></div>
-        <p class="erro" id="wzErro"></p>
-      </div>
-      <div class="lado fixo-baixo"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">Continuar</button></div>`;
-    const nota = () => {
-      $('#wzNota').innerHTML = e.porte === 'mei' ? '<div class="nota">MEI pode ter <b>só 1 funcionário</b> registrado. Ele folga 2 dias por semana e nesses dias quem cobre é você.</div>'
-        : e.porte === 'me' || e.porte === 'epp' ? '<div class="nota info">Por enquanto a regra é a mesma para todas as empresas. Se sair uma regra especial para micro e pequena empresa, a gente avisa.</div>' : '';
-    };
-    $$('[data-porte]').forEach(b => b.onclick = () => { e.porte = b.dataset.porte; $$('[data-porte]').forEach(x => x.classList.toggle('on', x === b)); nota(); });
-    nota();
-    $('#wzVolta').onclick = () => { wz.passo = 0; wizDesenha(); };
-    $('#wzProx').onclick = () => {
-      Object.assign(e, {nome: $('#wzNome').value.trim(), uf: $('#wzUf').value, cidade: $('#wzCidade').value.trim()});
-      if (!e.nome) return $('#wzErro').textContent = 'Escreva o nome da empresa.';
-      if (!e.uf) return $('#wzErro').textContent = 'Escolha o estado.';
-      if (!e.porte) e.porte = 'nao_sei';
-      wz.passo = 2; wizDesenha();
-    };
-  } else if (wz.passo === 2) {
-    const s = seg(wz.setor), u = wz.un, crit = u.criticas[0];
-    w.innerHTML = `${barra()}<h1>Quem trabalha com você?</h1>
-      <p class="sub">Escreva um nome por linha. Pode colar a lista do WhatsApp.</p>
-      ${wz.soUnidade ? `<label for="wzUn" style="margin-top:0">Nome desta unidade</label><input id="wzUn" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" style="margin-bottom:12px">` : ''}
-      <textarea id="wzPessoas" rows="7" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea>
-      <div id="wzCrit"></div>
-      <div id="wzConta"></div>
-      <div class="resumo-func"><span id="wzResumo"></span><button class="link" id="wzMudar">${wz.mudar ? 'Fechar' : 'Mudar'}</button></div>
-      <div id="wzFunc" class="cartao ${wz.mudar ? '' : 'hide'}" style="margin-top:8px"></div>
-      <p class="erro" id="wzErro"></p>
-      <div class="lado fixo-baixo"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">Montar minha escala</button></div>`;
-    const nomes = () => wz.texto.split('\n').map(l => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 200);
-    const resumo = () => {
-      const ab = u.abertos.map((a, i) => a ? i : -1).filter(i => i >= 0), mins = ab.map(i => u.minimo[i]);
-      const dias = ab.length === 7 ? 'todo dia' : ab.length === 6 && !u.abertos[6] ? 'de segunda a sábado' : ab.length === 5 && !u.abertos[5] && !u.abertos[6] ? 'de segunda a sexta' : ab.map(i => DIAS[i]).join(', ');
-      const mn = Math.min(...mins), mx = Math.max(...mins);
-      $('#wzResumo').innerHTML = `Aberto <b>${dias}</b>, ${hora(u.abre)} às ${hora(u.fecha)}. Pelo menos <b>${mn === mx ? mn : `${mn} a ${mx}`} ${mx === 1 ? 'pessoa' : 'pessoas'}</b> por dia.`;
-    };
-    const contagem = () => {
-      const lista = nomes(), n = lista.length, total = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
-      let html = '';
-      if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
-        : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente. Você pode diminuir o mínimo em "Mudar".</div>`;
-      if (crit && n) {
-        const tem = lista.filter(x => wz.marcados.has(x)).length, prec = Math.ceil(crit.minimo.reduce((a, m) => a + m, 0) / 5);
-        if (tem < prec) html += `<div class="nota">Para ter ${esc(crit.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>`;
-      }
-      if (wz.empresa.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
-      $('#wzConta').innerHTML = html;
-    };
-    const desenhaCrit = () => {
-      const lista = nomes();
-      if (!crit || !lista.length) return $('#wzCrit').innerHTML = '';
-      $('#wzCrit').innerHTML = `<label>Toque em quem é ${esc(crit.nome.toLowerCase())}</label><div class="marcar">${lista.map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-        <p class="dica" style="margin-top:6px">${esc(crit.explica)}</p>`;
-      $$('[data-m]').forEach(b => b.onclick = () => { const x = b.dataset.m; wz.marcados.has(x) ? wz.marcados.delete(x) : wz.marcados.add(x); b.classList.toggle('on'); contagem(); });
-    };
-    const desenhaFunc = () => {
-      const min = Math.max(...u.minimo.filter((_, i) => u.abertos[i]), 1);
-      $('#wzFunc').innerHTML = `<div class="form-linha"><div><label for="wzAbre" style="margin-top:0">Abre às</label><input id="wzAbre" type="time" value="${u.abre}"></div><div><label for="wzFecha" style="margin-top:0">Fecha às</label><input id="wzFecha" type="time" value="${u.fecha}"></div></div>
-        <label>Dias que abre</label><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div>
-        <label>Pessoas trabalhando, no mínimo, em cada dia</label>
-        <div class="contador-mais"><button type="button" id="wzMenos">−</button><output id="wzMin">${min}</output><button type="button" id="wzMais">+</button><span class="dica">contando todos os turnos</span></div>`;
-      const setMin = v => { v = Math.max(1, Math.min(200, v)); u.minimo = u.minimo.map((_, i) => u.abertos[i] ? v : 0); $('#wzMin').textContent = v; resumo(); contagem(); };
-      $('#wzMenos').onclick = () => setMin(+$('#wzMin').textContent - 1);
-      $('#wzMais').onclick = () => setMin(+$('#wzMin').textContent + 1);
-      $$('[data-ab]').forEach(b => b.onclick = () => {
-        const i = +b.dataset.ab; u.abertos[i] = u.abertos[i] ? 0 : 1;
-        u.minimo[i] = u.abertos[i] ? +$('#wzMin').textContent : 0; u.criticas.forEach(c => c.minimo[i] = u.abertos[i] ? (c.minimo.find(Boolean) || 1) : 0);
-        b.classList.toggle('on'); resumo(); contagem();
-      });
-      ['#wzAbre', '#wzFecha'].forEach(x => $(x).onchange = () => { u.abre = $('#wzAbre').value; u.fecha = $('#wzFecha').value; resumo(); });
-    };
-    $('#wzPessoas').oninput = () => { wz.texto = $('#wzPessoas').value; desenhaCrit(); contagem(); };
-    $('#wzMudar').onclick = () => { wz.mudar = !wz.mudar; $('#wzFunc').classList.toggle('hide', !wz.mudar); $('#wzMudar').textContent = wz.mudar ? 'Fechar' : 'Mudar'; };
-    desenhaFunc(); resumo(); desenhaCrit(); contagem();
-    $('#wzVolta').onclick = () => { if (wz.soUnidade) wz.nomeUn = $('#wzUn').value; wz.passo = wz.soUnidade ? 0 : 1; wizDesenha(); };
-    $('#wzProx').onclick = () => wizGerar(nomes());
+  const lista = perguntas(), id = lista[wz.i], total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
+  const s = seg(wz.setor || 'outro'), u = wz.un, e = wz.empresa;
+  const topo = id === 'oi' ? '' : `<div class="quiz-topo"><button class="link" id="qVolta">‹ Voltar</button><span>${num} de ${total}</span></div>
+    <div class="passos"><span class="on" style="flex:${num}"></span><span style="flex:${Math.max(total - num, 0.0001)}"></span></div>`;
+  const continuar = (txt = 'Continuar') => `<button class="btn cheio fixo-baixo" id="qOk">${txt}</button>`;
+  let h = '';
+  if (id === 'oi') h = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Oi, ${esc(nomeCurto(eu.nome))}!</h1>
+      <p>Vou montar a escala da sua equipe, já dentro da nova lei.</p><p><b>É só responder umas perguntas rápidas.</b> Leva uns 2 minutos.</p></div>${continuar('Começar')}`;
+  else if (id === 'negocio') h = `<h1>${wz.soUnidade ? 'Que tipo de negócio é esta unidade?' : 'Qual é o seu negócio?'}</h1>
+      <p class="sub">Cada negócio tem suas regras. Toque no seu.</p>
+      <div class="segs">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>`;
+  else if (id === 'nome') h = wz.soUnidade
+    ? `<h1>Qual o nome desta unidade?</h1><p class="sub">Para você saber de qual escala está falando.</p><input id="qTxt" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" autocomplete="off">${continuar()}`
+    : `<h1>Qual o nome da sua empresa?</h1><p class="sub">Do jeito que sua equipe conhece.</p><input id="qTxt" value="${esc(e.nome)}" placeholder="Ex.: ${esc(s.nome.split(' /')[0])} Bom Preço" autocomplete="organization">${continuar()}`;
+  else if (id === 'uf') h = `<h1>Em que estado fica?</h1><p class="sub">Para colocar os feriados do seu estado.</p>
+      <div class="ufs">${Escala.UFS.map(x => `<button type="button" data-uf="${x}" class="${e.uf === x ? 'on' : ''}">${x}</button>`).join('')}</div>`;
+  else if (id === 'cidade') h = `<h1>E a cidade?</h1><p class="sub">Se sua cidade tem feriado próprio, você coloca depois em Mais › Dados da empresa.</p>
+      <input id="qTxt" value="${esc(e.cidade)}" placeholder="Ex.: Salvador" autocomplete="address-level2">${continuar()}`;
+  else if (id === 'porte') h = `<h1>Qual o tamanho da empresa?</h1><p class="sub">Se não souber, toque em "Não sei". Seu contador sabe.</p>
+      <div class="opcoes-grandes">${Object.entries(PORTES).filter(([k]) => k !== 'media').map(([k, [n, d]]) => `<button type="button" data-porte="${k}" class="${e.porte === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}</div>`;
+  else if (id === 'dias') {
+    const pad = u.abertos.join('');
+    const op = [['1111111', 'Todo dia', 'de segunda a domingo'], ['1111110', 'Segunda a sábado', 'fecha no domingo'], ['1111100', 'Segunda a sexta', 'fecha sábado e domingo']];
+    const igual = op.some(o => o[0] === pad);
+    h = `<h1>Que dias ${artigo(s)} ${esc(s.local)} abre?</h1><p class="sub">${esc(s.nome.split(' /')[0])} costuma abrir ${op.find(o => o[0] === seg(wz.setor).abertos.join(''))?.[1].toLowerCase() || 'em dias variados'}.</p>
+      <div class="opcoes-grandes">${op.map(([k, n, d]) => `<button type="button" data-dias="${k}" class="${pad === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}
+      <button type="button" id="qOutros" class="${igual ? '' : 'on'}">Outros dias<small>escolher um por um</small></button></div>
+      <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:12px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div>${continuar()}</div>`;
+  } else if (id === 'horario') h = `<h1>Abre às ${hora(u.abre)} e fecha às ${hora(u.fecha)}?</h1><p class="sub">É o horário mais comum. Se o seu for outro, toque em "Não".</p>
+      <div class="lado"><button class="btn" id="qSim">Sim</button><button class="btn sec" id="qNao">Não</button></div>
+      <div id="qHoraBox" class="hide" style="margin-top:14px"><div class="lado"><div><label for="qAbre" style="margin-top:0">Abre às</label><input id="qAbre" type="time" value="${u.abre}"></div><div><label for="qFecha" style="margin-top:0">Fecha às</label><input id="qFecha" type="time" value="${u.fecha}"></div></div>${continuar()}</div>`;
+  else if (id === 'minimo') {
+    const sug = Math.max(...seg(wz.setor).minimo), atualMin = wz.minMudou ? Math.max(...u.minimo) : sug;
+    h = `<h1>Quantas pessoas precisam estar trabalhando por dia?</h1>
+      <p class="sub">O mínimo para não deixar ${artigo(s)} ${esc(s.local)} descoberto, somando todos os turnos. Para ${esc(s.nome.split(' /')[0].toLowerCase())}, o comum é ${sug}.</p>
+      <div class="contador-mais grande"><button type="button" id="qMenos" aria-label="Menos">−</button><output id="qMin">${atualMin}</output><button type="button" id="qMais" aria-label="Mais">+</button></div>
+      <p class="dica" style="text-align:center;margin-top:6px">pessoas trabalhando, no mínimo</p>${continuar()}`;
+  } else if (id === 'pessoas') h = `<h1>Quem trabalha com você?</h1><p class="sub">Escreva um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
+      <textarea id="qPessoas" rows="8" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea><div id="qConta"></div>${continuar(u.criticas.length ? 'Continuar' : 'Montar minha escala')}`;
+  else if (id === 'critica') {
+    const c = u.criticas[0];
+    h = `<h1>Quem é ${esc(c.nome.toLowerCase())}?</h1><p class="sub">${esc(c.explica)}</p>
+      <div class="marcar">${nomesWz().map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div><div id="qConta"></div>${continuar('Montar minha escala')}`;
+  }
+  $('#v-comecar').innerHTML = `<div class="quiz">${topo}<div class="quiz-q">${h}</div><p class="erro" id="wzErro"></p>
+    ${wz.soUnidade && id === 'negocio' ? '<p style="text-align:center;margin-top:18px"><button class="link" data-ir="mais">Cancelar</button></p>' : ''}</div>`;
+  const prox = () => { wz.i = Math.min(wz.i + 1, perguntas().length - 1); wizDesenha(); };
+  const erro = m => { $('#wzErro').textContent = m; };
+  if ($('#qVolta')) $('#qVolta').onclick = () => { if (wz.i === 0) return ir('mais'); wz.i--; wizDesenha(); };
+  const ok = fn => { const b = $('#qOk'); if (b) b.onclick = fn; const t = $('#qTxt'); if (t) { t.focus(); t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; } };
+  if (id === 'oi') ok(prox);
+  if (id === 'negocio') $$('[data-seg]').forEach(b => b.onclick = () => { if (b.dataset.seg !== wz.setor) { aplicaSetor(b.dataset.seg); wz.minMudou = false; wz.marcados.clear(); } prox(); });
+  if (id === 'nome') ok(() => {
+    const v = $('#qTxt').value.trim();
+    if (!v) return erro(wz.soUnidade ? 'Dê um nome. Ex.: Loja Shopping.' : 'Escreva o nome da empresa.');
+    if (wz.soUnidade) wz.nomeUn = v; else e.nome = v; prox();
+  });
+  if (id === 'uf') $$('[data-uf]').forEach(b => b.onclick = () => { e.uf = b.dataset.uf; prox(); });
+  if (id === 'cidade') ok(() => { e.cidade = $('#qTxt').value.trim(); prox(); });
+  if (id === 'porte') $$('[data-porte]').forEach(b => b.onclick = () => {
+    e.porte = b.dataset.porte;
+    if (e.porte === 'mei') { $$('[data-porte]').forEach(x => x.classList.toggle('on', x === b)); $('#wzErro').innerHTML = ''; $('.quiz-q').insertAdjacentHTML('beforeend', `<div class="nota">MEI pode ter <b>só 1 funcionário</b> registrado. Ele folga 2 dias por semana e nesses dias quem cobre é você.</div>${continuar()}`); $('#qOk').onclick = prox; return; }
+    prox();
+  });
+  if (id === 'dias') {
+    const aplica = pad => { u.abertos = pad.split('').map(Number); u.minimo = u.minimo.map((m, i) => u.abertos[i] ? (m || Math.max(...u.minimo, 1)) : 0); u.criticas.forEach(c => c.minimo = c.minimo.map((m, i) => u.abertos[i] ? (m || Math.max(...c.minimo, 1)) : 0)); };
+    $$('[data-dias]').forEach(b => b.onclick = () => { aplica(b.dataset.dias); prox(); });
+    $('#qOutros').onclick = () => { $('#qDiasBox').classList.remove('hide'); $$('.opcoes-grandes button').forEach(x => x.classList.toggle('on', x.id === 'qOutros')); };
+    $$('[data-ab]').forEach(b => b.onclick = () => { const i = +b.dataset.ab, p = [...u.abertos]; p[i] = p[i] ? 0 : 1; aplica(p.join('')); b.classList.toggle('on'); });
+    ok(() => { if (!u.abertos.some(Boolean)) return erro('Marque pelo menos um dia.'); prox(); });
+  }
+  if (id === 'horario') {
+    $('#qSim').onclick = prox;
+    $('#qNao').onclick = () => { $('#qHoraBox').classList.remove('hide'); $('#qAbre').focus(); };
+    ok(() => { u.abre = $('#qAbre').value || u.abre; u.fecha = $('#qFecha').value || u.fecha; prox(); });
+  }
+  if (id === 'minimo') {
+    const set = v => { $('#qMin').textContent = Math.max(1, Math.min(200, v)); };
+    $('#qMenos').onclick = () => set(+$('#qMin').textContent - 1);
+    $('#qMais').onclick = () => set(+$('#qMin').textContent + 1);
+    ok(() => {
+      const v = +$('#qMin').textContent, base = seg(wz.setor).minimo;
+      // manteve a sugestão: guarda o mínimo dia a dia do segmento (ex.: sábado com mais gente)
+      if (v === Math.max(...base) && !wz.minMudou) u.minimo = base.map((m, i) => u.abertos[i] ? (m || v) : 0);
+      else { u.minimo = u.minimo.map((_, i) => u.abertos[i] ? v : 0); wz.minMudou = true; }
+      prox();
+    });
+  }
+  const contagem = () => {
+    const n = nomesWz().length, total = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
+    let html = '';
+    if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
+      : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente.</div>`;
+    const c = u.criticas[0];
+    if (id === 'critica' && c) { const tem = nomesWz().filter(x => wz.marcados.has(x)).length, prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5); if (tem < prec) html = `<div class="nota">Para ter ${esc(c.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>`; else html = `<div class="nota ok">${plural(tem, 'marcado', 'marcados')}. Dá para ter ${esc(c.nome.toLowerCase())} todo dia.</div>`; }
+    if (e.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
+    if ($('#qConta')) $('#qConta').innerHTML = html;
+  };
+  if (id === 'pessoas') {
+    $('#qPessoas').oninput = () => { wz.texto = $('#qPessoas').value; contagem(); }; contagem(); $('#qPessoas').focus();
+    ok(() => { if (!nomesWz().length) return erro('Escreva pelo menos um nome.'); if (u.criticas.length) prox(); else wizGerar(); });
+  }
+  if (id === 'critica') {
+    $$('[data-m]').forEach(b => b.onclick = () => { const x = b.dataset.m; wz.marcados.has(x) ? wz.marcados.delete(x) : wz.marcados.add(x); b.classList.toggle('on'); contagem(); });
+    contagem(); ok(() => wizGerar());
   }
   window.scrollTo(0, 0);
 }
-async function wizGerar(lista) {
-  const erro = m => { $('#wzErro').textContent = m; };
-  if (!lista.length) return erro('Escreva pelo menos um nome.');
-  const crit = wz.un.criticas[0];
-  const nomeUn = wz.soUnidade ? $('#wzUn').value.trim() : wz.empresa.nome;
-  if (wz.soUnidade && !nomeUn) return erro('Dê um nome para a unidade. Ex.: Loja Shopping.');
-  const btn = $('#wzProx'); btn.disabled = true; btn.textContent = 'Montando…';
+async function wizGerar() {
+  const lista = nomesWz(), crit = wz.un.criticas[0];
+  const nomeUn = wz.soUnidade ? wz.nomeUn : wz.empresa.nome;
+  $('#v-comecar').innerHTML = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt="" class="pulando"><h1>Montando sua escala…</h1><p>Distribuindo as folgas de ${plural(lista.length, 'pessoa', 'pessoas')} dentro da lei.</p></div>`;
+  const espera = new Promise(r => setTimeout(r, 1200));
   try {
     const pessoas = lista.map(nome => ({nome, cargo: crit && wz.marcados.has(nome) ? crit.nome : ''}));
-    const r = await api('/api/onboarding', {method: 'POST', body: {
-      empresa: wz.soUnidade ? undefined : {...wz.empresa, feriados_locais: ''},
-      unidade: {...wz.un, nome: nomeUn, setor: wz.setor}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}});
+    const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {
+      empresa: wz.soUnidade ? undefined : {...wz.empresa, porte: wz.empresa.porte || 'nao_sei', feriados_locais: ''},
+      unidade: {...wz.un, nome: nomeUn, setor: wz.setor}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
     conta = await api('/api/conta');
     if (!wz.soUnidade) eu = await api('/api/eu');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
     recem = true; semData = segundaDe(hojeIso()); diaSel = null; ir('escala');
-  } catch (err) { erro(err.message); btn.disabled = false; btn.textContent = 'Tentar de novo'; }
+  } catch (err) {
+    wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
+  }
 }
 function telaPagar(checkout) {
-  $('#v-comecar').innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h1>Tudo pronto!</h1>
+  $('#v-comecar').innerHTML = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Tudo pronto!</h1>
     <p>Sua equipe está salva. Falta só liberar o acesso para a escala aparecer.</p>
     ${checkout ? `<a class="btn cheio" href="${esc(checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : '<p class="dica">Fale com o suporte para liberar.</p>'}
     <p class="dica">Pagamento único. Depois de pagar, volte aqui.</p></div>`;
@@ -742,7 +762,7 @@ async function telaContador() {
   $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : '';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
-      <p>Peça para o seu cliente abrir a Escala Blindada, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
+      <p>Peça para o seu cliente abrir a Sua Escala Blindada, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
       <p class="dica">Assim que ele liberar, a empresa aparece aqui.</p></div>`;
     return;
   }

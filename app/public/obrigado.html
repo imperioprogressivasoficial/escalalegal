@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Compra confirmada — Escala Blindada</title>
+<title>Compra confirmada — Sua Escala Blindada</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,700..800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -25,12 +25,12 @@ ol b{color:var(--tinta)}
 </head>
 <body>
 <main class="caixa">
-  <div class="marca">Escala<span>Blindada</span></div>
-  <img src="/img/mascote.svg" alt="Zé Folga, o mascote da Escala Blindada">
+  <div class="marca">SuaEscala<span>Blindada</span></div>
+  <img src="/img/mascote.svg" alt="Zé Folga, o mascote da Sua Escala Blindada">
   <h1>Compra confirmada!</h1>
   <p>Seu acesso já está a caminho do e-mail que você usou na compra.</p>
   <ol>
-    <li>Abra o e-mail <b>"Seu acesso à Escala Blindada chegou"</b>.</li>
+    <li>Abra o e-mail <b>"Sua Escala Blindada: seu acesso chegou"</b>.</li>
     <li>Clique em <b>Criar minha senha</b>.</li>
     <li>Cadastre a equipe e gere a escala 5x2.</li>
   </ol>
@@ -40,7 +40,7 @@ ol b{color:var(--tinta)}
 </main>
 <script>
 fetch('/api/config').then(r => r.json()).then(c => {
-  if (c.suporte) document.getElementById('suporte').innerHTML = `Precisa de ajuda? <a class="btn sec" target="_blank" rel="noopener" href="https://wa.me/${c.suporte}?text=${encodeURIComponent('Oi! Comprei a Escala Blindada e preciso de ajuda com o acesso.')}">Falar no WhatsApp</a>`;
+  if (c.suporte) document.getElementById('suporte').innerHTML = `Precisa de ajuda? <a class="btn sec" target="_blank" rel="noopener" href="https://wa.me/${c.suporte}?text=${encodeURIComponent('Oi! Comprei a Sua Escala Blindada e preciso de ajuda com o acesso.')}">Falar no WhatsApp</a>`;
 }).catch(() => {});
 </script>
 </body>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala (ou atualiza) a Escala Blindada no VPS. Rode como root:
+# Instala (ou atualiza) a Sua Escala Blindada no VPS. Rode como root:
 #
 #   git clone https://github.com/imperioprogressivasoficial/escalalegal /opt/escalalegal
 #   cd /opt/escalalegal && bash deploy/instalar.sh escala.seudominio.com.br
@@ -107,7 +107,7 @@ DNS=$(getent ahostsv4 "$DOMAIN" | awk '{print $1; exit}' || true)
 [ "$DNS" = "$IP" ] || amarelo "Atenção: $DOMAIN aponta para '${DNS:-nada}', mas o IP deste VPS é $IP. Crie/ajuste o registro A no DNS."
 
 echo
-verde "===== Escala Blindada instalado ====="
+verde "===== Sua Escala Blindada instalado ====="
 echo "Site:            https://$DOMAIN"
 echo "App:             https://$DOMAIN/app"
 echo "Obrigado:        https://$DOMAIN/obrigado   (página pós-compra do checkout)"

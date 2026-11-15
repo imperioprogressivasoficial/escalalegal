@@ -8,7 +8,7 @@ const transporte = configurado && nodemailer.createTransport({
   auth: { user: SMTP_USER, pass: SMTP_PASS },
   pool: true, maxConnections: 2, connectionTimeout: 15000, socketTimeout: 20000,
 });
-const remetente = SMTP_FROM || (SMTP_USER ? `Escala Blindada <${SMTP_USER}>` : '');
+const remetente = SMTP_FROM || (SMTP_USER ? `Sua Escala Blindada <${SMTP_USER}>` : '');
 
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -16,7 +16,7 @@ function modelo({ titulo, paragrafos, botao, link, rodape }) {
   const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#3d4a5c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f8;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #dfe3ea">
-<tr><td style="background:#071d41;padding:18px 24px;font:800 22px Arial,sans-serif;color:#fff">Escala<span style="color:#7be08a">Blindada</span></td></tr>
+<tr><td style="background:#071d41;padding:18px 24px;font:800 22px Arial,sans-serif;color:#fff">SuaEscala<span style="color:#7be08a">Blindada</span></td></tr>
 <tr><td style="padding:26px 24px 8px">
 <h1 style="margin:0 0 14px;font:700 22px/1.25 Arial,sans-serif;color:#0c1b33">${esc(titulo)}</h1>
 ${paragrafos.map(p => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55">${esc(p)}</p>`).join('')}
