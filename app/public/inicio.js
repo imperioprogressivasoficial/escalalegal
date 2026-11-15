@@ -303,37 +303,45 @@ function slidesApp() {
   ];
 }
 // Área de membros no estilo "streaming": topo escuro com os banners, e no máximo 4 fileiras de cartões que arrastam.
-let videoAulaApp = null; // a aula em vídeo do app só aparece quando o arquivo existir
-const temVideoAula = () => videoAulaApp ??= fetch('/video/aula-app.mp4', { method: 'HEAD' }).then(r => r.ok).catch(() => false);
+// Área de membros no estilo streaming, enxuta: faixa de banners, UM cartão de próximo passo e duas fileiras (Aulas, Seus materiais).
 function fileira(id, titulo, cartoes, extra = '') {
   if (!cartoes.length) return '';
   return `<section class="nf-fila" aria-labelledby="${id}"><div class="nf-fila-topo"><h2 id="${id}">${titulo}</h2>${extra}</div>
     <div class="nf-trilho" role="list">${cartoes.join('')}</div></section>`;
 }
-const cartaoImg = ({ ir, href, img, tit, sub, etq, cls = '', acao, alvo }) => {
+// capa 16:9 (o título já está na imagem); embaixo, só um subtítulo curto
+const capa = (arq, eager = false) => `<img src="/img/capas/${arq}.webp?v=1" alt="" width="960" height="540" ${eager ? '' : 'loading="lazy"'} decoding="async">`;
+const cartaoImg = ({ ir, href, img, tit, sub, cls = '', alvo }) => {
   const tag = href ? `a href="${esc(href)}"${alvo ? ' target="_blank" rel="noopener"' : ''}` : `button type="button" data-ir="${ir}"`;
-  return `<${tag} class="nf-card ${cls}" role="listitem">
-    <span class="nf-arte">${img}</span>
-    <span class="nf-txt">${etq ? `<em class="nf-etq">${etq}</em>` : ''}<b>${tit}</b>${sub ? `<small>${sub}</small>` : ''}${acao ? `<span class="nf-acao">${acao}</span>` : ''}</span>
-  </${href ? 'a' : 'button'}>`;
+  return `<${tag} class="nf-card ${cls}" role="listitem" aria-label="${esc(tit)}${sub ? ' · ' + esc(sub) : ''}">
+    <span class="nf-arte capa">${img}</span>${sub ? `<span class="nf-txt"><small>${esc(sub)}</small></span>` : ''}</${href ? 'a' : 'button'}>`;
 };
-const FORMATOS_MAT = { kit_rh: [['word', 'Word'], ['excel', 'Excel'], ['pdf', 'PDF']], calculadora: [['excel', 'Excel'], ['sheets', 'Google Planilhas']], plaquinhas: [['pdf', 'PDF'], ['powerpoint', 'PowerPoint']] };
-const foto = (src, alt = '') => `<img src="${src}" alt="${alt}" loading="lazy" decoding="async">`;
+const CAPA_MAT = { kit_rh: 'mat-kit', calculadora: 'mat-calc', plaquinhas: 'mat-placas' };
+const reais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+// a ordem do próximo passo: gerar → publicar → identificar → contabilidade → fechar competência
+function proximoPasso(p) {
+  const dono = conta.papel === 'dono', ed = podeEditar();
+  const auto = funcs.some(f => f.cargo && !cargoVisivel(f));
+  const d = new Date(), fimMes = d.getDate() >= new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - 2;
+  if (!p.unidades) return dono ? { k: 'gerar', tit: 'Gerar escala', txt: 'Dias de funcionamento, funções e quantidade de colaboradores. A escala é gerada dentro da lei.', btn: 'Gerar escala', ir: 'comecar' } : null;
+  if (ed && !p.escala_enviada) return { k: 'publicar', tit: 'Publicar escala', txt: 'Compartilhe com a equipe por WhatsApp, link, PDF ou impressão.', btn: 'Publicar escala', ir: 'escala/publicar' };
+  if (ed && auto) return { k: 'identificar', tit: 'Identificar colaboradores', txt: 'Substitua "Caixa 1", "Caixa 2" pelo nome de cada colaborador.', btn: 'Identificar colaboradores', ir: 'colaboradores' };
+  if (dono && !p.contador) return { k: 'contabilidade', tit: 'Liberar acesso da contabilidade', txt: 'A contabilidade acompanha a escala e recebe o fechamento, sem custo adicional.', btn: 'Liberar acesso', ir: 'fechamento/contabilidade' };
+  if (ed && fimMes) return { k: 'fechar', tit: 'Fechar competência', txt: 'Confira o mês de referência e envie para a contabilidade.', btn: 'Fechar competência', ir: 'fechamento' };
+  return null;
+}
 async function telaInicio() {
   const v = $('#v-inicio'), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
-  const [p, vis, extras, video] = await Promise.all([api('/api/inicio'), atual ? api('/api/visao').catch(() => null) : null,
-    api('/api/extras').catch(() => []), temVideoAula()]);
+  const [p, extras] = await Promise.all([api('/api/inicio'), api('/api/extras').catch(() => [])]);
   progresso = p;
-  const hojeU = vis?.equipes?.find(e => e.id === atual?.id)?.hoje;
-  // banners em imagem no topo (carrossel)
+  // faixa de banners em imagem
   const bannersImg = [
     { k: 'escala', ir: p.unidades ? 'escala' : 'comecar', alt: 'Sua escala 5x2 pronta em 2 minutos. Responda umas perguntas e a semana sai dentro da nova lei.' },
-    { k: 'lei', ir: 'aula', alt: 'Entenda a nova lei em 3 minutos: 2 folgas por semana, 42 horas e o domingo, sem juridiquês.' },
-    !cont && { k: 'enviar', ir: 'tabela', alt: 'Mande para a equipe por WhatsApp, PDF, Excel ou link. Cada funcionário vê a própria folga no celular.' },
+    { k: 'lei', ir: 'aula', alt: 'Aulas: a nova lei em poucos minutos.' },
+    !cont && { k: 'enviar', ir: 'escala/publicar', alt: 'Publique a escala por WhatsApp, PDF, Excel ou link. Cada colaborador vê as próprias folgas no celular.' },
     { k: 'kit', ir: 'materiais', alt: 'Kit RH, calculadora e plaquinhas: termo aditivo, folha de ponto e avisos prontos para imprimir.' },
-    dono && { k: 'contador', ir: 'acessos', alt: 'Dê acesso grátis ao seu contador. Ele vê a escala, baixa tudo e fecha o mês.' },
+    dono && { k: 'contador', ir: 'fechamento/contabilidade', alt: 'Acesso da contabilidade, sem custo: acompanha a escala e recebe o fechamento.' },
   ].filter(Boolean);
-  // faixa fina de banners (como a do topo do VTurb): 8:1 no computador, 3:1 no celular, sem cortar; dá para esconder na sessão
   let faixaFechada = false; try { faixaFechada = sessionStorage.getItem('faixaFechada') === '1'; } catch {}
   const carrosselImg = faixaFechada ? '' : `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
@@ -341,60 +349,27 @@ async function telaInicio() {
         <img src="/img/banners/${b.k}-pc.webp?v=3" alt="${esc(b.alt)}" width="2400" height="300" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
       <div class="bn-ctl"><span id="bnN" aria-live="polite">1/${bannersImg.length}</span><button type="button" id="bnAnt" aria-label="Destaque anterior">‹</button><button type="button" id="bnProx" aria-label="Próximo destaque">›</button><button type="button" class="bn-x" id="bnX" aria-label="Esconder os destaques">×</button></div>
     </section>`;
-  const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
-      <div class="ban-quiz-txt"><span class="ban-etq">Próximo passo</span><h2 id="tQuiz">Monte a escala da sua equipe em 2 minutos</h2>
-        <p>Só números: que dias abre, quantas pessoas em cada função, o horário e as folgas. A escala sai pronta, dentro da nova lei.</p>
-        <button class="btn ban-btn" data-ir="comecar">Começar agora <span aria-hidden="true">→</span></button></div>
-      <div class="ban-quiz-mock" aria-hidden="true">${DIAS.map((d, i) => `<i class="${i >= 5 ? 'f' : ''}"><small>${d}</small><em>${i >= 5 ? 'Folga' : 'Trabalha'}</em></i>`).join('')}</div>
-    </section>` : '';
-  // 1. continue de onde parou: o que falta primeiro, depois o que já dá para usar
-  const passos = [
-    dono && { ok: p.unidades > 0, ir: p.unidades ? 'resultado' : 'comecar', img: foto('/img/iphone-quiz.webp?v=20261115b'), tit: p.unidades ? 'O resultado da sua escala' : 'Montar a escala', sub: p.unidades ? 'O padrão por função, em números' : 'Umas perguntas, só números' },
-    p.unidades > 0 && { ok: true, ir: 'escala', img: foto('/img/iphone-escala.webp?v=20261115b'), tit: 'Escala da semana', sub: hojeU ? `Hoje: ${hojeU.trabalham.length} trabalham, ${hojeU.folgam.length} folgam` : 'Quem trabalha e quem folga' },
-    !cont && p.unidades > 0 && { ok: p.escala_enviada, ir: 'tabela', img: foto('/img/iphone-saidas.webp?v=20261115b'), tit: 'Mandar para a equipe', sub: 'WhatsApp, PDF, Excel ou link' },
-    dono && p.unidades > 0 && { ok: p.contador, ir: 'acessos', img: foto('/img/mac-tabela.webp?v=20261115b'), tit: 'Convidar o contador', sub: 'Grátis: ele fecha o mês' },
-    p.unidades > 0 && podeEditar() && { ok: false, ir: 'personalizar', img: `<span class="nf-num amarelo" aria-hidden="true">2</span>`, tit: 'Personalizar a escala', sub: 'Nomes, trocas, faltas e o mês', cls: 'perso' },
-  ].filter(Boolean).sort((a, b) => a.ok - b.ok);
-  const continuar = passos.map(x => cartaoImg({ ...x, cls: `largo ${x.cls || ''}`, etq: x.ok ? (x.ir === 'escala' || x.ir === 'resultado' ? 'Pronto' : 'Feito') : 'Próximo passo' }));
-  // 2. aula da nova lei: o vídeo do app (quando existir) e as 8 lições
+  // um cartão de próximo passo, com a capa do passo
+  const ps = proximoPasso(p);
+  const passo = ps ? `<section class="prox" aria-labelledby="tProx"><span class="prox-capa">${capa('passo-' + ps.k, true)}</span>
+      <div class="prox-txt"><em class="nf-etq">Próximo passo</em><h2 id="tProx">${ps.tit}</h2><p>${ps.txt}</p><button class="btn" data-ir="${ps.ir}">${ps.btn} <span aria-hidden="true">→</span></button></div></section>` : '';
+  // Aulas: o vídeo do app e as 8 da nova lei
   const lic = typeof licoes === 'function' ? licoes() : [];
-  const aula = [
-    video && `<button type="button" class="nf-card video" role="listitem" data-ir="aula"><span class="nf-arte"><img src="/video/aula-app.jpg?v=1" alt="" loading="lazy" decoding="async" class="nf-poster"><span class="nf-play" aria-hidden="true"></span></span>
-      <span class="nf-txt"><em class="nf-etq">Aula 1 · Vídeo</em><b>Como usar o app</b><small>1 min, com legenda</small></span></button>`,
-    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: `<span class="nf-num c${i % 4}" aria-hidden="true">${String(i + 2).padStart(2, '0')}</span>`, tit: esc(l.tit), sub: `Aula ${i + 2} de ${lic.length + 1} · A nova lei · 1 min`, cls: 'aula' })),
-  ].filter(Boolean);
-  // 3. seus materiais (comprados: baixar; não comprados: preço e liberar)
-  const CAPA = { kit_rh: ['Kit RH', 'Termo aditivo, comunicado e folha de ponto'], calculadora: ['Calculadora', 'Horas, custo e hora extra da 5x2'], plaquinhas: ['Plaquinhas', 'Avisos prontos para imprimir'] };
+  const aulas = [cartaoImg({ ir: 'aula/app', img: capa('aula-01'), tit: 'Aula 1: Como usar o app', sub: 'Vídeo · 1 min' }),
+    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: capa('aula-' + String(i + 2).padStart(2, '0')), tit: `Aula ${i + 2}: ${l.tit.replace(/<[^>]+>/g, '')}`, sub: '1 min' }))];
+  // Seus materiais (liberado: baixar; não liberado: preço)
   const mats = (Array.isArray(extras) ? extras : []).map(x => cartaoImg({
     ...(x.comprado ? { ir: 'materiais' } : { href: x.checkout, alvo: true }),
-    img: `<span class="nf-capa ${esc(x.extra)}" aria-hidden="true"><i></i><b>${esc(CAPA[x.extra]?.[0] || x.nome)}</b></span>`,
-    tit: esc(x.nome), sub: esc(CAPA[x.extra]?.[1] || x.resumo || '') + `<span class="nf-formatos">${(FORMATOS_MAT[x.extra] || []).map(([f, n]) => `<img src="/img/formatos/${f}.svg?v=1" alt="${n}" width="20" height="20" loading="lazy">`).join('')}</span>`, cls: 'mat',
-    etq: x.comprado ? 'Liberado' : '', acao: x.comprado ? 'Baixar' : `R$ ${Number(x.preco).toFixed(2).replace('.', ',')} · Liberar`,
-  }));
-  // 4. atalhos
-  const atalhos = [
-    ['escala', 'Escala', '/img/iphone-escala.webp'], ['pessoas', 'Equipe', '/img/iphone-quiz.webp'],
-    !cont && ['tabela', 'Baixar ou enviar', '/img/iphone-saidas.webp'], [dono ? 'acessos' : 'fechamento', dono ? 'Contador' : 'Fechamento do mês', '/img/mac-tabela.webp'],
-  ].filter(Boolean).map(([ir, tit, src]) => cartaoImg({ ir, img: foto(src + '?v=20261115b'), tit, cls: 'atalho' }));
-  // um aviso só, e só o que não está nos banners
-  const fechado = k => ler('banner_' + k) === '1';
-  const aviso = !(typeof naTelaInicial === 'function' && naTelaInicial()) && !fechado('instalar')
-    ? `<div class="ban-aviso ban-escuro nf-aviso" data-k="instalar"><div><b>Coloque o app na tela inicial</b><span>Abre como um aplicativo, direto no celular.</span></div>
-      <div class="ban-acoes"><button class="btn pq" data-ir="instalar">Ver como</button><button class="ban-x" data-fechar="instalar" aria-label="Fechar aviso">×</button></div></div>` : '';
-  recem = false;
+    img: capa(CAPA_MAT[x.extra] || 'mat-kit'), tit: x.nome, sub: x.comprado ? 'Liberado' : reais(x.preco) }));
   v.innerHTML = `<div class="nf">
     <header class="nf-oi"><p>Olá, <b>${esc(nomeCurto(eu.nome))}</b></p><h1>${esc(conta.empresa || 'Sua empresa')}</h1>
-      <p class="nf-data">${dataLonga(hojeIso())}${atual ? ` · ${esc(atual.nome)}` : ''}${hojeU ? ` · <b data-conta="${hojeU.trabalham.length}">${hojeU.trabalham.length}</b> trabalham hoje` : ''}</p></header>
-    ${quiz}${carrosselImg}${aviso}
-    ${fileira('fContinuar', 'Continue de onde parou', continuar)}
-    ${fileira('fAula', 'Aulas', aula, '<button class="nf-ver" data-ir="aula">Ver tudo</button>')}
-    ${fileira('fMat', 'Seus materiais', mats, '<button class="nf-ver" data-ir="materiais">Ver tudo</button>')}
-    ${fileira('fAtalhos', 'Atalhos', atalhos)}
+      <p class="nf-data">${dataLonga(hojeIso())}${atual ? ` · ${esc(atual.nome)}` : ''}</p></header>
+    ${carrosselImg}${passo}
+    ${fileira('fAula', 'Aulas', aulas, '<button class="nf-ver" data-ir="aula">Ver aulas</button>')}
+    ${fileira('fMat', 'Seus materiais', mats, '<button class="nf-ver" data-ir="materiais">Ver todos</button>')}
   </div>`;
   ligaCarrosselImg(); animaContadores(v);
-  $$('#v-inicio [data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
 }
-
 // escala mandada para a equipe (qualquer saída: WhatsApp, PDF, Excel, link...) marca o passo do progresso
 let enviadaMarcada = false;
 window.marcaEnviada = () => {
@@ -404,67 +379,44 @@ window.marcaEnviada = () => {
 
 // ================= menu lateral (computador) e gaveta (celular) =================
 // O mesmo #lateral é a barra fixa no computador e, abaixo de 1024px, a gaveta que desliza da esquerda.
-// Menu em grupos que abrem e fecham (sanfona). O grupo da tela atual abre sozinho; os que a pessoa abriu ficam salvos.
+// Cinco itens, iguais nos dois: Início · Escala · Colaboradores · Fechamento · Mais.
 function itensMenu() {
-  const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador', ed = podeEditar();
-  const aprender = { g: 'aprender', t: 'Aprender', itens: [['aula', 'Aulas'], ['@ajuda', 'Ajuda']] };
-  if (mc) return [['contador', 'Suas empresas'], aprender, { g: 'config', t: 'Configurações', itens: [['conta', 'Minha conta'], ['instalar', 'Colocar na tela inicial']] }];
-  if (cont) return [
-    { g: 'escala', t: 'Escala', itens: [['escala', 'Escala da semana'], ['tabela', 'Baixar ou imprimir']] },
-    { g: 'equipe', t: 'Equipe', itens: [['ocorrencias', 'Férias e faltas']] },
-    { g: 'painel', t: 'Painel', itens: [['fechamento', 'Fechamento do mês']] },
-    aprender, ['materiais', 'Seus materiais'],
-  ];
-  const unidades = equipes.map(e => ['@un:' + e.id, e.nome]);
-  if (ed) unidades.push(['comecar/unidade', '+ Nova unidade']);
-  return [
-    ['inicio', 'Início'],
-    { g: 'escala', t: 'Escala', itens: [['escala', 'Escala da semana'], ['resultado', 'Resultado por função'], ...(ed ? [['personalizar', 'Personalizar a escala']] : []), ['tabela', 'Baixar, enviar ou imprimir']] },
-    { g: 'equipe', t: 'Equipe', itens: [['pessoas', 'Pessoas'], ['ocorrencias', 'Férias e faltas']] },
-    { g: 'painel', t: 'Painel', itens: [['fechamento', 'Fechar o mês'], ...(dono ? [['empresa/historico', 'Histórico']] : [])] },
-    unidades.length && { g: 'unidades', t: 'Unidades', itens: unidades },
-    { g: 'config', t: 'Configurações', itens: [...(dono ? [['empresa', 'Dados da empresa']] : []), ...(ed ? [['funcionamento', 'Funcionamento']] : []),
-      ...(dono ? [['acessos', 'Acessos (contador e gerente)']] : []), ['@outra', 'Outra empresa'], ['instalar', 'Colocar na tela inicial'], ['indique', 'Indique para quem conhece'], ['conta', 'Minha conta']] },
-    aprender, ['materiais', 'Seus materiais'],
-  ].filter(Boolean);
-}
-const gruposAbertos = () => { try { return new Set(JSON.parse(ler('menuAberto') || '[]')); } catch { return new Set(); } };
-function botaoMenu([r, t], sub) {
-  const cls = sub ? 'lat-item sub' : 'lat-item';
-  if (r === '@ajuda') return `<a class="${cls}" href="/ajuda">${esc(t)}</a>`;
-  if (r === '@outra') return `<button type="button" class="${cls}" data-acao="outra">${esc(t)}</button>`;
-  if (r.startsWith('@un:')) { const id = +r.slice(4); return `<button type="button" class="${cls} ${id === atual?.id ? 'atual' : ''}" data-unidade="${id}">${esc(t)}</button>`; }
-  return `<button type="button" class="${cls}" data-ir="${r}" data-lat="${r.split('/')[0] === 'empresa' && r.includes('/') ? 'historico' : r}">${esc(t)}</button>`;
+  if (ehModoContador()) return [['contador', 'Suas empresas'], ['mais', 'Mais']];
+  if (conta.papel === 'contador') return [['fechamento', 'Fechamento'], ['escala', 'Escala'], ['colaboradores', 'Colaboradores'], ['mais', 'Mais']];
+  return [['inicio', 'Início'], ['escala', 'Escala'], ['colaboradores', 'Colaboradores'], ['fechamento', 'Fechamento'], ['mais', 'Mais']];
 }
 function pintaLateral() {
   const el = $('#lateral'); if (!el) return;
-  const mc = ehModoContador(), abertos = gruposAbertos();
+  const mc = ehModoContador();
   const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
-  const nav = itensMenu().map(x => Array.isArray(x) ? botaoMenu(x) : `<div class="lat-grupo ${abertos.has(x.g) ? 'aberto' : ''}" data-grupo="${x.g}">
-      <button type="button" class="lat-g" aria-expanded="${abertos.has(x.g)}" aria-controls="lg-${x.g}"><span>${esc(x.t)}</span><i class="lat-chev" aria-hidden="true"></i></button>
-      <div class="lat-sub" id="lg-${x.g}" role="group" aria-label="${esc(x.t)}" ${abertos.has(x.g) ? '' : 'inert'}><div class="lat-sub-in">${x.itens.map(i => botaoMenu(i, true)).join('')}</div></div></div>`).join('');
   el.innerHTML = `<div class="lat-emp"><img class="lat-logo" src="/img/logo-escuro-completo.webp?v=1" alt="" width="814" height="148"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
       <div class="lat-quem so-gaveta"><i aria-hidden="true">${esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
       <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
-    <nav aria-label="Seções">${nav}</nav>
+    <nav aria-label="Seções">${itensMenu().map(([r, t]) => `<button type="button" class="lat-item" data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}</nav>
     <div class="lat-pe"><button type="button" class="lat-sair-btn" data-sair>Sair do app</button><span>${esc(eu.email)}</span></div>`;
 }
-function abreGrupo(g, abrir, salvar = true) {
-  const el = $(`#lateral [data-grupo="${g}"]`); if (!el) return;
-  el.classList.toggle('aberto', abrir);
-  el.querySelector('.lat-g').setAttribute('aria-expanded', String(abrir));
-  el.querySelector('.lat-sub').inert = !abrir;
-  if (salvar) { const s = gruposAbertos(); abrir ? s.add(g) : s.delete(g); gravar('menuAberto', JSON.stringify([...s])); }
-}
-function marcaLateral(v, extra) {
-  const mapa = { resultado: 'resultado', comecar: 'inicio', cadastro: 'inicio', mais: 'conta' };
-  const alvo = v === 'empresa' && extra === 'historico' ? 'historico' : (mapa[v] || v);
+function marcaLateral(v) {
+  const mapa = { comecar: 'inicio', cadastro: 'inicio', funcionamento: 'mais', unidades: 'mais', empresa: 'mais', aula: 'mais', materiais: 'mais', indique: 'mais', instalar: 'mais', conta: 'mais' };
+  const alvo = mapa[v] || v;
   $$('#lateral [data-lat]').forEach(b => {
     const on = b.dataset.lat === alvo;
     b.classList.toggle('on', on);
-    if (on) { b.setAttribute('aria-current', 'page'); const g = b.closest('.lat-grupo'); if (g && !g.classList.contains('aberto')) abreGrupo(g.dataset.grupo, true, false); }
-    else b.removeAttribute('aria-current');
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
+}
+// Mais › Unidades e empresas: trocar de unidade, criar unidade, trocar ou cadastrar empresa
+function telaUnidades() {
+  const v = $('#v-unidades'), ed = podeEditar(), mc = ehModoContador();
+  const item = (attr, t, d) => `<li><button ${attr}><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
+  v.innerHTML = `<button class="voltar" data-ir="mais">‹ Mais</button><h1>Unidades e empresas</h1>
+    <p class="sub">Cada unidade tem os próprios colaboradores e a própria escala.</p>
+    ${mc ? '' : `<p class="menu-tit">Unidades de ${esc(conta.empresa || 'sua empresa')}</p><ul class="menu">${equipes.map(e => item(`data-un="${e.id}"`, esc(e.nome), `${plural(+e.total || 0, 'colaborador', 'colaboradores')}${e.id === atual?.id ? ' · aberta agora' : ''}`)).join('')}
+      ${ed ? item('data-ir="comecar/unidade"', 'Nova unidade', 'Outra loja, filial ou setor') : ''}</ul>`}
+    <p class="menu-tit">Empresas</p><ul class="menu">${eu.contas.length > 1 ? eu.contas.map(c => item(`data-conta="${c.id}"`, esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa'), `${PAPEL[c.papel]}${c.id === conta.id ? ' · aberta agora' : ''}`)).join('') : ''}
+      ${item('id="unOutra"', 'Cadastrar outra empresa', 'Outro CNPJ ou a empresa de um cliente')}</ul>`;
+  $$('#v-unidades [data-un]').forEach(b => b.onclick = () => trocaUnidade(+b.dataset.un));
+  $$('#v-unidades [data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
+  $('#unOutra').onclick = folhaOutraEmpresa;
 }
 
 const celular = matchMedia('(max-width: 1023.98px)');
@@ -501,12 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btnMenu').onclick = () => (gavetaAberta() ? fechaGaveta() : abreGaveta());
   $('#gavFundo').onclick = () => fechaGaveta();
   $('#lateral').addEventListener('click', e => {
-    const g = e.target.closest('.lat-g'), un = e.target.closest('[data-unidade]'), acao = e.target.closest('[data-acao]')?.dataset.acao;
     if (e.target.closest('[data-fecha-gaveta]')) fechaGaveta();
     else if (e.target.closest('[data-sair]')) sair();
-    else if (g) { const el = g.closest('.lat-grupo'); abreGrupo(el.dataset.grupo, !el.classList.contains('aberto')); }
-    else if (un) trocaUnidade(+un.dataset.unidade);
-    else if (acao === 'outra') { fechaGaveta(); folhaOutraEmpresa(); }
   });
   // menu do usuário no topo (computador): Minha conta e Sair
   const bu = $('#btnUser'), mu = $('#menuUser');
@@ -579,25 +527,12 @@ const esqueletoSemana = () => `<div class="esq" aria-busy="true" aria-label="Car
   <div class="esq-dias">${'<i style="--h:56px"></i>'.repeat(7)}</div><i style="--h:22px;width:60%"></i>
   <i style="--h:120px"></i><i style="--h:90px"></i></div>`;
 
-// ================= resultado do primeiro acesso (etapa 1) e personalizar (etapa 2) =================
-// Etapa 1 (o que a compra entrega): o padrão da escala por função, só com números.
-// Etapa 2 (personalizar): nomes, trocas, faltas, férias, mês. Separada para poder virar plano mensal depois:
-// a liberação passa toda por podePersonalizar().
+// ================= "Como a escala foi montada" (fica no fim da Escala) =================
+// O padrão por função em números, o rodízio do domingo e os ajustes que a lei obrigou. A liberação futura passa por podePersonalizar().
 function podePersonalizar(c) { return !!c; } // hoje liberado para todos (preço do plano ainda não definido)
-function cartaoPersonalizar(comResultado) {
-  return `<section class="perso-cartao" aria-labelledby="tPerso"><span class="perso-ic" aria-hidden="true">2</span><div>
-    <b id="tPerso">Personalizar a escala</b><p>Coloque os nomes, troque folgas, lance faltas, atestados e férias e veja o mês inteiro.</p>
-    <div class="lado-bt"><button class="btn pq azul" data-ir="personalizar">Personalizar</button>${comResultado ? '<button class="btn pq sec" data-ir="resultado">Ver o resultado</button>' : ''}</div></div></section>`;
-}
 const ddmm = d => `${d.slice(8)}/${d.slice(5, 7)}`;
-async function telaResultado() {
-  const v = $('#v-resultado');
-  if (!atual) return ir('inicio');
-  v.innerHTML = esqueletoSemana();
-  const seg0 = segundaDe(hojeIso());
-  const r = await api(`/api/equipes/${atual.id}/semana?data=${seg0}`), e = r.escala;
-  if (!e) { v.innerHTML = '<div class="vazio"><h2>A escala ainda não saiu</h2><p>Abra a escala da semana para ver o que falta.</p><button class="btn" data-ir="escala">Abrir a escala</button></div>'; return; }
-  const sem = e.dados[r.semana] || e.dados[0], fs = e.funcionarios, ab = e.abertos;
+function htmlComoMontada(e, si) {
+  const sem = e.dados[si] || e.dados[0], fs = e.funcionarios, ab = e.abertos;
   let funcoes = (atual.funcoes || []).filter(f => f.n > 0);
   if (!funcoes.length) { // unidade antiga, sem o quiz por função: agrupa pelo cargo
     const g = {}; fs.forEach(f => { const k = f.cargo || 'Equipe'; g[k] = (g[k] || 0) + 1; });
@@ -607,7 +542,7 @@ async function telaResultado() {
   const cards = funcoes.map(f => {
     const membros = fs.map((x, i) => (x.cargo || 'Equipe') === f.nome ? i : -1).filter(i => i >= 0);
     const porDia = DIAS.map((d, k) => ab[k] ? membros.filter(i => sem[i]?.[k] === 'T').length : null);
-    const chips = [`<span>${plural(membros.length || f.n, 'pessoa', 'pessoas')}</span>`];
+    const chips = [`<span>${plural(membros.length || f.n, 'colaborador', 'colaboradores')}</span>`];
     if (f.dias) chips.push(`<span>${f.dias} dias por semana</span>`);
     if (f.entrada && f.saida) {
       const j = jornadaDe({...f, intervalo: f.intervalo || 0});
@@ -616,46 +551,16 @@ async function telaResultado() {
     const fo = f.folga || {modo: 'rodizio'};
     chips.push(`<span>Folgas: ${fo.modo === 'fixa' ? 'fixas em ' + fo.dias.map(d => DIAS[d]).join(' e ') : fo.modo === 'preferidos' ? 'de preferência ' + fo.dias.map(d => DIAS[d]).join(', ') : 'em rodízio'}</span>`);
     if (f.minimo) chips.push(`<span>Mínimo de ${f.minimo} por dia</span>`);
-    const folgas = membros.slice(0, 8).map(i => `<span><b>${esc(fs[i].nome)}</b>: ${DIAS.filter((_, k) => sem[i]?.[k] === 'F' && ab[k]).join(' e ') || '—'}</span>`).join('') + (membros.length > 8 ? `<span>e mais ${membros.length - 8}</span>` : '');
-    return `<article class="res-func"><h3>${esc(f.nome)}<small>${plural(membros.length || f.n, 'pessoa', 'pessoas')}</small></h3>
+    return `<article class="res-func"><h3>${esc(f.nome)}<small>${plural(membros.length || f.n, 'colaborador', 'colaboradores')}</small></h3>
       <div class="res-chips">${chips.join('')}</div>
       <p class="dica">Trabalhando em cada dia, nesta semana</p>
-      <div class="res-dia">${DIAS.map((d, k) => porDia[k] == null ? `<span class="x">${d}<b>–</b></span>` : `<span>${d}<b>${porDia[k]}</b></span>`).join('')}</div>
-      <div class="res-folgas">${folgas}</div></article>`;
+      <div class="res-dia">${DIAS.map((d, k) => porDia[k] == null ? `<span class="x">${d}<b>–</b></span>` : `<span>${d}<b>${porDia[k]}</b></span>`).join('')}</div></article>`;
   }).join('');
-  const domingo = ab[6] ? `<div class="cartao" style="margin-top:12px"><b>Domingo em rodízio</b><p style="margin-top:4px">${ds === 3 ? 'No comércio, cada um folga pelo menos 1 a cada 3 domingos (Lei 10.101).' : `Cada um folga pelo menos 1 a cada ${ds} domingos (Portaria MTP 671/2021).`}
-    Nas próximas ${e.dados.length} semanas: ${e.dados.map((w, s) => `${ddmm(Escala.somaDias(e.inicio, s * 7 + 6))}, ${plural(w.filter(x => x[6] === 'F').length, 'folga', 'folgam')}`).join(' · ')}.</p></div>` : '';
-  const ajustes = (e.ajustes || []).length ? `<div class="cartao" style="margin-top:12px"><b>Ajustes da lei do domingo</b><p class="dica" style="margin:4px 0 6px">Nessas semanas a folga escolhida deu lugar ao domingo, como manda a lei.</p>
+  const domingo = ab[6] ? `<div class="cartao" style="margin-top:12px"><b>Domingo em rodízio</b><p style="margin-top:4px">${ds === 3 ? 'No comércio, cada colaborador folga pelo menos 1 a cada 3 domingos (Lei 10.101).' : `Cada colaborador folga pelo menos 1 a cada ${ds} domingos (Portaria MTP 671/2021).`}
+    Nas próximas ${e.dados.length} semanas: ${e.dados.map((w, s) => `${ddmm(Escala.somaDias(e.inicio, s * 7 + 6))}, ${plural(w.filter(x => x[6] === 'F').length, 'folga', 'folgas')}`).join(' · ')}.</p></div>` : '';
+  const ajustes = (e.ajustes || []).length ? `<div class="cartao" style="margin-top:12px"><b>Ajustes da lei do domingo</b><p class="dica" style="margin:4px 0 6px">Nessas semanas a folga escolhida deu lugar ao domingo, como determina a lei.</p>
     <ul class="res-folgas">${e.ajustes.slice(0, 5).map(a => `<li>${esc(a.texto)}</li>`).join('')}${e.ajustes.length > 5 ? `<li>e mais ${e.ajustes.length - 5}</li>` : ''}</ul></div>` : '';
-  const a = Escala.analisar(e, opcoesAnalise(atual));
-  const festa = window.escalaRecemGerada ? '<div class="res-ok" role="status"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="23"/><path d="M14 24l6 6 12-13"/></svg><b>Escala montada, dentro da lei</b></div>' : '';
-  window.escalaRecemGerada = false;
-  v.innerHTML = `<header class="res-topo">${festa}<span class="ban-etq">Etapa 1 · Resultado</span><h1>Sua escala 5x2 está pronta</h1>
-      <p>O padrão da escala por função, em números. Tudo dentro da nova lei.</p>
-      <div class="res-nums"><span><b data-conta="${fs.length}">${fs.length}</b> ${fs.length === 1 ? 'pessoa' : 'pessoas'}</span><span><b data-conta="${funcoes.length}">${funcoes.length}</b> ${funcoes.length === 1 ? 'função' : 'funções'}</span><span>2 folgas por semana</span>${ab[6] ? `<span>Domingo: 1 a cada ${ds}</span>` : ''}<span>Semana de ${ddmm(r.inicio)} a ${ddmm(Escala.somaDias(r.inicio, 6))}</span></div></header>
-    <div class="res-acoes"><button class="btn" data-ir="escala">Ver a semana</button><button class="btn sec" data-ir="tabela">Baixar ou enviar</button></div>
-    ${podeEditar() ? cartaoPersonalizar(false) : ''}
-    <h2 class="res-tit">O padrão por função</h2><div class="res-funcs">${cards}</div>
-    ${domingo}${ajustes}
-    <h2 class="res-tit">A escala e a lei</h2><div class="cartao">${htmlAnalise(a)}</div>`;
-  animaContadores(v);
-}
-function telaPersonalizar() {
-  const v = $('#v-personalizar');
-  const itens = [
-    ['pessoas', 'Colocar os nomes da equipe', 'Troque "Caixa 1" pelo nome de cada um'],
-    ['escala', 'Trocar folgas na semana', 'Toque no nome e mude o dia de folga'],
-    ['ocorrencias', 'Faltas, atestados e férias', 'Lance e a escala se ajusta sozinha'],
-    ['tabela', 'Escala da semana ou do mês', 'Em PDF, Excel, imagem ou no WhatsApp'],
-    ['pessoas', 'Folga fixa de alguém', 'Para quem combinou um dia certo de folga'],
-    ['funcionamento', 'Horário e mínimo por dia', 'Mude o funcionamento da unidade'],
-  ];
-  const liberado = podePersonalizar(conta);
-  v.innerHTML = `<header class="res-topo"><span class="ban-etq">Etapa 2</span><h1>Personalizar a escala</h1>
-      <p>A escala por números já está pronta. Aqui ela fica com a cara da sua equipe.</p></header>
-    ${liberado ? `<ul class="perso-lista">${itens.map(([r, t, d]) => `<li><button data-ir="${r}"><span><b>${t}</b><small>${esc(d)}</small></span><span class="seta" aria-hidden="true">›</span></button></li>`).join('')}</ul>`
-      : '<div class="cartao"><b>Disponível no plano mensal</b><p>Fale com a gente para liberar.</p></div>'}
-    <p style="margin-top:16px"><button class="link" data-ir="resultado">‹ Ver o resultado por função</button></p>`;
+  return `<details class="como"><summary>Como a escala foi montada</summary><div class="res-funcs">${cards}</div>${domingo}${ajustes}</details>`;
 }
 
 // carrossel dos banners em imagem: arrasta (scroll-snap), pontos, passa sozinho a cada 6s

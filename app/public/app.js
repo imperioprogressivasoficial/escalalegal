@@ -19,7 +19,7 @@ const PORTES = {mei: ['MEI', 'até 1 funcionário'], me: ['Microempresa', 'ME'],
 const SEG_ORDEM = ['mercado', 'farmacia', 'varejo', 'restaurante', 'padaria', 'salao', 'clinica', 'academia', 'posto', 'escritorio', 'seguranca', 'outro'];
 const seg = k => SETORES[k] || SETORES.outro;
 
-let eu = null, conta = null, equipes = [], atual = null, funcs = [], semana = null, semData = null, diaSel = null, porPessoa = false, recem = false, modo = 'login', tipoCadastro = '';
+let eu = null, conta = null, equipes = [], atual = null, funcs = [], semana = null, semData = null, diaSel = null, modoEsc = 'dia', recem = false, modo = 'login', tipoCadastro = '';
 const hojeIso = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const segundaDe = d => soma(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
 const mesAtual = () => hojeIso().slice(0, 7);
@@ -161,31 +161,43 @@ async function trocaUnidade(id) {
 }
 $('#selUnidade').onchange = () => trocaUnidade(+$('#selUnidade').value);
 
-// rotas: #escala #pessoas #mais #comecar #funcionamento #ocorrencias #fechamento #contador #acessos #empresa #conta
+// rotas: #inicio #escala[/semana|pessoa|mes|publicar] #colaboradores[/ausencias] #fechamento[/contabilidade] #mais #funcionamento #unidades #empresa #conta #aula #materiais #comecar #contador
 window.onhashchange = () => rota();
 const ir = h => { if (location.hash === '#' + h) rota(); else location.hash = h; };
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); if ($('#folha').open) fechaFolha(); ir(b.dataset.ir); }
   if (e.target.closest('[data-faltar]')) folhaFaltar();
 });
+// endereços antigos (links salvos, avisos, e-mails) -> os de agora
+const ALIAS = { resultado: 'escala', personalizar: 'escala', tabela: 'escala/mes', ocorrencias: 'colaboradores/ausencias', pessoas: 'colaboradores',
+  equipe: 'colaboradores', 'equipe/faltas': 'colaboradores/ausencias', mes: 'fechamento', 'mes/contador': 'fechamento/contabilidade', acessos: 'fechamento/contabilidade',
+  loja: 'funcionamento', lojas: 'unidades' };
+// rota -> seção da página
+const VISTA = { colaboradores: x => x === 'ausencias' ? 'ocorrencias' : 'pessoas', fechamento: x => x === 'contabilidade' ? 'acessos' : 'fechamento' };
 async function rota() {
   if (!conta) return;
-  let [v, extra] = (location.hash.slice(1) || '').split('/');
-  const mc = ehModoContador();
-  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique', 'materiais'].includes(v)) v = 'contador';
-  if (!v) v = conta.papel === 'contador' ? 'escala' : 'inicio';
+  let h = location.hash.slice(1) || '';
+  const al = ALIAS[h] || ALIAS[h.split('/')[0]];
+  if (al) { h = ALIAS[h] || al; history.replaceState(null, '', '#' + h); }
+  let [v, extra] = h.split('/');
+  const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
+  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique', 'materiais', 'unidades'].includes(v)) v = 'contador';
+  if (!v) v = cont ? 'fechamento' : 'inicio';
   // dono sem unidade: primeiro o cadastro completo da empresa, depois o quiz da escala
-  if (!mc && conta.papel === 'dono' && !equipes.length && !conta.cadastro_ok && !['comecar', 'cadastro', 'conta'].includes(v)) v = 'cadastro';
-  if (!mc && conta.papel === 'dono' && !equipes.length && ['escala', 'pessoas', 'tabela', 'funcionamento', 'ocorrencias', 'resultado', 'personalizar'].includes(v)) v = 'inicio';
-  if (v === 'comecar' && conta.papel === 'dono' && !conta.cadastro_ok && extra !== 'unidade') v = 'cadastro';
-  if (!document.getElementById('v-' + v) || (['acessos', 'empresa', 'cadastro'].includes(v) && conta.papel !== 'dono')
-    || (['comecar', 'pessoas', 'funcionamento', 'personalizar'].includes(v) && !podeEditar())) v = mc ? 'contador' : conta.papel === 'contador' ? 'escala' : 'inicio';
-  $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
+  if (!mc && dono && !equipes.length && !conta.cadastro_ok && !['comecar', 'cadastro', 'conta'].includes(v)) v = 'cadastro';
+  if (!mc && dono && !equipes.length && ['escala', 'colaboradores', 'funcionamento'].includes(v)) v = 'inicio';
+  if (v === 'comecar' && dono && !conta.cadastro_ok && extra !== 'unidade') v = 'cadastro';
+  if (v === 'fechamento' && extra === 'contabilidade' && !dono) extra = '';
+  const vista = VISTA[v] ? VISTA[v](extra) : v;
+  if (!document.getElementById('v-' + vista) || (['empresa', 'cadastro'].includes(v) && !dono)
+    || (['comecar', 'funcionamento'].includes(v) && !podeEditar())) return ir(mc ? 'contador' : cont ? 'fechamento' : 'inicio');
+  $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + vista));
   fechaGaveta();
   ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
-  pintaLateral(); marcaLateral(v, extra);
-  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio', 'resultado'].includes(v));
+  pintaLateral(); marcaLateral(v);
+  pintaAbas(v, extra);
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'inicio'].includes(v) || (v === 'escala' && ['mes', 'semana'].includes(extra)));
   $('#principal').classList.toggle('quiz-pg', foco);
   document.body.classList.toggle('modo-foco', foco);
   document.body.classList.toggle('ini-escuro', v === 'inicio');
@@ -194,24 +206,31 @@ async function rota() {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'cadastro') await telaCadastro();
     else if (v === 'inicio') await telaInicio();
-    else if (v === 'escala') await telaEscala();
-    else if (v === 'resultado') await telaResultado();
-    else if (v === 'personalizar') telaPersonalizar();
-    else if (v === 'pessoas') telaPessoas();
-    else if (v === 'tabela') await telaTabela();
-    else if (v === 'aula') { aulaI = extra === undefined || extra === '' || extra === 'app' || isNaN(+extra) ? 0 : Math.max(0, +extra) + 1; telaAula(); }
+    else if (v === 'escala') { modoEsc = ['semana', 'pessoa', 'mes'].includes(extra) ? extra : 'dia'; await telaEscala(); if (extra === 'publicar') folhaExportar(); }
+    else if (vista === 'pessoas') telaPessoas();
+    else if (vista === 'ocorrencias') await telaOcorrencias();
+    else if (vista === 'fechamento') await telaFechamento();
+    else if (vista === 'acessos') await telaAcessos();
+    else if (v === 'aula') { if (extra === undefined || extra === '') telaAulas(); else { aulaI = extra === 'app' || isNaN(+extra) ? 0 : Math.max(0, +extra) + 1; telaAula(); } }
     else if (v === 'materiais') await renderizarMateriais($('#v-materiais'));
     else if (v === 'instalar') telaInstalar();
     else if (v === 'indique') await telaIndique();
     else if (v === 'mais') telaMais();
+    else if (v === 'unidades') telaUnidades();
     else if (v === 'funcionamento') desenhaConfig();
-    else if (v === 'ocorrencias') await telaOcorrencias();
-    else if (v === 'fechamento') await telaFechamento();
     else if (v === 'contador') await telaContador();
-    else if (v === 'acessos') await telaAcessos();
     else if (v === 'empresa') { await telaEmpresa(); if (extra === 'historico') $('#listaHist')?.scrollIntoView({block: 'start'}); }
     else if (v === 'conta') telaConta();
   } catch (err) { toast(err.message); }
+}
+// abas no topo de Colaboradores (colaboradores | ausências) e de Fechamento (competência | contabilidade)
+function pintaAbas(v, extra) {
+  const abas = { colaboradores: [['colaboradores', 'Colaboradores'], ['colaboradores/ausencias', 'Ausências e férias']],
+    fechamento: conta.papel === 'dono' ? [['fechamento', 'Fechar competência'], ['fechamento/contabilidade', 'Acesso da contabilidade']] : [] }[v];
+  $$('[data-abas]').forEach(el => {
+    const lista = el.dataset.abas === v ? abas || [] : [];
+    el.innerHTML = lista.length > 1 ? lista.map(([r, t]) => `<button type="button" data-ir="${r}" class="${r === (extra ? v + '/' + extra : v) ? 'on' : ''}" ${r === (extra ? v + '/' + extra : v) ? 'aria-current="page"' : ''}>${t}</button>`).join('') : '';
+  });
 }
 
 // ================= primeiro acesso: quiz (uma pergunta por tela) =================
@@ -347,14 +366,14 @@ function wizDesenha() {
       <div class="q-ops">${DIAS_OP.map(([k, n, d]) => opcao('data-dias', k, n, d, pad === k)).join('')}${opcao('id', 'qOutros', 'Outros dias', 'Escolher um por um', !igual)}</div>
       <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:14px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div></div>`;
   } else if (id === 'funcoes') {
-    etapa = 'Equipe';
-    corpo = `<h1>Quais <mark>funções</mark> tem e quantas pessoas em cada?</h1><p class="sub">Conte todo mundo da equipe, de todos os turnos. Sem nomes: só os números.</p>
+    etapa = 'Colaboradores';
+    corpo = `<h1>Quais <mark>funções</mark> existem e quantos colaboradores em cada?</h1><p class="sub">Inclua todos os turnos. Sem nomes, apenas os números.</p>
       <div class="fn-lista">${wz.funcoes.map((x, i) => linhaFuncao(x, i)).join('')}</div>
       <div class="fn-nova hide" id="fnNovaBox"><input id="fnNova" maxlength="40" placeholder="Ex.: Entregador" autocomplete="off" aria-label="Nome da função"><button type="button" class="btn pq azul" id="fnNovaOk">Adicionar</button></div>
       <div class="fn-rodape"><button type="button" class="link" id="fnOutra">+ Outra função</button><p class="fn-total" aria-live="polite"><b id="fnTotal">${totalWz()}</b> ${totalWz() === 1 ? 'pessoa' : 'pessoas'}</p></div>
       <p class="dica">A escala sai com "Caixa 1", "Caixa 2"... Depois você pode trocar pelos nomes, se quiser.</p><div id="qConta"></div>
       <p class="fn-ajustar"><button type="button" class="link" id="qAjustar">Ajustar horário e folgas antes</button><small>Opcional. A sugestão já está dentro da lei: 5 dias, 8h por dia, folgas em rodízio.</small></p>`;
-    botao = 'Montar minha escala';
+    botao = 'Gerar escala';
   } else if (id === 'jornada') {
     sugereFuncao(f);
     etapa = esc(rotuloFuncao(f.nome));
@@ -387,7 +406,7 @@ function wizDesenha() {
       <p class="jn-tit">Pelo menos quantos de ${esc(rotuloFuncao(f.nome).toLowerCase())} trabalhando por dia?</p>
       <div class="jn-dias"><button type="button" id="mnMenos" aria-label="Menos um">−</button><output id="mnVal"><b>${f.minimo}</b></output><button type="button" id="mnMais" aria-label="Mais um">+</button></div>
       <div id="fgConta" aria-live="polite"></div>`;
-    botao = ultima ? 'Montar minha escala' : 'Continuar';
+    botao = ultima ? 'Gerar escala' : 'Continuar';
   }
   const restam = total - num + 1;
   const pular = (id === 'jornada' || id === 'folgas') && comPessoas().some(([, i]) => i > fi)
@@ -431,7 +450,7 @@ function wizDesenha() {
       if (fc.n < prec) html += `<div class="nota">Para ter ${esc(rotuloFuncao(c.nome).toLowerCase())} todo dia, precisa de ${prec}. Você colocou ${fc.n}.</div>`;
     }
     if (n > 200) html += '<div class="nota">Até 200 pessoas por unidade. Divida em mais de uma unidade.</div>';
-    if (conta.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
+    if (conta.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com a contabilidade.</div>';
     if ($('#qConta')) $('#qConta').innerHTML = html;
     const r = $('.quiz-resumo'); if (r) r.innerHTML = wizResumo();
   };
@@ -557,15 +576,15 @@ function dadosDoQuiz() {
 }
 async function wizGerar() {
   const {unidade, pessoas} = dadosDoQuiz();
-  $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc pulando"><h1>Montando sua escala…</h1>
-    <p>Distribuindo as folgas de ${plural(pessoas.length, 'pessoa', 'pessoas')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
+  $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc pulando"><h1>Gerando a escala…</h1>
+    <p>Distribuindo as folgas de ${plural(pessoas.length, 'colaborador', 'colaboradores')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
   const espera = new Promise(r => setTimeout(r, 1400));
   try {
     const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {unidade, pessoas, inicio: semanaInicial(), semanas: 4}}), espera]);
     conta = await api('/api/conta');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
-    semData = semanaInicial(); diaSel = null; window.escalaRecemGerada = true; ir('resultado');
+    semData = semanaInicial(); diaSel = null; window.escalaRecemGerada = true; ir('escala');
   } catch (err) {
     wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
   }
@@ -579,8 +598,8 @@ function telaPagar(checkout) {
 
 // ================= escala (tela principal) =================
 const opcoesAnalise = (eq, e) => ({horasDia: +eq.horas_dia || 8, ctx: conta.ctx, criticas: eq.criticas || [], domingoSemanas: Escala.domingoSemanasDe(eq.setor), abre: eq.abre, fecha: eq.fecha});
-$('#semAnt').onclick = () => { recem = false; semData = soma(semData, -7); diaSel = null; telaEscala(); };
-$('#semProx').onclick = () => { recem = false; semData = soma(semData, 7); diaSel = null; telaEscala(); };
+$('#semAnt').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? -28 : -7); diaSel = null; telaEscala(); };
+$('#semProx').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? 28 : 7); diaSel = null; telaEscala(); };
 function tituloSemana(seg) {
   const fim = soma(seg, 6), a = new Date(seg + 'T12:00:00'), b = new Date(fim + 'T12:00:00');
   return a.getMonth() === b.getMonth() ? `${a.getDate()} a ${b.getDate()} de ${MES[b.getMonth()]}` : `${a.getDate()} de ${MES[a.getMonth()].slice(0, 3)} a ${b.getDate()} de ${MES[b.getMonth()].slice(0, 3)}`;
@@ -594,31 +613,49 @@ async function telaEscala() {
   $('.sem-nav').classList.remove('hide');
   const hoje = hojeIso(), segHoje = segundaDe(hoje);
   if (!semData) semData = semanaInicial();
-  $('#semTit').textContent = tituloSemana(semData);
-  $('#semSub').textContent = semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
+  $('#semTit').textContent = modoEsc === 'mes' ? `${br(semData)} a ${br(soma(semData, 27))}` : tituloSemana(semData);
+  $('#escModos').innerHTML = [['dia', 'Dia'], ['semana', 'Semana'], ['pessoa', 'Colaborador'], ['mes', '4 semanas']].map(([k, t]) => `<button type="button" data-ir="escala${k === 'dia' ? '' : '/' + k}" class="${modoEsc === k ? 'on' : ''}" ${modoEsc === k ? 'aria-current="page"' : ''}>${t}</button>`).join('');
+  $('#semSub').textContent = modoEsc === 'mes' ? '4 semanas' : semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
   $('#escCorpo').innerHTML = esqueletoSemana();
   const pedido = semData;
   const r = await api(`/api/equipes/${atual.id}/semana?data=${semData}`);
   if (pedido !== semData) return; // trocou de semana enquanto carregava
   semana = r;
   let aviso = '';
-  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar". <button class="link" data-ir="aula">Ver as aulas ›</button></div>`;
-  if (!recem && r.escala) aviso += avisoInstalar();
+  if (window.escalaRecemGerada && r.escala) aviso = `<div class="res-ok claro" role="status"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="23"/><path d="M14 24l6 6 12-13"/></svg><div><b>Escala gerada, dentro da lei.</b><span>Toque em um nome para trocar a folga. Quando estiver certa, publique para a equipe.</span></div></div>`;
+  window.escalaRecemGerada = false;
   if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
   $('#escAviso').innerHTML = aviso;
   if (!r.escala) {
     const m = {
-      sem_pessoas: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Coloque sua equipe</h2><p>Escreva quem trabalha com você e a escala aparece na hora.</p>${podeEditar() ? '<button class="btn" data-ir="pessoas">Colocar a equipe</button>' : ''}</div>`,
+      sem_pessoas: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Cadastre os colaboradores</h2><p>Com os colaboradores cadastrados, a escala é gerada na hora.</p>${podeEditar() ? '<button class="btn" data-ir="colaboradores">Cadastrar colaboradores</button>' : ''}</div>`,
       nao_pago: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Falta liberar o acesso</h2><p>Sua equipe está salva. Libere e a escala aparece na hora.</p>${r.checkout && conta.papel === 'dono' ? `<a class="btn cheio" href="${esc(r.checkout)}" target="_blank" rel="noopener">Liberar por R$ 97</a>` : '<p class="dica">O dono da empresa precisa liberar o acesso.</p>'}</div>`,
       passado: '<div class="vazio"><h2>Sem escala nesta semana</h2><p>Essa semana já passou e não tinha escala no sistema.</p></div>',
-      sem_escala: `<div class="vazio"><h2>Sem escala nesta semana</h2><p>${podeEditar() ? 'Não deu para montar esta semana. Se o mês já foi fechado, reabra em Mais › Fechar o mês.' : 'A empresa ainda não montou a escala desta semana.'}</p></div>`,
+      sem_escala: `<div class="vazio"><h2>Sem escala nesta semana</h2><p>${podeEditar() ? 'Não foi possível gerar esta semana. Se a competência já foi fechada, reabra em Fechamento.' : 'A empresa ainda não montou a escala desta semana.'}</p></div>`,
     };
     $('#escCorpo').innerHTML = m[r.motivo] || m.sem_escala;
     return;
   }
   const e = r.escala, s = r.semana;
+  if (modoEsc === 'mes') return desenhaMes();
   if (diaSel === null) { const i = semData === segHoje ? (new Date(hoje + 'T12:00:00').getDay() + 6) % 7 : e.abertos.findIndex(Boolean); diaSel = Math.max(0, i); }
   desenhaSemana();
+}
+// grade de uma semana (colaborador x dia); toque numa célula muda o dia daquela pessoa
+function gradeSemana(w, comToque = true) {
+  return `<div class="cartao tab-sem"><div class="rolagem"><table class="tabela-escala">
+    <thead><tr><th></th>${DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return `<th class="${f ? 'fer' : ''}">${d}<small>${dm(data)}${f ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead>
+    <tbody>${w.linhas.map((l, f) => `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${!w.abertos[d] ? 'fc' : COD[c] ? 'A' : c}" ${comToque && podeEditar() && w.abertos[d] ? `data-cel="${f}:${d}" role="button" tabindex="0"` : ''}>${esc(rotuloCel(c, w.abertos[d]))}</td>`).join('')}</tr>`).join('')}
+    <tr class="tot"><td>Trabalhando (mínimo)</td>${DIAS.map((_, d) => { if (!w.abertos[d]) return '<td>–</td>'; const p = w.linhas.filter(x => x[d] === 'T').length; return `<td class="${p >= w.minimo[d] ? 'ok' : 'baixo'}">${p} (mín. ${w.minimo[d]})</td>`; }).join('')}</tr>
+    </tbody></table></div></div>`;
+}
+async function desenhaMes() {
+  $('#escCorpo').innerHTML = esqueletoSemana();
+  const sems = await carregaPeriodo();
+  if (!sems.length) { $('#escCorpo').innerHTML = '<div class="vazio"><h2>Ainda não há escala neste período</h2></div>'; return; }
+  $('#escCorpo').innerHTML = `${sems.map(w => `<h3 class="mes-sem">Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}</h3>${gradeSemana(w, false)}`).join('')}
+    <div class="acoes-esc"><button class="btn" id="btnExportar">Publicar escala</button></div>${htmlPrejuizo(resumoPeriodo(sems))}`;
+  $('#btnExportar').onclick = () => folhaExportar();
 }
 function semanaDados() { const e = semana.escala; return e.dados[semana.semana]; }
 function desenhaSemana() {
@@ -635,7 +672,8 @@ function desenhaSemana() {
     return `<button data-dia="${i}" class="${i === diaSel ? 'on' : ''} ${data === hoje ? 'hoje' : ''} ${e.abertos[i] ? '' : 'fechado'}"><small>${d}</small><b>${data.slice(8)}</b>${falta ? '<i></i>' : fer ? '<i class="fer"></i>' : ''}</button>`;
   }).join('');
   let corpo;
-  if (porPessoa) {
+  if (modoEsc === 'semana') corpo = gradeSemana({inicio: semData, funcionarios: e.funcionarios, abertos: e.abertos, minimo: e.minimo, linhas: sem});
+  else if (modoEsc === 'pessoa') {
     corpo = `<ul class="pp">${e.funcionarios.map((f, fi) => {
       const dias = sem[fi], folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIA_LONGO[d].toLowerCase() : null).filter(Boolean);
       const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
@@ -657,17 +695,16 @@ function desenhaSemana() {
         ${A.length ? `<div class="grupo A"><h3>Não vêm <em>${A.length}</em></h3><div class="nomes">${A.map(o => btn(o, 'A')).join('')}</div></div>` : ''}`;
     }
   }
-  $('#escCorpo').innerHTML = `${status}<div class="dias">${pills}</div>${corpo}
-    <div class="acoes-esc"><button class="btn" id="btnExportar">Baixar ou enviar</button>${ed ? '<button class="btn sec" data-faltar>Alguém vai faltar?</button>' : '<button class="btn sec" data-ir="tabela">Ver a tabela</button>'}</div>
-    <button class="btn sec cheio" data-ir="tabela" style="margin-top:8px">Ver a tabela pronta e a parte da lei</button>
-    <button class="link ver-pessoa" id="btnModo">${porPessoa ? 'Ver dia por dia' : 'Ver a semana de cada pessoa'}</button>`;
-  $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; porPessoa = false; desenhaSemana(); });
-  $('#btnModo').onclick = () => { porPessoa = !porPessoa; desenhaSemana(); };
+  $('#escCorpo').innerHTML = `${status}${modoEsc === 'dia' ? `<div class="dias">${pills}</div>` : ''}${corpo}
+    <div class="acoes-esc"><button class="btn" id="btnExportar">Publicar escala</button>${ed ? '<button class="btn sec" data-faltar>Lançar ausência</button>' : ''}</div>
+    ${htmlComoMontada(e, s)}`;
+  $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; desenhaSemana(); });
   $('#btnAnalise').onclick = () => folhaAnalise();
   $('#btnExportar').onclick = () => folhaExportar();
   if (ed) {
     $$('#escCorpo [data-f]').forEach(b => b.onclick = () => folhaPessoaDia(+b.dataset.f, diaSel));
     $$('#escCorpo [data-pessoa]').forEach(li => li.onclick = () => folhaPessoaSemana(+li.dataset.pessoa));
+    $$('#escCorpo [data-cel]').forEach(td => td.onclick = () => { const [f, d] = td.dataset.cel.split(':').map(Number); diaSel = d; folhaPessoaDia(f, d); });
   }
 }
 
@@ -687,7 +724,7 @@ async function trocaCelulas(pares, msg) {
   try {
     let dados;
     for (const [f, d] of pares) dados = (await api(`/api/escalas/${semana.escala.id}`, {method: 'PATCH', body: {semana: semana.semana, funcionario: f, dia: d}})).dados;
-    semana.escala.dados = dados; recem = false; $('#escAviso').innerHTML = ''; fechaFolha(); desenhaSemana(); toast(msg);
+    semana.escala.dados = dados; $('#escAviso').innerHTML = ''; fechaFolha(); desenhaSemana(); toast(msg);
   } catch (err) { toast(err.message); }
 }
 function folhaPessoaDia(f, d) {
@@ -697,7 +734,7 @@ function folhaPessoaDia(f, d) {
   const botoesDias = (lista, acao) => `<div class="dias-escolha">${lista.map(i => `<button data-${acao}="${i}">${DIA_LONGO[i]}<small>${dm(soma(semData, i))}</small></button>`).join('')}</div>`;
   if (COD[c]) {
     return folha(`<h2>${esc(nome)}</h2><p style="margin-top:6px">${esc(COD[c])} ${quando}.</p>
-      <div class="opcoes-grandes"><button data-ir="ocorrencias">Ver ou apagar o que foi lançado<small>Férias, faltas e atestados do mês</small></button></div>`);
+      <div class="opcoes-grandes"><button data-ir="colaboradores/ausencias">Ver ou apagar o que foi lançado<small>Ausências e férias do mês</small></button></div>`);
   }
   if (c === 'F') {
     const trab = outros('T');
@@ -732,7 +769,7 @@ function folhaPessoaSemana(f) {
 function folhaFaltar() {
   if (!podeEditar()) return;
   if (!funcs.length) return toast('Coloque sua equipe primeiro.');
-  folha(`<h2>Quem vai faltar?</h2><div class="opcoes-grandes">${funcs.map(f => `<button data-quem="${f.id}">${esc(f.nome)}${cargoVisivel(f) ? `<small>${esc(cargoVisivel(f))}</small>` : ''}</button>`).join('')}</div>`);
+  folha(`<h2>Lançar ausência</h2><p class="dica" style="margin-top:4px">Escolha o colaborador.</p><div class="opcoes-grandes">${funcs.map(f => `<button data-quem="${f.id}">${esc(f.nome)}${cargoVisivel(f) ? `<small>${esc(cargoVisivel(f))}</small>` : ''}</button>`).join('')}</div>`);
   $$('[data-quem]').forEach(b => b.onclick = () => { const f = funcs.find(x => x.id === +b.dataset.quem); folhaTipo(f.id, f.nome, diaSel !== null && semData ? soma(semData, diaSel) : hojeIso()); });
 }
 function folhaTipo(fid, nome, data) {
@@ -762,53 +799,16 @@ async function salvaOcorrencia(body, msg, elErro) {
       if (r.refeito) extra = ' A escala das próximas semanas foi refeita.';
     }
     fechaFolha(); toast(msg + extra);
-    if (location.hash.startsWith('#ocorrencias')) telaOcorrencias(); else telaEscala();
+    if (location.hash.startsWith('#colaboradores/ausencias')) telaOcorrencias(); else telaEscala();
   } catch (err) { if (elErro) elErro.textContent = err.message; else toast(err.message); }
-}
-async function linkEquipe(id) {
-  try {
-    const {link} = await api(`/api/equipes/${id}/link`, {method: 'POST', body: {}});
-    const msg = `Escala da equipe: ${link}\nAbra, toque no seu nome e veja suas folgas.`;
-    if (navigator.share) { try { await navigator.share({text: msg}); return; } catch {} }
-    folha(`<h2>Mandar para a equipe</h2><p style="margin-top:6px">Cada um abre o link, toca no próprio nome e vê as folgas. Não precisa instalar nada.</p>
-      <div class="opcoes-grandes"><a class="btn cheio btn-zap" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg" alt="" width="26" height="26">Mandar no WhatsApp</a>
-      <button id="lkCopiar">Copiar o link</button><button id="lkTexto">Copiar a escala em texto</button><button id="lkImprimir">Imprimir para o mural</button></div>`);
-    $('#lkCopiar').onclick = () => copiar(msg, 'Link copiado. Cole no grupo da equipe.');
-    $('#lkTexto').onclick = () => copiar(textoEscala(), 'Texto copiado. Cole no grupo da equipe.');
-    $('#lkImprimir').onclick = () => { fechaFolha(); imprimir(); };
-  } catch (err) { toast(err.message); }
-}
-function textoEscala() {
-  const e = semana.escala;
-  let t = `*${atual.nome} — Escala*\n`;
-  for (let s = semana.semana; s < e.dados.length; s++) {
-    t += `\n*Semana de ${dm(soma(e.inicio, s * 7))}*\n`;
-    e.dados[s].forEach((dias, f) => {
-      const folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIA_LONGO[d].toLowerCase() : null).filter(Boolean);
-      const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
-      t += `${e.funcionarios[f].nome}: ${folgas.length ? 'folga ' + folgas.join(' e ') : 'sem folga'}${fora.length ? ` (${fora.join(', ').toLowerCase()})` : ''}\n`;
-    });
-  }
-  return t;
-}
-function imprimir() {
-  if (!semana?.escala) return toast('Abra a escala primeiro.');
-  const e = semana.escala;
-  let h = '';
-  for (let s = semana.semana; s < e.dados.length; s++) {
-    const ini = soma(e.inicio, s * 7);
-    h += `<h2>${esc(atual.nome)} · semana de ${br(ini)} a ${br(soma(ini, 6))}</h2><table><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d} ${dm(soma(ini, i))}</th>`).join('')}</tr></thead><tbody>
-      ${e.dados[s].map((dias, f) => `<tr><td>${esc(e.funcionarios[f].nome)}</td>${dias.map((c, d) => `<td class="${e.abertos[d] ? c : ''}">${!e.abertos[d] ? '–' : c === 'T' ? '' : c === 'F' ? 'FOLGA' : esc(COD[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-  }
-  $('#areaImpressao').innerHTML = h; window.print();
 }
 
 // ================= equipe =================
 function telaPessoas() {
   if (!atual) return ir('comecar');
   const fs = seg(atual.setor).funcoes;
-  $('#pesSub').textContent = `${plural(funcs.length, 'pessoa', 'pessoas')} em ${atual.nome}. Toque em alguém para mudar o nome, a função ou tirar da equipe.`;
-  $('#listaP').innerHTML = funcs.length ? funcs.map(f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo && !cargoVisivel(f) ? f.cargo + ' · toque para pôr o nome' : f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`).join('')
+  $('#pesSub').textContent = `${plural(funcs.length, 'colaborador', 'colaboradores')} em ${atual.nome}. Toque em um colaborador para editar nome, função ou folga fixa.`;
+  $('#listaP').innerHTML = funcs.length ? funcs.map(f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo && !cargoVisivel(f) ? f.cargo + ' · toque para identificar' : f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`).join('')
     : '<li style="cursor:default"><span class="dica">Ninguém ainda. Escreva o primeiro nome acima.</span></li>';
   $$('[data-fid]').forEach(li => li.onclick = () => folhaFunc(funcs.find(x => x.id === +li.dataset.fid)));
 }
@@ -827,7 +827,7 @@ function folhaFunc(f) {
     <label for="efNome">Nome</label><input id="efNome" value="${esc(f.nome)}">
     <label for="efCargo">Função</label>${fs.length ? `<select id="efCargo"><option value="">—</option>${[...new Set([...fs, f.cargo].filter(Boolean))].map(x => `<option ${x === f.cargo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input id="efCargo" value="${esc(f.cargo || '')}" placeholder="Ex.: Atendente">`}
     <label>Folga fixa (só se vocês combinaram)</label><div class="dias-chip" id="efFixa"></div>
-    <details style="margin-top:14px"><summary class="link">Mais dados (para o contador)</summary>
+    <details style="margin-top:14px"><summary class="link">Mais dados (para a contabilidade)</summary>
       <label for="efMat">Matrícula</label><input id="efMat" value="${esc(f.matricula || '')}">
       <div class="lado"><div><label for="efAdm">Admissão</label><input id="efAdm" type="date" value="${f.admissao ? String(f.admissao).slice(0, 10) : ''}"></div><div><label for="efTel">WhatsApp</label><input id="efTel" inputmode="tel" value="${esc(f.telefone || '')}"></div></div>
     </details>
@@ -861,39 +861,21 @@ async function sair() {
 function telaMais() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
   const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
-  let h = '';
-  h += `<ul class="menu"><li><button data-ir="aula" class="menu-aula"><span>Aulas: o app e a nova lei<small>Vídeo de 1 minuto e 8 aulas curtas, com teste rápido</small></span><span class="seta">›</span></button></li></ul>`;
-  if (mc) h += `<ul class="menu" style="margin-top:8px">${item('contador', 'Suas empresas', 'Clientes que liberaram o acesso')}</ul>`;
-  else {
-    h += '<p class="menu-tit">Escala</p><ul class="menu">';
-    if (ed) h += item('funcionamento', 'Horário e dias de funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · mínimo de pessoas por dia` : '');
-    h += item('ocorrencias', 'Férias, faltas e atestados', 'Tudo o que foi lançado no mês');
-    h += item('tabela', 'A tabela pronta', 'Baixar em PDF, Excel ou imagem, mandar no WhatsApp');
-    h += '</ul><p class="menu-tit">Contador</p><ul class="menu">';
-    h += item('fechamento', 'Fechar o mês', 'Dias trabalhados, faltas e planilha para a folha');
-    if (dono) h += item('acessos', 'Dar acesso ao contador', 'Ele vê tudo sem você mandar planilha');
-    h += '</ul><p class="menu-tit">Empresa</p><ul class="menu">';
-    if (ed) h += item('comecar/unidade', 'Outra loja ou unidade', 'Cada uma tem sua equipe e sua escala');
-    h += `<li><button id="mOutraEmpresa"><span>Cadastrar outra empresa<small>Outro CNPJ ou a empresa de um cliente</small></span><span class="seta">›</span></button></li>`;
-    if (dono) h += item('empresa', 'Dados da empresa', 'Nome, CNPJ, cidade e feriados');
-    h += '</ul>';
-  }
-  h += `<p class="menu-tit">Seus materiais</p><ul class="menu"><li><button data-ir="materiais"><span>Seus materiais<small>Kit RH, Calculadora e Plaquinhas</small></span><span class="seta">›</span></button></li></ul>`;
-  h += `<p class="menu-tit">Facilite</p><ul class="menu">
-    <li><button data-ir="indique" class="menu-ind"><span>Indique para quem conhece<small>Mande o link para outros empresários</small></span><span class="seta">›</span></button></li>
-    ${naTelaInicial() ? '' : `<li><button data-ir="instalar"><span>Colocar na tela inicial<small>Abre como aplicativo no celular</small></span><span class="seta">›</span></button></li>`}</ul>`;
-  h += '<p class="menu-tit">Você</p><ul class="menu">';
-  if (eu.contas.length > 1) h += `<li><button id="mTrocar"><span>Trocar de empresa<small>${esc(mc ? 'Meu escritório' : conta.empresa || '')}${conta.papel !== 'dono' ? ` · você é ${PAPEL[conta.papel].toLowerCase()}` : ''}</small></span><span class="seta">›</span></button></li>`;
-  h += `<li><a href="/ajuda"><span>Ajuda e a nova lei<small>O que mudou e como funciona</small></span><span class="seta">›</span></a></li>`;
+  let h = '<ul class="menu">';
+  if (mc) h += item('contador', 'Suas empresas', 'Clientes que liberaram o acesso');
+  if (!mc && ed) h += item('funcionamento', 'Funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · dias e mínimo por dia` : 'Dias, horário e mínimo por dia');
+  h += item('unidades', 'Unidades e empresas', mc ? 'Trocar de empresa' : `${plural(equipes.length, 'unidade', 'unidades')} · trocar, criar ou cadastrar outra empresa`);
+  if (dono) h += item('empresa', 'Dados da empresa', 'CNPJ, endereço, feriados e histórico');
+  h += '</ul><ul class="menu">';
+  h += item('aula', 'Aulas e ajuda', 'Vídeo do app e a nova lei em aulas curtas');
+  h += item('materiais', 'Seus materiais', 'Kit RH, Calculadora e Plaquinhas');
+  h += item('indique', 'Indique para outra empresa', 'Envie o link para outros empresários');
+  if (!naTelaInicial()) h += item('instalar', 'Colocar na tela inicial', 'Abre como aplicativo no celular');
+  h += '</ul><ul class="menu">';
   h += item('conta', 'Minha conta', esc(eu.email));
-  h += '<li><button id="mSair"><span>Sair</span><span class="seta">›</span></button></li></ul>';
-  $('#maisTit').textContent = mc ? 'Opções' : 'Mais opções';
+  h += '<li><button id="mSair" class="m-sair"><span>Sair do app</span><span class="seta">›</span></button></li></ul>';
+  $('#maisTit').textContent = 'Mais';
   $('#maisCorpo').innerHTML = h;
-  if ($('#mTrocar')) $('#mTrocar').onclick = () => {
-    folha(`<h2>Trocar de empresa</h2><div class="opcoes-grandes">${eu.contas.map(c => `<button data-conta="${c.id}">${esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa')}<small>${PAPEL[c.papel]}</small></button>`).join('')}</div>`);
-    $$('[data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
-  };
-  if ($('#mOutraEmpresa')) $('#mOutraEmpresa').onclick = folhaOutraEmpresa;
   $('#mSair').onclick = sair;
 }
 
@@ -958,28 +940,28 @@ async function telaFechamento() {
   $('#fechSub').textContent = `${fech.empresa || ''}${fech.cnpj ? ' · CNPJ ' + Cadastro.mascaraCnpj(fech.cnpj) : ''} · ${nomeMes}`;
   const nomeMesCurto = $('#fechMes').value.split('-').reverse().join('/'), futuro = $('#fechMes').value > mesAtual();
   $('#fechStatus').innerHTML = fech.fechado
-    ? `<div class="status-mes"><div><span class="selo fechado">Mês fechado</span></div><p class="dica">Fechado em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números não mudam mais.</p>${conta.papel === 'dono' ? '<button class="btn sec" id="btnReabrir">Reabrir o mês</button>' : ''}</div>`
-    : `<div class="status-mes"><div><span class="selo aberto">Mês aberto</span></div><p class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou este mês. Os números podem mudar.' : 'No fim do mês, confira e feche. O contador recebe um aviso e os números ficam guardados.'}</p>${podeEditar() && !futuro ? '<button class="btn" id="btnFecharMes">Fechar o mês e avisar o contador</button>' : ''}</div>`;
+    ? `<div class="status-mes"><div><span class="selo fechado">Competência fechada</span></div><p class="dica">Fechado em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números não mudam mais.</p>${conta.papel === 'dono' ? '<button class="btn sec" id="btnReabrir">Reabrir competência</button>' : ''}</div>`
+    : `<div class="status-mes"><div><span class="selo aberto">Competência aberta</span></div><p class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou esta competência. Os números podem mudar.' : 'No fim do mês, confira e feche a competência. A contabilidade recebe um aviso e os números ficam guardados.'}</p>${podeEditar() && !futuro ? '<button class="btn" id="btnFecharMes">Fechar competência</button>' : ''}</div>`;
   if ($('#btnFecharMes')) $('#btnFecharMes').onclick = async () => {
-    if (!confirm(`Fechar ${nomeMesCurto}? O contador é avisado e as escalas do mês não mudam mais.`)) return;
-    try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? 'Mês fechado. Seu contador foi avisado.' : 'Mês fechado. Dica: dê acesso ao seu contador em Mais.'); telaFechamento(); }
+    if (!confirm(`Fechar a competência ${nomeMesCurto}? A contabilidade é avisada e as escalas do mês não mudam mais.`)) return;
+    try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? 'Competência fechada. A contabilidade foi avisada.' : 'Competência fechada. Libere o acesso da contabilidade para ela receber o fechamento.'); telaFechamento(); }
     catch (err) { toast(err.message); }
   };
   if ($('#btnReabrir')) $('#btnReabrir').onclick = async () => {
-    if (!confirm(`Reabrir ${nomeMesCurto}? Depois de corrigir, feche de novo para avisar o contador.`)) return;
-    await api('/api/fechamentos/' + $('#fechMes').value, {method: 'DELETE'}); toast('Mês reaberto.'); telaFechamento();
+    if (!confirm(`Reabrir a competência ${nomeMesCurto}? Depois de corrigir, feche de novo para avisar a contabilidade.`)) return;
+    await api('/api/fechamentos/' + $('#fechMes').value, {method: 'DELETE'}); toast('Competência reaberta.'); telaFechamento();
   };
   $('#fechAvisos').innerHTML = '';
   const L = fech.linhas;
   if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Ninguém neste mês.</p>'; $('#fechEspelho').innerHTML = ''; return; }
   const n = v => v ? `<b>${v}</b>` : '<span class="dica">0</span>';
   const h = v => v ? `<b>${v > 0 ? '+' : ''}${String(v).replace('.', ',')}h</b>` : '<span class="dica">0</span>';
-  $('#fechResumo').innerHTML = `<table class="tab"><thead><tr><th>Pessoa</th>${equipes.length > 1 ? '<th>Unidade</th>' : ''}<th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th><th class="n">Faltas</th><th class="n">Atestado</th><th class="n">Férias</th><th class="n">Afast.</th><th class="n">Banco</th></tr></thead><tbody>
+  $('#fechResumo').innerHTML = `<table class="tab"><thead><tr><th>Colaborador</th>${equipes.length > 1 ? '<th>Unidade</th>' : ''}<th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th><th class="n">Faltas</th><th class="n">Atestado</th><th class="n">Férias</th><th class="n">Afast.</th><th class="n">Banco</th></tr></thead><tbody>
     ${L.map(l => `<tr><td><b>${esc(l.nome)}</b>${l.matricula ? ` <span class="dica">${esc(l.matricula)}</span>` : ''}</td>${equipes.length > 1 ? `<td>${esc(l.equipe)}</td>` : ''}
       <td class="n">${n(l.trabalhados)}</td><td class="n">${n(l.folgas)}</td><td class="n">${n(l.domingos)}</td><td class="n">${n(l.feriados)}</td><td class="n">${n(l.faltas)}</td><td class="n">${n(l.atestado)}</td>
       <td class="n">${n(l.ferias)}</td><td class="n">${n(l.afastamento)}</td><td class="n">${h(l.banco_mes)}</td></tr>`).join('')}</tbody></table>
     <p class="dica" style="margin-top:10px">Domingos e feriados = dias trabalhados. Feriado trabalhado: pagar em dobro ou dar outra folga (Lei 605/49).</p>`;
-  $('#fechEspelho').innerHTML = `<table class="espelho"><thead><tr><th>Pessoa</th>${fech.dias.map(d => `<th class="${d.dia === 'Dom' ? 'dom' : ''} ${d.feriado ? 'fer' : ''}" title="${d.feriado ? esc(d.feriado) : ''}">${d.data.slice(8)}<br>${d.dia.slice(0, 1)}</th>`).join('')}</tr></thead><tbody>
+  $('#fechEspelho').innerHTML = `<table class="espelho"><thead><tr><th>Colaborador</th>${fech.dias.map(d => `<th class="${d.dia === 'Dom' ? 'dom' : ''} ${d.feriado ? 'fer' : ''}" title="${d.feriado ? esc(d.feriado) : ''}">${d.data.slice(8)}<br>${d.dia.slice(0, 1)}</th>`).join('')}</tr></thead><tbody>
     ${L.map(l => `<tr><td>${esc(l.nome)}</td>${l.codigos.map((c, i) => `<td class="${c ? 'c-' + c : ''} ${fech.dias[i].dia === 'Dom' && !c ? 'dom' : ''}">${CURTO[c] || ''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 $('#btnImpFech').onclick = () => { document.body.classList.add('print-fech'); window.print(); document.body.classList.remove('print-fech'); };
@@ -1002,7 +984,7 @@ async function telaContador() {
   $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : '';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
-      <p>Peça para o seu cliente abrir a Sua Escala 5x2, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
+      <p>Peça para o seu cliente abrir a Sua Escala 5x2, ir em <b>Fechamento › Acesso da contabilidade</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
       <p class="dica">Assim que ele liberar, a empresa aparece aqui.</p></div>`;
     return;
   }

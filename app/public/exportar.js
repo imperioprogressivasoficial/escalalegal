@@ -49,33 +49,14 @@ function resumoPeriodo(sems) {
   return {pessoas: [...pessoas.values()], ferTrab, feriados, regras, problemas, ok: !problemas.length};
 }
 
-// ---------- tela: a tabela pronta ----------
-async function telaTabela() {
-  if (!atual) return ir('escala');
-  if (!semData) semData = segundaDe(hojeIso());
-  $('#tabCorpo').innerHTML = '<p class="dica" style="text-align:center;padding:30px">Montando a tabela…</p>';
-  const sems = await carregaPeriodo();
-  if (!sems.length) { $('#tabCorpo').innerHTML = '<div class="vazio"><h2>Ainda não tem escala</h2><p>Volte para a Escala e coloque sua equipe.</p></div>'; return; }
-  const r = resumoPeriodo(sems);
-  $('#tabSub').textContent = `${atual.nome} · ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`;
-  $('#tabCorpo').innerHTML = `
-    <div class="exporta">${botoesExportar()}</div>
-    ${sems.map(w => `<div class="cartao tab-sem"><h3>Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}</h3><div class="rolagem"><table class="tabela-escala">
-      <thead><tr><th></th>${DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return `<th class="${f ? 'fer' : ''}">${d}<small>${dm(data)}${f ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead>
-      <tbody>${w.linhas.map((l, f) => `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${!w.abertos[d] ? 'fc' : COD[c] ? 'A' : c}">${esc(rotuloCel(c, w.abertos[d]))}</td>`).join('')}</tr>`).join('')}
-      <tr class="tot"><td>Trabalhando (mínimo)</td>${DIAS.map((_, d) => { if (!w.abertos[d]) return '<td>–</td>'; const p = w.linhas.filter(x => x[d] === 'T').length; return `<td class="${p >= w.minimo[d] ? 'ok' : 'baixo'}">${p} (mín. ${w.minimo[d]})</td>`; }).join('')}</tr>
-      </tbody></table></div></div>`).join('')}
-    ${htmlPrejuizo(r)}`;
-  ligaExportar(sems);
-}
 function htmlPrejuizo(r) {
   return `<div class="cartao prejuizo">
     <div class="diag-topo ${r.ok ? 'ok' : 'ruim'}"><img src="/img/mascote.svg?v=20261115b" alt=""><div><b>${r.ok ? 'Essa escala está dentro da lei' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção`}</b>Como ela funciona para você não ter prejuízo</div></div>
     ${r.problemas.length ? `<ul class="diag">${r.problemas.map(i => `<li><span class="ic ruim">!</span><div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>` : ''}
     <ul class="diag" style="margin-top:8px">${r.regras.map(t => `<li><span class="ic ok">✓</span><div><span>${esc(t)}</span></div></li>`).join('')}</ul>
     ${r.feriados.length ? `<div class="nota" style="margin-top:12px"><b>Feriados no período:</b> ${r.feriados.map(f => `${dm(f.data)} (${esc(f.nome)})`).join(', ')}. ${r.ferTrab ? `São ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado: pague em dobro ou dê outra folga.` : 'Ninguém trabalha nesses dias.'}</div>` : ''}
-    <h3 style="margin:16px 0 8px">Cada pessoa no período</h3>
-    <div class="rolagem"><table class="tab"><thead><tr><th>Pessoa</th><th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th></tr></thead>
+    <h3 style="margin:16px 0 8px">Cada colaborador no período</h3>
+    <div class="rolagem"><table class="tab"><thead><tr><th>Colaborador</th><th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th></tr></thead>
     <tbody>${r.pessoas.map(p => `<tr><td><b>${esc(p.nome)}</b></td><td class="n">${p.dias}</td><td class="n">${p.folgas}</td><td class="n">${p.dom}</td><td class="n">${p.fer ? `<b style="color:#8a5a00">${p.fer}</b>` : 0}</td></tr>`).join('')}</tbody></table></div>
   </div>`;
 }
@@ -83,25 +64,25 @@ function htmlPrejuizo(r) {
 // ---------- folha: baixar ou enviar ----------
 // cada saída: código, selo do formato, título e para que serve
 const SAIDAS = {
-  zap: ['WhatsApp', 'Enviar no WhatsApp', 'A tabela vai como imagem'],
-  link: ['LINK', 'Link para a equipe', 'Cada um vê a própria folga'],
-  copiar: ['TEXTO', 'Copiar em texto', 'Para colar onde quiser'],
-  pdf: ['PDF', 'PDF', 'Para imprimir ou o contador'],
+  zap: ['WhatsApp', 'WhatsApp', 'A escala como imagem'],
+  link: ['LINK', 'Link da equipe', 'Cada colaborador vê as próprias folgas'],
+  copiar: ['TEXTO', 'Copiar texto', 'Para colar em qualquer mensagem'],
+  pdf: ['PDF', 'PDF', 'Para imprimir ou arquivar'],
   xlsx: ['XLSX', 'Excel', 'Planilha com as cores'],
   csv: ['CSV', 'CSV', 'Abre em qualquer planilha'],
   sheets: ['SHEETS', 'Google Planilhas', 'Na sua planilha, sempre atualizada'],
   jpg: ['JPG', 'Imagem', 'Foto da tabela'],
-  imprimir: ['IMPRIMIR', 'Imprimir', 'Para colar no mural'],
+  imprimir: ['IMPRIMIR', 'Imprimir', 'Para o mural'],
 };
 function botoesExportar() {
   const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', csv: 'csv', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
   const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg?v=20261115b" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
-  return `<p class="saida-tit">Mandar para a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
-    <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', 'csv', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
+  return `<p class="saida-tit">Compartilhar com a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
+    <p class="saida-tit">Arquivos e contabilidade</p><div class="tiles">${['pdf', 'xlsx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir', 'csv'].map(tile).join('')}</div>`;
 }
 function folhaExportar() {
-  folha(`<h2>Sua escala está pronta</h2><p style="margin-top:4px" class="dica">4 semanas a partir de ${dm(semData)}, já com a parte da lei. Escolha como quer:</p>
-    <button class="previa" data-ir="tabela"><img id="previaImg" alt="Prévia da tabela"><span>Ver a tabela inteira ›</span></button>
+  folha(`<h2>Publicar e compartilhar</h2><p style="margin-top:4px" class="dica">4 semanas a partir de ${dm(semData)}, com o resumo da lei.</p>
+    <button class="previa" data-ir="escala/mes"><img id="previaImg" alt="Prévia da escala"><span>Ver as 4 semanas ›</span></button>
     ${botoesExportar()}`);
   ligaExportar(null);
   // prévia: a primeira semana como imagem, para a pessoa ver o que vai mandar
@@ -126,7 +107,7 @@ function ligaExportar(semsProntas) {
   $$('[data-x]').forEach(b => b.onclick = async () => {
     const tipo = b.dataset.x, txt = b.innerHTML;
     window.marcaEnviada?.(); // conta como escala enviada no progresso da tela inicial
-    if (tipo === 'link') { fechaFolha(); return linkEquipe(atual.id); }
+    if (tipo === 'link') return folhaLink();
     if (tipo === 'sheets') { try { return await folhaSheets(); } catch (err) { return toast(err.message); } }
     const sm = b.querySelector('small'), antes = sm?.textContent; b.disabled = true; if (sm) sm.textContent = 'Preparando…';
     try {
@@ -144,6 +125,19 @@ function ligaExportar(semsProntas) {
     } catch (err) { toast(err.message); }
     b.disabled = false; if (sm) sm.textContent = antes;
   });
+}
+// link da equipe: cada colaborador abre, toca no próprio nome e vê as folgas
+async function folhaLink() {
+  try {
+    const {link} = await api(`/api/equipes/${atual.id}/link`, {method: 'POST', body: {}});
+    const msg = `Escala da equipe: ${link}\nAbra o link e toque no seu nome para ver suas folgas.`;
+    if (navigator.share) { try { await navigator.share({text: msg}); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    folha(`<h2>Link da equipe</h2><p style="margin-top:6px">Cada colaborador abre o link, toca no próprio nome e vê as folgas. Não é preciso instalar nada.</p>
+      <div class="opcoes-grandes"><a class="btn cheio btn-zap" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg" alt="" width="26" height="26">Enviar no WhatsApp</a>
+      <button id="lkCopiar">Copiar o link</button></div><button class="link" id="lkVolta" style="margin-top:12px">‹ Outras formas de publicar</button>`);
+    $('#lkCopiar').onclick = () => copiar(msg, 'Link copiado. Cole no grupo da equipe.');
+    $('#lkVolta').onclick = folhaExportar;
+  } catch (err) { toast(err.message); }
 }
 const slug = t => String(t || 'escala').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'escala';
 function baixar(blob, nome) {
@@ -204,10 +198,10 @@ function desenhaBloco(ctx, x0, y0, W, w) {
     });
     y += linH;
   });
-  ctx.font = '700 15px "Public Sans", Arial, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#6b778a'; ctx.fillText('Trabalhando', x0 + 8, y + 20);
+  ctx.font = '700 15px "Public Sans", Arial, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#6b778a'; ctx.fillText('Trabalhando (mín.)', x0 + 8, y + 20);
   DIAS.forEach((_, d) => {
     if (!w.abertos[d]) return; const p = w.linhas.filter(x => x[d] === 'T').length, ok = p >= w.minimo[d];
-    ctx.fillStyle = ok ? '#168821' : '#c4161c'; ctx.textAlign = 'center'; ctx.fillText(`${p} de ${w.minimo[d]}`, x0 + nomeW + colW * d + colW / 2, y + 20);
+    ctx.fillStyle = ok ? '#168821' : '#c4161c'; ctx.textAlign = 'center'; ctx.fillText(`${p} (mín. ${w.minimo[d]})`, x0 + nomeW + colW * d + colW / 2, y + 20);
   });
   return y + 40 - y0;
 }
@@ -306,7 +300,7 @@ function xlsxDaEscala(sems) {
     linha([]); linha([t(`Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}`, 1)]);
     linha([t('Pessoa', 6), ...DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return t(`${d} ${dm(data)}${f ? ' (feriado)' : ''}`, 6); })]);
     w.linhas.forEach((l, f) => linha([t(w.funcionarios[f].nome, 7), ...l.map((c, d) => t(rotuloCel(c, w.abertos[d]), !w.abertos[d] ? 8 : c === 'F' ? 3 : c === 'T' ? 4 : 5))]));
-    linha([t('Trabalhando', 7), ...DIAS.map((_, d) => w.abertos[d] ? t(`${w.linhas.filter(x => x[d] === 'T').length} de ${w.minimo[d]}`, 6) : t('–', 8))]);
+    linha([t('Trabalhando (mínimo)', 7), ...DIAS.map((_, d) => w.abertos[d] ? t(`${w.linhas.filter(x => x[d] === 'T').length} (mín. ${w.minimo[d]})`, 6) : t('–', 8))]);
   }
   linha([]); linha([t('Como funciona para você não ter prejuízo', 2)]);
   linha([t(r.ok ? 'Essa escala está dentro da lei.' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção:`, 1)]);

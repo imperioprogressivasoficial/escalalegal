@@ -51,7 +51,16 @@ function licoes() {
       exp: 'Ajuda. Em uma fiscalização ou processo, a escala por escrito mostra que as folgas foram dadas.'},
   ];
 }
-// Aulas: a 1 é o vídeo de como usar o app; da 2 à 9, a nova lei. aulaI 0 = vídeo, aulaI k = lição k da lei.
+// Aulas e ajuda: a lista com as capas (estilo streaming). A 1 é o vídeo do app; da 2 à 9, a nova lei.
+function telaAulas() {
+  const L = licoes();
+  const card = (ir, n, sub, tit) => `<button type="button" class="aula-card" data-ir="${ir}" aria-label="Aula ${n}: ${esc(tit)}"><img src="/img/capas/aula-${String(n).padStart(2, '0')}.webp?v=1" alt="" width="960" height="540" loading="lazy" decoding="async"><small>${sub}</small></button>`;
+  $('#v-aula').innerHTML = `<button class="voltar" data-ir="mais">‹ Mais</button><h1>Aulas e ajuda</h1>
+    <p class="sub">O vídeo de como usar o app e a nova lei em aulas de 1 minuto, com teste rápido.</p>
+    <div class="aulas-grade">${card('aula/app', 1, 'Vídeo · 1 min', 'Como usar o app')}${L.map((l, i) => card('aula/' + i, i + 2, '1 min · com teste rápido', l.tit.replace(/<[^>]+>/g, ''))).join('')}</div>
+    <p style="margin-top:18px"><a class="link" href="/ajuda">Ajuda completa e a lei ›</a></p>`;
+}
+// Aula aberta: aulaI 0 = vídeo, aulaI k = lição k da lei.
 function telaAula() {
   const L = licoes(), total = L.length + 1;
   if (aulaI >= total) {
@@ -59,10 +68,10 @@ function telaAula() {
       <p>Você já sabe usar o app e o principal da nova lei. A Sua Escala 5x2 monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
       <button class="btn cheio" data-ir="escala">Ver minha escala</button>
       <p style="text-align:center;margin-top:14px"><a class="link" href="/ajuda">Ler a ajuda completa</a> · <button class="link" id="aulaDeNovo">Ver as aulas de novo</button></p></div>`;
-    $('#aulaDeNovo').onclick = () => { aulaI = 0; telaAula(); };
+    $('#aulaDeNovo').onclick = () => ir('aula');
     return;
   }
-  const topo = `<div class="quiz-topo"><button class="link" id="aulaVolta">‹ ${aulaI ? 'Voltar' : 'Sair'}</button><span>Aula ${aulaI + 1} de ${total}</span></div>
+  const topo = `<div class="quiz-topo"><button class="link" id="aulaVolta">‹ ${aulaI ? 'Voltar' : 'Aulas'}</button><span>Aula ${aulaI + 1} de ${total}</span></div>
     <div class="passos"><span class="on" style="flex:${aulaI + 1}"></span><span style="flex:${Math.max(total - aulaI - 1, 0.0001)}"></span></div>`;
   const proximo = `<button class="btn cheio fixo-baixo" id="aulaProx">${aulaI === total - 1 ? 'Terminar' : 'Próxima aula'}</button>`;
   if (aulaI === 0) {
@@ -91,7 +100,7 @@ function telaAula() {
       $('#aulaResp').innerHTML = `<div class="nota ${ok ? 'ok' : ''}">${ok ? 'Isso! ' : 'Quase. '}${esc(l.exp)}</div>`;
     });
   }
-  $('#aulaVolta').onclick = () => { if (!aulaI) return ir(podeEditar() ? 'inicio' : 'mais'); aulaI--; telaAula(); };
+  $('#aulaVolta').onclick = () => { if (!aulaI) return ir('aula'); aulaI--; telaAula(); };
   $('#aulaProx').onclick = () => { $('#v-aula video')?.pause(); aulaI++; telaAula(); window.scrollTo(0, 0); };
   window.scrollTo(0, 0);
 }

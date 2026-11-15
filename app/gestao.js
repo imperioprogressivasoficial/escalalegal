@@ -330,7 +330,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const periodo = inicio === fim ? inicio.split('-').reverse().join('/') : `${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`;
     auditar(req, `Lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}${horas ? ` (${horas > 0 ? '+' : ''}${horas}h)` : ''} para ${fr[0].nome}: ${periodo}`);
     if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'ocorrencia', papel: 'dono', titulo: `${req.u.nome} lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}`,
-      texto: `${fr[0].nome}: ${periodo}.`, link: 'equipe/faltas' });
+      texto: `${fr[0].nome}: ${periodo}.`, link: 'colaboradores/ausencias' });
     res.json(rows[0]);
   }));
   app.delete('/api/ocorrencias/:oid', LE, erro(async (req, res) => {
@@ -512,7 +512,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       [req.conta.id, mes, req.u.id, JSON.stringify(f)]);
     if (!rowCount) return res.status(409).json({ erro: `O mês ${mesBR(mes)} já está fechado.` });
     auditar(req, `Fechou o mês ${mesBR(mes)} e enviou ao contador`);
-    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Competência ${mesBR(mes)} fechada`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, ausências e feriados prontos para a folha.`, link: 'mes', chave: `fechado:${mes}` });
+    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Competência ${mesBR(mes)} fechada`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, ausências e feriados prontos para a folha.`, link: 'fechamento', chave: `fechado:${mes}` });
     const { rows: conts } = await q(`select u.email, u.nome from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 and m.papel='contador'`, [req.conta.id]);
     const empresa = req.conta.empresa || req.u.nome;
     for (const c of conts) {

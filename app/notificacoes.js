@@ -28,7 +28,7 @@ module.exports = function notificacoes({ app, q, erro, L }) {
     const { rows: conts } = await q(`select u.id, u.nome from membros m join usuarios u on u.id=m.usuario_id
       where m.conta_id=$1 and m.papel='contador' and u.senha_hash is not null`, [c]);
     for (const x of conts) await notificar(c, { tipo: 'contador', papel: 'dono', titulo: `${x.nome || 'A contabilidade'} acessou o app`,
-      texto: 'A contabilidade já vê a escala e o fechamento da competência.', link: 'mes/contador', chave: `contador:${x.id}` });
+      texto: 'A contabilidade já vê a escala e o fechamento da competência.', link: 'fechamento/contabilidade', chave: `contador:${x.id}` });
     const { rows: ex } = await q(`select distinct x.extra from extras_compras x join usuarios u on lower(u.email)=lower(x.email)
       where u.id=$1 and x.status='aprovada'`, [c]).catch(() => ({ rows: [] }));
     for (const x of ex) await notificar(c, { tipo: 'material', papel: 'dono', titulo: `${CATALOGO[x.extra]?.nome || 'Material'} liberado`,

@@ -7,6 +7,8 @@
 .mat-topo h1{margin:0 0 4px;font:800 1.6rem/1.15 var(--display,"Archivo",Arial,sans-serif);color:var(--tinta,#0c1b33)}
 .mat-topo p{margin:0;color:var(--mut,#566173)}
 .mat-card{background:#fff;border:1px solid var(--linha,#dfe3ea);border-radius:14px;overflow:hidden}
+.mat-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+.mat-grade{display:grid;gap:16px}@media (min-width:900px){.mat-grade{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .mat-cab{display:flex;gap:14px;align-items:flex-start;padding:18px 18px 14px}
 .mat-capa{flex:none;width:52px;height:64px;border-radius:6px;background:var(--azul,#1351b4);position:relative;box-shadow:0 6px 14px -8px rgba(7,29,65,.6)}
 .mat-capa::before{content:"";position:absolute;left:0;right:0;top:0;height:9px;background:var(--amarelo,#ffcd07);border-radius:6px 6px 0 0}
@@ -34,6 +36,7 @@
 @media (max-width:520px){.mat-cab{padding:16px 14px 12px}.mat-lista a{padding:12px 14px}.mat-oferta{padding:14px}.mat-comprar{width:100%;text-align:center}}`;
   const QUERO = { kit_rh: 'Quero o Kit RH', calculadora: 'Quero a Calculadora', plaquinhas: 'Quero as Plaquinhas' };
   const CAPA = { kit_rh: 'Kit RH', calculadora: 'Calcu&shy;ladora', plaquinhas: 'Plaqui&shy;nhas' };
+  const CAPA_IMG = { kit_rh: 'mat-kit', calculadora: 'mat-calc', plaquinhas: 'mat-placas' };
   // logos oficiais dos formatos (img/formatos: Word, Excel, PowerPoint e PDF do Wikimedia Commons; ZIP é desenho próprio)
   const LOGO = { pdf: 'pdf', docx: 'word', xlsx: 'excel', pptx: 'powerpoint', zip: 'zip' };
   const FORMATOS = { kit_rh: [['word', 'Word'], ['excel', 'Excel'], ['pdf', 'PDF']], calculadora: [['excel', 'Excel'], ['sheets', 'Google Planilhas']], plaquinhas: [['pdf', 'PDF'], ['powerpoint', 'PowerPoint']] };
@@ -50,7 +53,8 @@
 
   function cartao(x, cid) {
     const capa = `<div class="mat-capa" aria-hidden="true"><span>${CAPA[x.extra] || ''}</span></div>`;
-    const cab = `<div class="mat-cab">${capa}<div><h2>${esc(x.nome)}</h2><p>${esc(x.resumo)}</p><span class="mat-formatos">${logos(x.extra)}</span>${x.comprado ? '<span class="mat-selo">Liberado para você</span>' : ''}</div></div>`;
+    const poster = CAPA_IMG[x.extra] ? `<img class="mat-poster" src="/img/capas/${CAPA_IMG[x.extra]}.webp?v=1" alt="" width="960" height="540" loading="lazy" decoding="async">` : '';
+    const cab = `${poster}<div class="mat-cab">${CAPA_IMG[x.extra] ? '' : capa}<div><h2>${esc(x.nome)}</h2><p>${esc(x.resumo)}</p><span class="mat-formatos">${logos(x.extra)}</span>${x.comprado ? '<span class="mat-selo">Liberado para você</span>' : ''}</div></div>`;
     if (x.comprado) {
       const q = cid ? `?conta=${encodeURIComponent(cid)}` : '';
       const itens = x.arquivos.map(a => `<li><a class="${a.tipo === 'zip' ? 'mat-tudo' : ''}" href="${esc(a.url + q)}" download="${esc(a.arquivo)}">
