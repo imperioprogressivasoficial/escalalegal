@@ -9,6 +9,8 @@ const transporte = configurado && nodemailer.createTransport({
   pool: true, maxConnections: 2, connectionTimeout: 15000, socketTimeout: 20000,
 });
 const remetente = SMTP_FROM || (SMTP_USER ? `Sua Escala 5x2 <${SMTP_USER}>` : '');
+// respostas ao e-mail (ex.: "não consigo entrar") vão para o contato da empresa, não para o naoresponda
+const responderPara = process.env.EMPRESA_EMAIL || undefined;
 
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -50,7 +52,7 @@ function criaFila(q) {
         const m = rows[0];
         if (!m) break;
         try {
-          await transporte.sendMail({ from: remetente, to: m.para, subject: m.assunto, html: m.html, text: m.texto });
+          await transporte.sendMail({ from: remetente, replyTo: responderPara, to: m.para, subject: m.assunto, html: m.html, text: m.texto });
           await q('update emails set enviado_em = now(), erro = null where id = $1', [m.id]);
         } catch (e) {
           console.error(`[e-mail] falha para ${m.para} (tentativa ${m.tentativas}):`, e.message);
