@@ -60,6 +60,9 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   });
   const auditar = (req, acao) => q('insert into auditoria (conta_id, usuario_id, acao) values ($1,$2,$3)', [req.conta.id, req.u.id, String(acao).slice(0, 300)])
     .catch(e => console.error('auditoria:', e.message));
+  // setores da unidade (mínimo por setor; tabela própria em db/setores.sql)
+  const Setores = require('./setores.js');
+  const setores = Setores({ app, q, erro, L, LE, minhaEquipe, auditar });
 
   // ---------- ocorrências na escala ----------
   // ocorrências de dia inteiro dos funcionários no período [de, ate]
@@ -208,20 +211,22 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   const proximaSegunda = () => { const h = hojeBR(), dow = (new Date(h + 'T12:00:00Z').getUTCDay() + 6) % 7; return somaDias(h, dow === 0 ? 0 : 7 - dow); };
   // gera e salva a escala da unidade (férias, atestados etc. já lançados entram no cálculo)
   async function gerarParaEquipe(req, equipe, inicio, semanas) {
-    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
+    const sets = await setores.daEquipe(equipe.id);
+    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana, setor_id from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
     if (!fs.length) { const e = new Error('Cadastre pelo menos uma pessoa antes de gerar a escala.'); e.status = 400; throw e; }
     const travado = await mesFechadoEntre(req.conta.id, inicio, somaDias(inicio, semanas * 7 - 1));
     if (travado) { const e = new Error(erroFechado(travado)); e.status = 409; throw e; }
     const mapa = mapaOcorrencias(await ocorrenciasDe(fs.map(f => f.id), inicio, somaDias(inicio, semanas * 7 - 1)));
     const ausencias = Array.from({ length: semanas }, (_, s) => fs.map(f => Array.from({ length: 7 }, (_, d) =>
       mapa.get(f.id + '|' + somaDias(inicio, s * 7 + d)) || null)));
-    const grupos = gruposDaUnidade(fs, equipe.criticas || []);
+    const grupos = [...gruposDaUnidade(fs, equipe.criticas || []), ...Setores.gruposDosSetores(fs, sets)];
     const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa, pref: f.folga_pref || [], dias: f.dias_semana || 5 })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
       grupos, domingoSemanas: domingoSemanasDe(equipe.setor) });
-    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes)
-      values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *`,
-    [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
-      JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || [])]);
+    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes, setores)
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
+    [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo, setor_id: f.setor_id }))),
+      JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || []),
+      JSON.stringify(Setores.assinatura(sets))]);
     auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
     await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} gerada`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
       link: 'escala', chave: `escala:${equipe.id}:${hojeBR()}` });
@@ -243,14 +248,16 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   app.get('/api/equipes/:id/semana', L, minhaEquipe, erro(async (req, res) => {
     const hoje = hojeBR(), seg = segundaDe(dataValida(req.query.data) || hoje), dom = somaDias(seg, 6);
     const eq = req.equipe;
-    const { rows: fs } = await q('select id from funcionarios where equipe_id=$1 and ativo', [eq.id]);
+    const sets = await setores.daEquipe(eq.id);
+    const { rows: fs } = await q('select id, setor_id from funcionarios where equipe_id=$1 and ativo', [eq.id]);
     const { rows: cand } = await q(`select * from escalas where equipe_id=$1 and inicio <= $2 and inicio + semanas * 7 > $3::date
       order by criado_em desc limit 10`, [eq.id, seg, dom]);
     let escala = cand.find(e => diasEntre(e.inicio, seg) % 7 === 0) || null;
     const podeMontar = req.conta.papel !== 'contador' && req.conta.liberado && fs.length > 0;
     const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const desatualizada = escala && (
-      !igual(escala.funcionarios.map(f => f.id).sort((a, b) => a - b), fs.map(f => f.id).sort((a, b) => a - b))
+      !igual(escala.funcionarios.map(f => [f.id, f.setor_id ?? null]).sort((a, b) => a[0] - b[0]), fs.map(f => [f.id, f.setor_id ?? null]).sort((a, b) => a[0] - b[0]))
+      || !igual(escala.setores || [], Setores.assinatura(sets))
       || !igual(escala.abertos, eq.abertos) || !igual(escala.minimo, eq.minimo));
     let montada = false;
     // monta: semana sem escala (da atual em diante) ou semana futura desatualizada. A semana em curso nunca é refeita sozinha.
@@ -650,6 +657,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       select $1, x.nome, x.cargo, x.folga_fixa, x.folga_pref, x.dias_semana, x.entrada, x.saida, x.intervalo_min
       from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, folga_pref jsonb, dias_semana int, entrada text, saida text, intervalo_min int)`,
     [eq.id, JSON.stringify(pessoas)]);
+    if (Array.isArray(b.setores) && b.setores.length) await setores.criaLote(eq.id, b.setores);
     auditar(req, `Cadastrou a unidade ${u.nome} com ${pessoas.length} pessoa(s)`);
     let escala = null;
     if (req.conta.liberado) {

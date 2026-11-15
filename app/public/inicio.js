@@ -405,7 +405,7 @@ function itensMenu() {
   const escala = ['escala', 'Escala', [['escala/semana', 'Semana'], ['escala', 'Dia'], ['escala/pessoa', 'Por colaborador'], ['escala/mes', 'Mês'], ['escala/agenda', 'Agenda'], ['escala/publicar', 'Publicar escala']]];
   const colab = ['colaboradores', 'Colaboradores', [['colaboradores', 'Lista'], ['colaboradores/ausencias', 'Ausências e férias']]];
   const fech = ['fechamento', 'Fechamento', [['fechamento', 'Fechar competência'], ...(dono ? [['fechamento/contabilidade', 'Acesso da contabilidade'], ['empresa/historico', 'Histórico']] : [])]];
-  const config = ['configuracoes', 'Configurações', [...(!mc && ed ? [['funcionamento', 'Funcionamento']] : []), ['unidades', 'Unidades e empresas'], ...(dono ? [['empresa', 'Dados da empresa']] : []),
+  const config = ['configuracoes', 'Configurações', [...(!mc && ed ? [['funcionamento', 'Funcionamento']] : []), ['unidades', 'Unidades e empresas'], ...(!mc ? [['setores', 'Setores']] : []), ...(dono ? [['empresa', 'Dados da empresa']] : []),
     ['configuracoes/aparencia', 'Aparência'], ['conta', 'Minha conta'], ['instalar', 'Tela inicial']]];
   const principal = mc ? [['contador', 'Suas empresas']] : cont ? [fech, escala, colab] : [['inicio', 'Início'], escala, colab, fech];
   const recursos = [['aula', 'Aulas'], ['materiais', 'Seus materiais'], ...(mc || cont ? [] : [['indique', 'Indique para empresários']])];
@@ -441,7 +441,7 @@ function abreGrupo(g, abrir, salvar = true) {
 }
 // destaca o item da tela atual (o subitem exato quando houver) e abre o grupo dela
 function marcaLateral(v, extra) {
-  const grupoDe = { funcionamento: 'configuracoes', unidades: 'configuracoes', empresa: extra === 'historico' ? 'fechamento' : 'configuracoes', conta: 'configuracoes', instalar: 'configuracoes', comecar: 'inicio', cadastro: 'inicio' };
+  const grupoDe = { funcionamento: 'configuracoes', unidades: 'configuracoes', setores: 'configuracoes', empresa: extra === 'historico' ? 'fechamento' : 'configuracoes', conta: 'configuracoes', instalar: 'configuracoes', comecar: 'inicio', cadastro: 'inicio' };
   const exato = extra && extra !== 'dia' ? `${v}/${extra}` : v;
   const grupo = grupoDe[v] || v;
   $$('#lateral .lat-item').forEach(b => { b.classList.remove('on'); b.removeAttribute('aria-current'); });

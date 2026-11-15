@@ -647,6 +647,17 @@ body.modo-foco .topo-in select,body.modo-foco .lateral{display:none!important}
 .lista-p{list-style:none;padding:0;display:grid;gap:8px;margin-top:14px}
 .lista-p li{background:var(--sup);border:1px solid var(--linha);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
 .lista-p b{color:var(--tinta);display:block}
+.lista-p li.lista-sec{background:none;border:0;padding:12px 2px 0;cursor:default;justify-content:flex-start;gap:8px;font:800 .78rem var(--corpo);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.lista-p li.lista-sec em{font-style:normal;background:var(--linha2);color:var(--texto);border-radius:99px;padding:1px 8px;letter-spacing:0}
+.lista-p li.lista-sec-link{background:none;border:0;padding:6px 2px;cursor:default}
+.setor-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 12px;padding:2px 16px}
+.setor-chips::-webkit-scrollbar{display:none}
+.setor-chips button{flex:none;min-height:40px;border:1.5px solid var(--linha);background:var(--sup);color:var(--texto);border-radius:99px;padding:8px 16px;font-weight:700;cursor:pointer}
+.setor-chips button.on{background:var(--azul);border-color:var(--azul);color:#fff}
+.setor-sug{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 0;color:var(--mut);font-size:.9rem}
+.chip-sug{border:1.5px dashed var(--borda-campo);background:none;color:var(--azul-tx);border-radius:99px;padding:8px 14px;font-weight:700;cursor:pointer;min-height:40px}
+.q-setores{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))!important}
+.q-setores button{display:grid;gap:2px;padding:10px;text-align:left}.q-setores button small{font-size:.75rem;font-weight:600;opacity:.8}
 .lista-p small{color:var(--mut)}
 .lista-p .seta{color:var(--mut);font-weight:700}
 .tag{background:var(--amarelo-claro);color:var(--amarelo-tx);border-radius:99px;padding:3px 10px;font-size:.78rem;font-weight:600}
@@ -1133,6 +1144,8 @@ body.ini-escuro{background:var(--nf-bg)}
       <ul class="lista-p" id="listaP"></ul>
     </section>
 
+    <section class="vista hide" id="v-setores"></section>
+
     <!-- mais -->
     <section class="vista hide" id="v-mais">
       <h1 id="maisTit">Mais</h1>
@@ -1316,15 +1329,15 @@ body.ini-escuro{background:var(--nf-bg)}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=34"></script>
-<script src="/cadastro.js?v=34"></script>
-<script src="/ooxml.js?v=34"></script>
-<script src="/exportar.js?v=34"></script>
-<script src="/aula.js?v=34"></script>
-<script src="/extras.js?v=34"></script>
-<script src="/inicio.js?v=34"></script>
-<script src="/extras-materiais.js?v=34"></script>
-<script src="/app.js?v=34"></script>
+<script src="/scheduler.js?v=35"></script>
+<script src="/cadastro.js?v=35"></script>
+<script src="/ooxml.js?v=35"></script>
+<script src="/exportar.js?v=35"></script>
+<script src="/aula.js?v=35"></script>
+<script src="/extras.js?v=35"></script>
+<script src="/inicio.js?v=35"></script>
+<script src="/extras-materiais.js?v=35"></script>
+<script src="/app.js?v=35"></script>
 <script src="/suporte.js?v=1" defer></script>
 </body>
 </html>

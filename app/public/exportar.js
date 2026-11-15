@@ -9,7 +9,9 @@ async function carregaPeriodo(n = 4) {
     const r = k === 0 && semana?.inicio === semData ? semana : await api(`/api/equipes/${atual.id}/semana?data=${d}`);
     if (!r.escala) break;
     const e = r.escala;
-    sems.push({inicio: d, funcionarios: e.funcionarios, abertos: e.abertos, minimo: e.minimo, linhas: e.dados[r.semana]});
+    // com um setor escolhido na Escala, publica só o setor (e o mínimo dele)
+    const idx = e.funcionarios.map((_, i) => i).filter(i => typeof naVisao !== 'function' || naVisao(e.funcionarios[i]));
+    sems.push({inicio: d, funcionarios: idx.map(i => e.funcionarios[i]), abertos: e.abertos, minimo: typeof minVisto === 'function' ? minVisto(e.minimo) : e.minimo, linhas: idx.map(i => e.dados[r.semana][i])});
   }
   return sems;
 }
@@ -115,7 +117,7 @@ function ligaExportar(semsProntas) {
     try {
       const sems = semsProntas || await carregaPeriodo();
       if (!sems.length) throw new Error('Ainda não tem escala para baixar.');
-      const nome = `escala-${slug(atual.nome)}-${sems[0].inicio}`;
+      const nome = `escala-${slug(nomeVisao())}-${sems[0].inicio}`;
       if (tipo === 'pdf') baixar(await pdfDaEscala(sems), nome + '.pdf');
       else if (tipo === 'xlsx') baixar(xlsxDaEscala(sems), nome + '.xlsx');
       else if (tipo === 'docx') baixar(new Blob([Ooxml.zipBytes(Ooxml.arquivosDocx(dadosOoxml(sems)))], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nome + '.docx');
@@ -145,7 +147,7 @@ async function folhaLink() {
 }
 // Word e PowerPoint (ooxml.js): a mesma escala, em tabela por semana
 function dadosOoxml(sems) {
-  return {empresa: conta.empresa || atual.nome, unidade: atual.nome, semanas: sems.map(w => ({
+  return {empresa: conta.empresa || atual.nome, unidade: nomeVisao(), semanas: sems.map(w => ({
     titulo: `Semana de ${br(w.inicio)} a ${br(fimSemana(w))}`,
     dias: DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}`),
     feriados: DIAS.map((_, i) => !!Escala.feriado(soma(w.inicio, i), conta.ctx)),
@@ -160,14 +162,14 @@ function baixar(blob, nome) {
 }
 async function enviaZap(sems, nome) {
   const blob = await jpgDaEscala(sems), arq = new File([blob], nome + '.jpg', {type: 'image/jpeg'});
-  const texto = `Escala de ${atual.nome}: ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`;
+  const texto = `Escala de ${nomeVisao()}: ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`;
   if (navigator.canShare?.({files: [arq]})) { try { await navigator.share({files: [arq], text: texto}); return; } catch (e) { if (e.name === 'AbortError') return; } }
   baixar(blob, nome + '.jpg');
   window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\n' + textoDaEscala(sems))}`, '_blank', 'noopener');
   toast('A imagem foi baixada. No WhatsApp, anexe a imagem ou mande o texto.');
 }
 function textoDaEscala(sems) {
-  let t = `*${atual.nome} — Escala*\n`;
+  let t = `*${nomeVisao()} — Escala*\n`;
   for (const w of sems) {
     t += `\n*Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}*\n`;
     w.linhas.forEach((l, f) => {
@@ -179,7 +181,7 @@ function textoDaEscala(sems) {
   return t + '\nFeita na Sua Escala 5x2, dentro da nova lei.';
 }
 function imprimirSems(sems) {
-  $('#areaImpressao').innerHTML = sems.map(w => `<h2>${esc(atual.nome)} · semana de ${br(w.inicio)} a ${br(fimSemana(w))}</h2><table><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d} ${dm(soma(w.inicio, i))}</th>`).join('')}</tr></thead><tbody>
+  $('#areaImpressao').innerHTML = sems.map(w => `<h2>${esc(nomeVisao())} · semana de ${br(w.inicio)} a ${br(fimSemana(w))}</h2><table><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d} ${dm(soma(w.inicio, i))}</th>`).join('')}</tr></thead><tbody>
     ${w.linhas.map((l, f) => `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${w.abertos[d] ? c : ''}">${!w.abertos[d] ? '–' : c === 'T' ? '' : c === 'F' ? 'FOLGA' : esc(COD[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')
     + '<p style="font-size:.8rem">Trabalha = em branco. FOLGA = dia de folga. Feito na Sua Escala 5x2, dentro da nova lei.</p>';
   window.print();
@@ -235,7 +237,7 @@ async function canvasDaEscala(sems, comLei = true) {
   ctx.fillStyle = '#071d41'; ctx.fillRect(0, 0, W, 70);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '800 26px Archivo, Arial, sans-serif';
   ctx.fillStyle = '#fff'; ctx.fillText('SuaEscala', M, 35); const lx = M + ctx.measureText('SuaEscala').width; ctx.fillStyle = '#7be08a'; ctx.fillText('5x2', lx, 35);
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.font = '700 20px "Public Sans", Arial, sans-serif'; ctx.fillText(atual.nome, W - M, 35);
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.font = '700 20px "Public Sans", Arial, sans-serif'; ctx.fillText(nomeVisao(), W - M, 35);
   let y = 90;
   sems.forEach((w, i) => { desenhaBloco(ctx, M, y, W - 2 * M, w); y += altBlocos[i]; });
   if (comLei) {
@@ -269,7 +271,7 @@ async function canvasLei(sems) {
   const ctx = cv.getContext('2d'); ctx.scale(esc2, esc2); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.fillStyle = '#0c1b33'; ctx.font = '800 30px Archivo, Arial, sans-serif'; ctx.fillText(r.ok ? 'Essa escala está dentro da lei' : 'Pontos de atenção na escala', M, 50);
-  ctx.font = '500 18px "Public Sans", Arial, sans-serif'; ctx.fillStyle = '#6b778a'; ctx.fillText(`${atual.nome} · ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`, M, 88);
+  ctx.font = '500 18px "Public Sans", Arial, sans-serif'; ctx.fillStyle = '#6b778a'; ctx.fillText(`${nomeVisao()} · ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`, M, 88);
   let y = 130; ctx.fillStyle = '#3d4a5c';
   linhas.forEach(l => { ctx.fillStyle = l.startsWith('!') ? '#c4161c' : '#3d4a5c'; ctx.fillText(l, M, y); y += 28; });
   y += 30; ctx.font = '700 17px "Public Sans", Arial, sans-serif'; ctx.fillStyle = '#6b778a';
@@ -308,7 +310,7 @@ function xlsxDaEscala(sems) {
   const r = resumoPeriodo(sems), linhas = []; let n = 0;
   const linha = cels => { n++; linhas.push(`<row r="${n}">${cels.map((c, i) => c == null ? '' : typeof c.v === 'number' ? `<c r="${colL(i)}${n}" s="${c.s || 0}"><v>${c.v}</v></c>` : `<c r="${colL(i)}${n}" t="inlineStr" s="${c.s || 0}"><is><t xml:space="preserve">${xmlEsc(c.v)}</t></is></c>`).join('')}</row>`); };
   const t = (v, s) => ({v, s});
-  linha([t(`${atual.nome} — Escala ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`, 2)]);
+  linha([t(`${nomeVisao()} — Escala ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`, 2)]);
   linha([t('Feita na Sua Escala 5x2, dentro da nova lei (Emenda 141/2026).', 0)]);
   for (const w of sems) {
     linha([]); linha([t(`Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}`, 1)]);
