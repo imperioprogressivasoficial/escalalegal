@@ -701,6 +701,12 @@ $('#formCompra').addEventListener('submit', async e => {
   }
 });
 
+// vídeo: a seção só aparece quando o arquivo do vídeo existe
+fetch('/video/vsl.mp4', {method: 'HEAD'}).then(r => { if (!r.ok) throw 0; }).catch(() => {
+  const v = document.getElementById('video'); if (v) v.hidden = true;
+  document.querySelectorAll('a[href="#video"]').forEach(a => a.remove());
+});
+
 // contagem até 15/12/2026
 const alvo = new Date('2026-12-15T00:00:00-03:00'), dois = n => String(n).padStart(2, '0');
 function conta() {
