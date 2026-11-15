@@ -74,6 +74,18 @@ services:
       - traefik.http.routers.escalalegal.tls=true
       - traefik.http.routers.escalalegal.tls.certresolver=letsencrypt
       - traefik.http.services.escalalegal.loadbalancer.server.port=3000
+      # www do domínio principal (o app manda para o DOMAIN)
+      - traefik.http.routers.escalalegal-www.rule=Host(`www.${DOMAIN}`)
+      - traefik.http.routers.escalalegal-www.entrypoints=websecure
+      - traefik.http.routers.escalalegal-www.tls=true
+      - traefik.http.routers.escalalegal-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.escalalegal-www.service=escalalegal
+      # endereço antigo: continua recebendo webhook e manda as páginas para o DOMAIN
+      - traefik.http.routers.escalalegal-antigo.rule=Host(`${DOMINIO_ANTIGO:-escala.n8nimperio.tech}`)
+      - traefik.http.routers.escalalegal-antigo.entrypoints=websecure
+      - traefik.http.routers.escalalegal-antigo.tls=true
+      - traefik.http.routers.escalalegal-antigo.tls.certresolver=letsencrypt
+      - traefik.http.routers.escalalegal-antigo.service=escalalegal
 
   db:
     image: postgres:16-alpine
