@@ -81,25 +81,51 @@ function htmlPrejuizo(r) {
 }
 
 // ---------- folha: baixar ou enviar ----------
+// cada saída: código, selo do formato, título e para que serve
+const SAIDAS = {
+  zap: ['WhatsApp', 'Enviar no WhatsApp', 'A tabela vai como imagem'],
+  link: ['LINK', 'Link para a equipe', 'Cada um vê a própria folga'],
+  copiar: ['TEXTO', 'Copiar em texto', 'Para colar onde quiser'],
+  pdf: ['PDF', 'PDF', 'Para imprimir ou o contador'],
+  xlsx: ['XLSX', 'Excel', 'Planilha com as cores'],
+  sheets: ['SHEETS', 'Google Planilhas', 'Na sua planilha, sempre atualizada'],
+  jpg: ['JPG', 'Imagem', 'Foto da tabela'],
+  imprimir: ['IMPRIMIR', 'Imprimir', 'Para colar no mural'],
+};
 function botoesExportar() {
-  return `<button data-x="zap" class="verde">Enviar no WhatsApp<small>Manda a tabela como imagem</small></button>
-    <button data-x="pdf">Baixar PDF<small>Para imprimir ou mandar para o contador</small></button>
-    <button data-x="xlsx">Baixar Excel<small>Planilha .xlsx, abre no Excel e no Google Planilhas</small></button>
-    <button data-x="jpg">Baixar imagem<small>Foto da tabela (JPG)</small></button>
-    <button data-x="copiar">Copiar em texto<small>Para colar em qualquer lugar</small></button>
-    ${podeEditar() ? '<button data-x="link">Mandar o link para a equipe<small>Cada um toca no próprio nome e vê as folgas</small></button>' : ''}
-    <button data-x="imprimir">Imprimir<small>Para colar no mural</small></button>`;
+  const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><span class="fmt fmt-${k}">${SAIDAS[k][0]}</span><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
+  return `<p class="saida-tit">Mandar para a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
+    <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
 }
 function folhaExportar() {
-  folha(`<h2>A escala pronta</h2><p style="margin-top:6px">4 semanas a partir de ${dm(semData)}, com a parte da lei.</p>
-    <div class="opcoes-grandes"><button data-ir="tabela">Ver a tabela pronta<small>Todas as semanas e como fica dentro da lei</small></button>${botoesExportar()}</div>`);
+  folha(`<h2>Sua escala está pronta</h2><p style="margin-top:4px" class="dica">4 semanas a partir de ${dm(semData)}, já com a parte da lei. Escolha como quer:</p>
+    <button class="previa" data-ir="tabela"><img id="previaImg" alt="Prévia da tabela"><span>Ver a tabela inteira ›</span></button>
+    ${botoesExportar()}`);
   ligaExportar(null);
+  // prévia: a primeira semana como imagem, para a pessoa ver o que vai mandar
+  carregaPeriodo(1).then(s => s.length && canvasDaEscala(s, false)).then(cv => { if (cv && $('#previaImg')) $('#previaImg').src = cv.toDataURL('image/jpeg', .7); }).catch(() => {});
+}
+async function folhaSheets() {
+  const {link} = await api(`/api/equipes/${atual.id}/link`, {method: 'POST', body: {}});
+  const url = link.replace('/e/', '/api/publico/planilha/'), formula = `=IMPORTDATA("${url}")`;
+  folha(`<h2>Escala no Google Planilhas</h2>
+    <p style="margin-top:6px">A escala vai para uma planilha sua e <b>se atualiza sozinha</b> quando você mudar alguma folga aqui.</p>
+    <ol class="passos-sheets"><li>Toque no botão verde. Ele copia a escala e abre uma planilha nova.</li><li>Na planilha, toque na primeira célula (A1).</li><li>Cole (no celular: segure o dedo na célula e toque em <b>Colar</b>).</li></ol>
+    <button class="btn cheio" id="shAbrir">Copiar e abrir o Google Planilhas</button>
+    <p class="dica" style="margin-top:12px">O Google confere a escala de hora em hora. Quem tiver o link vê a escala, como no link da equipe.</p>
+    <details style="margin-top:10px"><summary class="link">Ver o que vai ser colado</summary><input readonly value="${esc(formula)}" style="margin-top:8px;font-size:.85rem" onclick="this.select()"></details>`);
+  $('#shAbrir').onclick = async () => {
+    try { await navigator.clipboard.writeText(formula); } catch { prompt('Copie e cole na célula A1:', formula); }
+    window.open('https://sheets.new', '_blank', 'noopener');
+    $('#shAbrir').textContent = 'Copiado! Agora cole na célula A1';
+  };
 }
 function ligaExportar(semsProntas) {
   $$('[data-x]').forEach(b => b.onclick = async () => {
     const tipo = b.dataset.x, txt = b.innerHTML;
     if (tipo === 'link') { fechaFolha(); return linkEquipe(atual.id); }
-    b.disabled = true; b.innerHTML = 'Preparando…';
+    if (tipo === 'sheets') { try { return await folhaSheets(); } catch (err) { return toast(err.message); } }
+    const sm = b.querySelector('small'), antes = sm?.textContent; b.disabled = true; if (sm) sm.textContent = 'Preparando…';
     try {
       const sems = semsProntas || await carregaPeriodo();
       if (!sems.length) throw new Error('Ainda não tem escala para baixar.');
@@ -112,7 +138,7 @@ function ligaExportar(semsProntas) {
       else if (tipo === 'zap') await enviaZap(sems, nome);
       if (['pdf', 'xlsx', 'jpg'].includes(tipo)) toast('Baixado. Olhe na pasta de downloads.');
     } catch (err) { toast(err.message); }
-    b.disabled = false; b.innerHTML = txt;
+    b.disabled = false; if (sm) sm.textContent = antes;
   });
 }
 const slug = t => String(t || 'escala').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'escala';

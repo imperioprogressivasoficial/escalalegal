@@ -605,18 +605,41 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     auditar(req, `Desligou o link da escala de ${req.equipe.nome}`);
     res.json({ ok: true });
   }));
-  app.get('/api/publico/escala/:token', limite(60), erro(async (req, res) => {
+  // escala das 4 semanas a partir da semana atual, pelo link da equipe (sem login)
+  async function escalaPublica(token) {
     const { rows } = await q(`select e.*, coalesce(c.razao_social, u.empresa) empresa from equipes e join usuarios u on u.id=e.usuario_id
-      left join empresa_config c on c.conta_id=e.usuario_id where e.link_token=$1`, [String(req.params.token || '').slice(0, 40)]);
+      left join empresa_config c on c.conta_id=e.usuario_id where e.link_token=$1`, [String(token || '').slice(0, 40)]);
     const e = rows[0];
-    if (!e) return res.status(404).json({ erro: 'Link desligado ou inválido. Peça um novo ao seu gestor.' });
+    if (!e) return null;
     const hoje = hojeBR(), dow = (new Date(hoje + 'T12:00:00Z').getUTCDay() + 6) % 7, de = somaDias(hoje, -dow), ate = somaDias(de, 27);
     const { rows: fs } = await q('select id, nome, cargo from funcionarios where equipe_id=$1 and ativo order by nome', [e.id]);
     const { cel } = await vigentes(e.usuario_id, de, ate, e.id);
     const ctx = await ctxDe(e.usuario_id);
     const dias = Array.from({ length: 28 }, (_, i) => { const d = somaDias(de, i); return { data: d, dia: DIAS[i % 7], aberto: !!e.abertos[i % 7], feriado: feriado(d, ctx) }; });
-    res.json({ empresa: e.empresa, equipe: e.nome, hoje, dias,
-      pessoas: fs.map(f => ({ nome: f.nome, cargo: f.cargo, dias: dias.map(d => cel.get(f.id + '|' + d.data) || '') })) });
+    return { empresa: e.empresa, equipe: e.nome, hoje, dias,
+      pessoas: fs.map(f => ({ nome: f.nome, cargo: f.cargo, dias: dias.map(d => cel.get(f.id + '|' + d.data) || '') })) };
+  }
+  app.get('/api/publico/escala/:token', limite(60), erro(async (req, res) => {
+    const r = await escalaPublica(req.params.token);
+    if (!r) return res.status(404).json({ erro: 'Link desligado ou inválido. Peça um novo ao seu gestor.' });
+    res.json(r);
+  }));
+  // a mesma escala em CSV: o Google Planilhas puxa com =IMPORTDATA("link") e se atualiza sozinho
+  app.get('/api/publico/planilha/:token', limite(120), erro(async (req, res) => {
+    const r = await escalaPublica(String(req.params.token || '').replace(/\.csv$/, ''));
+    res.set('Content-Type', 'text/csv; charset=utf-8').set('Cache-Control', 'no-store');
+    if (!r) return res.status(404).send('"Link desligado. Gere um novo na Sua Escala Blindada."\n');
+    const c = v => `"${String(v ?? '').replace(/"/g, '""')}"`, dm = d => d.slice(8, 10) + '/' + d.slice(5, 7);
+    const L = [[`${r.equipe} — escala (atualiza sozinha)`], []];
+    for (let s = 0; s < 4; s++) {
+      const ds = r.dias.slice(s * 7, s * 7 + 7);
+      L.push([`Semana de ${dm(ds[0].data)} a ${dm(ds[6].data)}`]);
+      L.push(['Pessoa', ...ds.map(d => `${d.dia} ${dm(d.data)}${d.feriado ? ' (feriado)' : ''}`)]);
+      for (const p of r.pessoas) L.push([p.nome, ...p.dias.slice(s * 7, s * 7 + 7).map((x, i) => !ds[i].aberto ? 'Fechado' : x === 'T' ? 'Trabalha' : x === 'F' ? 'FOLGA' : COD_NOME[x] || '')]);
+      L.push([]);
+    }
+    L.push(['Feita na Sua Escala Blindada, dentro da nova lei. Feriado trabalhado: pague em dobro ou dê outra folga.']);
+    res.send(L.map(l => l.map(c).join(',')).join('\n') + '\n');
   }));
 
   // ---------- histórico ----------

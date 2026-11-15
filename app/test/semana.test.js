@@ -51,4 +51,12 @@ test('semana se monta sozinha e se ajusta quando a equipe muda', { skip: pular }
   const ferias = (await chama(`/api/equipes/${eq.id}/semana?data=${ini}`, { cookie: c })).json;
   const i = ferias.escala.funcionarios.findIndex(f => f.nome === 'Iara');
   assert.ok(ferias.escala.dados[ferias.semana][i].every((x, d) => !ferias.escala.abertos[d] || x === 'V'), 'Iara de férias a semana toda');
+
+  // Google Planilhas: o link da equipe vira um CSV que o =IMPORTDATA puxa
+  const { link } = (await chama(`/api/equipes/${eq.id}/link`, { method: 'POST', cookie: c, body: {} })).json;
+  const tk2 = link.split('/e/')[1];
+  const csv = await (await fetch(`${base}/api/publico/planilha/${tk2}`)).text();
+  assert.match(csv, /^"Loja — escala \(atualiza sozinha\)"/);
+  assert.match(csv, /"Pessoa","Seg /); assert.match(csv, /"Ana",/); assert.match(csv, /"FOLGA"/);
+  assert.equal((await fetch(`${base}/api/publico/planilha/naoexiste`)).status, 404);
 });
