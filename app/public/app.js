@@ -1106,6 +1106,7 @@ $('#btnCsv').onclick = async () => {
 async function telaContador() {
   const r = await api('/api/contador');
   const mAnt = r.mes_anterior.split('-').reverse().join('/');
+  const mAt = r.mes_atual.split('-').reverse().join('/');
   $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : '';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
@@ -1117,9 +1118,10 @@ async function telaContador() {
       <h3>${esc(e.nome_fantasia || e.empresa)}</h3>
       <p class="meta">${e.cnpj ? 'CNPJ ' + esc(Cadastro.mascaraCnpj(e.cnpj)) + ' · ' : ''}${esc(e.porte_nome || '')}${e.uf ? ' · ' + esc(e.uf) : ''}</p>
       <div class="linha-st"><span>Pessoas</span><b>${e.funcionarios} em ${plural(e.unidades, 'unidade', 'unidades')}</b></div>
-      <div class="linha-st"><span>Fechamento de ${mAnt}</span>${e.fechado_ant ? '<span class="selo fechado">Fechado</span>' : '<span class="selo aberto">Aguardando</span>'}</div>
-      <div class="linha-st"><span>Faltas e atestados em ${mAnt}</span><b>${e.faltas_atestados_ant}</b></div>
-      <div class="acoes"><button class="btn pq" data-abrir="${e.id}" data-mes="${r.mes_anterior}">Fechamento de ${mAnt}</button><button class="btn sec pq" data-abrir="${e.id}">Ver a escala</button></div>
+      <div class="linha-st"><span>Competência ${mAt}</span>${e.fechado_atual ? '<span class="selo fechado">Fechada</span>' : '<span class="selo aberto">Em aberto</span>'}</div>
+      ${e.criada_mes && e.criada_mes > r.mes_anterior ? '' : `<div class="linha-st"><span>Competência ${mAnt}</span>${e.fechado_ant ? '<span class="selo fechado">Fechada</span>' : '<span class="selo aberto">Aguardando</span>'}</div>
+      <div class="linha-st"><span>Faltas e atestados em ${mAnt}</span><b>${e.faltas_atestados_ant}</b></div>`}
+      <div class="acoes">${e.fechado_atual ? `<button class="btn pq" data-abrir="${e.id}" data-mes="${r.mes_atual}">Baixar fechamento de ${mAt}</button>` : ''}${!(e.criada_mes && e.criada_mes > r.mes_anterior) && (e.fechado_ant || !e.fechado_atual) ? `<button class="btn ${e.fechado_atual ? 'sec ' : ''}pq" data-abrir="${e.id}" data-mes="${r.mes_anterior}">${e.fechado_ant ? 'Baixar fechamento' : 'Fechamento'} de ${mAnt}</button>` : ''}<button class="btn sec pq" data-abrir="${e.id}">Ver a escala</button></div>
     </article>`).join('')}</div>`;
   $$('[data-abrir]').forEach(b => b.onclick = () => {
     gravar('conta', b.dataset.abrir); gravar('unidade', '');

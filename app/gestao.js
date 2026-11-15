@@ -710,6 +710,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
         (select count(*)::int from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=m.conta_id and f.ativo) funcionarios,
         (select fechado_em from fechamentos fe where fe.conta_id=m.conta_id and fe.mes=$2) fechado_ant,
         (select fechado_em from fechamentos fe where fe.conta_id=m.conta_id and fe.mes=$3) fechado_atual,
+        to_char(u.criado_em at time zone 'America/Sao_Paulo', 'YYYY-MM') criada_mes,
         (select count(*)::int from ocorrencias o join funcionarios f on f.id=o.funcionario_id join equipes e on e.id=f.equipe_id
           where e.usuario_id=m.conta_id and o.tipo in ('falta','atestado') and o.inicio <= ($2 || '-28')::date + 3 and o.fim >= ($2 || '-01')::date) faltas_atestados_ant
       from membros m join usuarios u on u.id=m.conta_id left join empresa_config c on c.conta_id=m.conta_id

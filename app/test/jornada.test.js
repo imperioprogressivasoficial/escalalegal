@@ -123,6 +123,13 @@ test('jornada completa do cliente e do contador', { skip: pular }, async t => {
   assert.equal(r.json.contadores_avisados, 1);
   const aviso = (await pool.query("select texto from emails where para=$1 and assunto like 'Fechamento de 10/2026%'", [cont])).rows[0].texto;
   assert.match(aviso, /#contador/);
+  // fechando a competência atual, o espaço do contador mostra o mês atual como fechado
+  const mesAtual = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+  await chama('/api/fechamentos', { method: 'POST', cookie: s, body: { mes: mesAtual } });
+  const ec = (await chama('/api/contador', { cookie: sc })).json;
+  assert.equal(ec.mes_atual, mesAtual);
+  assert.ok(ec.empresas[0].fechado_atual, 'competência atual aparece fechada');
+  assert.equal(ec.empresas[0].criada_mes, mesAtual);
 
   // 5. funcionário vê pelo link, com o nome da empresa e feriados da cidade
   const link = (await chama(`/api/equipes/${eq.id}/link`, { method: 'POST', cookie: s })).json.link;
