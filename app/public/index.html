@@ -94,24 +94,11 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .janela-barra{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#eef2f8;border-bottom:1px solid var(--linha)}
 .janela-barra i{width:10px;height:10px;border-radius:50%;background:#ff5f57}.janela-barra i:nth-child(2){background:#febc2e}.janela-barra i:nth-child(3){background:#28c840}
 .janela-barra span{margin-left:12px;font-size:.78rem;color:var(--mut);background:#fff;border-radius:6px;padding:3px 14px}
-.macbook{position:relative;width:86%;transform:perspective(1800px) rotateY(-9deg) rotateX(3deg);transform-origin:left center;filter:drop-shadow(0 50px 60px rgba(0,0,0,.55))}
-.mac-tela{position:relative;background:#050506;border-radius:20px 20px 4px 4px;padding:2.2% 2.2% 2.6%;box-shadow:inset 0 0 0 1px #2c2d31,0 0 0 2px #1d1e21}
-.mac-tela::before{content:"";position:absolute;z-index:2;top:2.2%;left:50%;width:12%;height:3.4%;background:#050506;border-radius:0 0 9px 9px;transform:translateX(-50%)}
-.mac-tela::after{content:"";position:absolute;z-index:3;top:3%;left:50%;width:5px;height:5px;border-radius:50%;background:#1b2433;box-shadow:inset 0 0 1px #3d4b66;transform:translateX(-50%)}
-.mac-tela img{display:block;border-radius:2px;width:100%}
-.mac-base{position:relative;height:15px;margin:0 -7.5%;background:linear-gradient(180deg,#4a4b50 0,#2c2d31 18%,#1c1d20 60%,#0e0e10);border-radius:3px 3px 20px 20px;box-shadow:inset 0 1px 0 #5c5d63}
-.mac-base::before{content:"";position:absolute;left:50%;top:0;width:14%;height:5px;background:linear-gradient(#141518,#26272b);border-radius:0 0 9px 9px;transform:translateX(-50%)}
-.iphone{position:absolute;right:0;bottom:0;width:27%;min-width:132px;padding:2.1%;border:clamp(3px,.35vw,5px) solid transparent;background:linear-gradient(#030303,#030303) padding-box,linear-gradient(140deg,#ffb27a 0%,#f0782f 18%,#c9561b 45%,#e8712c 70%,#ffa264 100%) border-box;border-radius:clamp(28px,3.4vw,52px);box-shadow:0 40px 70px -24px rgba(0,0,0,.75);animation:boia 7s ease-in-out infinite}
-.iphone::before{content:"";position:absolute;z-index:2;top:3.6%;left:50%;width:31%;height:3.3%;border-radius:99px;background:#000;transform:translateX(-50%)}
-.iphone .botao{position:absolute;right:calc(-1 * clamp(5px,.55vw,8px));top:26%;width:clamp(3px,.3vw,4px);height:11%;border-radius:0 3px 3px 0;background:#d8652a}
-.iphone .botao.v1{left:calc(-1 * clamp(5px,.55vw,8px));right:auto;top:25%;height:8%;border-radius:3px 0 0 3px}
-.iphone .botao.v2{left:calc(-1 * clamp(5px,.55vw,8px));right:auto;top:35%;height:8%;border-radius:3px 0 0 3px}
-.iphone-tela{position:relative;overflow:hidden;border-radius:clamp(22px,2.7vw,42px);display:grid;background:#0c1b33;padding-top:13%}
-.iphone-tela img{grid-area:1/1;width:100%;display:block}
-.iphone.grande{position:relative;right:auto;bottom:auto;width:min(330px,78%);margin:0 auto;padding:10px;border-width:5px;border-radius:56px;animation:none}
-.iphone.grande .botao{width:5px}
-.iphone.grande .botao:not(.v1):not(.v2){right:-10px}.iphone.grande .v1,.iphone.grande .v2{left:-10px}
-.iphone.grande .iphone-tela{border-radius:44px}
+.mac-real{display:block;width:92%;height:auto;filter:drop-shadow(0 40px 50px rgba(0,0,0,.55))}
+.iphone-real{position:absolute;right:-2%;bottom:-4%;width:27%;min-width:130px;height:auto;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6));animation:boia 7s ease-in-out infinite}
+.iphone-troca{position:relative;display:grid;width:min(330px,78%);margin:0 auto;filter:drop-shadow(0 40px 50px rgba(6,21,51,.35))}
+.iphone-troca img{grid-area:1/1;width:100%;height:auto;transition:opacity .45s}
+.iphone-troca img:not(.on){opacity:0}
 @keyframes boia{50%{transform:translateY(-12px)}}
 .chip{position:absolute;z-index:2;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);color:var(--tinta);border-radius:14px;padding:11px 15px;box-shadow:0 22px 44px -16px rgba(0,0,0,.55);font-weight:700;font-size:.9rem;line-height:1.25;animation:boia 6s ease-in-out infinite}
 .chip small{display:block;font-weight:500;color:var(--mut);font-size:.78rem}
@@ -171,7 +158,15 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 
 
 /* notícias reais */
-.noticias{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.carrossel{position:relative}
+.noticias{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:6px 4px 26px;scrollbar-width:none}
+.noticias::-webkit-scrollbar{display:none}
+.noticias .noticia{flex:0 0 min(620px,86%);scroll-snap-align:center}
+.seta{position:absolute;z-index:2;top:42%;width:48px;height:48px;border-radius:50%;border:0;background:#fff;color:var(--tinta);font:700 1.7rem/1 var(--corpo);box-shadow:0 12px 30px -10px rgba(6,21,51,.5);cursor:pointer}
+.seta.ant{left:-14px}.seta.prox{right:-14px}
+.pontos{display:flex;justify-content:center;gap:8px}
+.pontos button{width:10px;height:10px;border-radius:99px;border:0;background:#c3cfe2;cursor:pointer;padding:0;transition:width .3s,background .3s}
+.pontos button.on{width:28px;background:var(--azul)}
 .noticia{display:block;text-decoration:none;color:inherit;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 24px 50px -30px rgba(6,21,51,.5),0 0 0 1px var(--linha);transition:transform .3s,box-shadow .3s}
 .noticia:hover{transform:translateY(-4px);box-shadow:0 30px 60px -30px rgba(6,21,51,.6),0 0 0 1px var(--azul-vivo)}
 .noticia .print{display:block;overflow:hidden;border-bottom:1px solid var(--linha)}
@@ -179,7 +174,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .noticia p{display:flex;justify-content:space-between;gap:12px;padding:14px 18px;font-size:.92rem;margin:0}
 .noticia p b{color:var(--tinta)}
 .noticia p span{color:var(--azul);font-weight:700;white-space:nowrap}
-@media(max-width:760px){.noticias{grid-template-columns:1fr}}
+@media(max-width:760px){.seta{display:none}}
 
 /* app */
 .app-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(30px,5vw,64px);align-items:center}
@@ -390,8 +385,8 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
     </div>
     <div class="vitrine" data-e style="--d:2">
       <img class="ze-espia" src="img/mascote.svg" alt="Zé Folga, o mascote da Sua Escala 5x2">
-      <div class="macbook"><div class="mac-tela"><img src="img/mac-tabela.webp" width="1440" height="900" alt="A Sua Escala 5x2 no computador: a tabela pronta, com as formas de enviar e as folgas de cada funcionário."></div><div class="mac-base"></div></div>
-      <div class="iphone"><i class="botao"></i><i class="botao v1"></i><i class="botao v2"></i><div class="iphone-tela"><img src="img/iphone-escala.webp" width="780" height="1688" alt="A Sua Escala 5x2 no iPhone: quem trabalha e quem folga no dia."></div></div>
+      <img class="mac-real" src="img/mac-tabela.webp" width="1544" height="1016" alt="A Sua Escala 5x2 num MacBook Pro: a tabela pronta, com as formas de enviar e as folgas de cada funcionário.">
+      <img class="iphone-real" src="img/iphone-escala.webp" width="675" height="1380" alt="A Sua Escala 5x2 num iPhone 17 Pro: quem trabalha e quem folga no dia.">
       <div class="chip c1"><b>✓</b><div>Dentro da lei<small>conferido antes de entregar</small></div></div>
       <div class="chip c2"><b>2</b><div>folgas por funcionário<small>como manda a nova lei</small></div></div>
     </div>
@@ -417,12 +412,12 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <section class="sec gelo" id="noticias">
   <div class="wrap">
     <div class="cab-sec centro" style="text-align:center"><span class="etq">Não é boato</span><h2>Saiu em todos os jornais</h2><p style="margin-inline:auto">A Emenda Constitucional 141/2026 foi promulgada pelo Congresso em 16 de outubro de 2026. Toque na notícia para ler na fonte.</p></div>
-    <div class="noticias">
-      <a class="noticia" data-r href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/congresso-promulga-emenda-do-fim-da-6x1-escala-5x2-comeca-em-60-dias" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/agbr-60dias.webp" width="1100" height="550" alt="Agência Brasil: Congresso promulga emenda do fim da 6x1; escala 5x2 começa em 60 dias" loading="lazy"></span><p><b>Agência Brasil · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
-      <a class="noticia" data-r style="--d:1" href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/saiba-quando-comeca-valer-o-fim-da-escala-6-por-1" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/agbr-quando.webp" width="1100" height="550" alt="Agência Brasil: Saiba quando começa a valer o fim da escala 6x1. A partir de 15 de dezembro de 2026, a nova jornada entra em vigor em todo o país." loading="lazy"></span><p><b>Agência Brasil · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
-      <a class="noticia" data-r href="https://www.camara.leg.br/noticias/1311797-congresso-promulga-emenda-que-acaba-com-escala-6x1-e-estabelece-jornada-maxima-de-40-horas-semanais" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/camara.webp" width="1100" height="550" alt="Agência Câmara: Congresso promulga emenda que acaba com escala 6x1 e estabelece jornada máxima de 40 horas semanais" loading="lazy"></span><p><b>Câmara dos Deputados · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
-      <a class="noticia" data-r style="--d:1" href="https://www.brasildefato.com.br/2026/10/16/promulgada-escala-5x2-passa-a-valer-na-semana-anterior-ao-natal/" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/brasildefato.webp" width="1100" height="550" alt="Brasil de Fato: Promulgada: escala 5x2 passa a valer na semana anterior ao Natal" loading="lazy"></span><p><b>Brasil de Fato · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
-    </div>
+    <div class="carrossel"><button class="seta ant" type="button" aria-label="Notícia anterior">‹</button><div class="noticias" id="noticiasTrilho">
+            <a class="noticia" href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/saiba-quando-comeca-valer-o-fim-da-escala-6-por-1" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/agbr-quando.webp" width="1100" height="550" alt="Agência Brasil: Saiba quando começa a valer o fim da escala 6x1. A partir de 15 de dezembro de 2026, a nova jornada entra em vigor em todo o país." loading="lazy"></span><p><b>Agência Brasil · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
+      <a class="noticia" href="https://www.camara.leg.br/noticias/1311797-congresso-promulga-emenda-que-acaba-com-escala-6x1-e-estabelece-jornada-maxima-de-40-horas-semanais" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/camara.webp" width="1100" height="550" alt="Agência Câmara: Congresso promulga emenda que acaba com escala 6x1 e estabelece jornada máxima de 40 horas semanais" loading="lazy"></span><p><b>Câmara dos Deputados · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
+      <a class="noticia" href="https://www.brasildefato.com.br/2026/10/16/promulgada-escala-5x2-passa-a-valer-na-semana-anterior-ao-natal/" target="_blank" rel="noopener"><span class="print"><img src="img/noticias/brasildefato.webp" width="1100" height="550" alt="Brasil de Fato: Promulgada: escala 5x2 passa a valer na semana anterior ao Natal" loading="lazy"></span><p><b>Brasil de Fato · 16/10/2026</b><span>Ler na fonte ›</span></p></a>
+    </div><button class="seta prox" type="button" aria-label="Próxima notícia">›</button></div>
+    <div class="pontos" id="noticiasPontos"></div>
   </div>
 </section>
 
@@ -486,11 +481,11 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <button class="aba" role="tab" aria-selected="false" data-tela="2"><strong>3. Baixe ou envie do seu jeito</strong><span>WhatsApp, PDF, Excel, Google Planilhas, imagem ou o link para a equipe.</span></button>
       </div>
       <div class="fundo-app" data-r>
-        <div class="iphone grande"><i class="botao"></i><i class="botao v1"></i><i class="botao v2"></i><div class="iphone-tela tela-img">
-          <img class="on" src="img/iphone-quiz.webp" width="780" height="1688" alt="A primeira pergunta no iPhone: qual é o seu negócio.">
-          <img src="img/iphone-escala.webp" width="780" height="1688" alt="A escala pronta no iPhone: quem trabalha e quem folga no dia." loading="lazy">
-          <img src="img/iphone-saidas.webp" width="780" height="1688" alt="As formas de enviar a escala no iPhone: WhatsApp, PDF, Excel, CSV e Google Planilhas." loading="lazy">
-        </div></div>
+        <div class="iphone-troca tela-img">
+          <img class="on" src="img/iphone-quiz.webp" width="675" height="1380" alt="A primeira pergunta num iPhone 17 Pro: qual é o seu negócio.">
+          <img src="img/iphone-escala.webp" width="675" height="1380" alt="A escala pronta num iPhone 17 Pro: quem trabalha e quem folga no dia." loading="lazy">
+          <img src="img/iphone-saidas.webp" width="675" height="1380" alt="As formas de enviar a escala num iPhone 17 Pro: WhatsApp, PDF, Excel, CSV e Google Planilhas." loading="lazy">
+        </div>
       </div>
     </div>
   </div>
@@ -700,6 +695,23 @@ $('#formCompra').addEventListener('submit', async e => {
     btn.disabled = false; btn.textContent = 'Ir para o pagamento';
   }
 });
+
+// carrossel das notícias: passa sozinho, para quando a pessoa mexe
+(() => {
+  const t = document.getElementById('noticiasTrilho'); if (!t) return;
+  const cards = [...t.children], pts = document.getElementById('noticiasPontos');
+  cards.forEach((_, i) => { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Notícia ' + (i + 1)); b.onclick = () => { parar(); vai(i); }; pts.appendChild(b); });
+  let atual = 0, tempo = null;
+  const vai = i => { atual = (i + cards.length) % cards.length; t.scrollTo({left: cards[atual].offsetLeft - (t.clientWidth - cards[atual].clientWidth) / 2, behavior: 'smooth'}); };
+  const marca = () => { const c = t.scrollLeft + t.clientWidth / 2; let m = 0, d = 1e9; cards.forEach((k, i) => { const x = Math.abs(k.offsetLeft + k.clientWidth / 2 - c); if (x < d) { d = x; m = i; } }); atual = m; [...pts.children].forEach((b, i) => b.classList.toggle('on', i === m)); };
+  const parar = () => { clearInterval(tempo); tempo = null; };
+  t.addEventListener('scroll', () => requestAnimationFrame(marca), {passive: true});
+  t.addEventListener('pointerdown', parar); t.addEventListener('wheel', parar, {passive: true});
+  document.querySelector('.carrossel .ant').onclick = () => { parar(); vai(atual - 1); };
+  document.querySelector('.carrossel .prox').onclick = () => { parar(); vai(atual + 1); };
+  marca();
+  if (!calmo) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !tempo) tempo = setInterval(() => vai(atual + 1), 4000); else if (!e.isIntersecting) parar(); })).observe(t);
+})();
 
 // vídeo: a seção só aparece quando o arquivo do vídeo existe
 fetch('/video/vsl.mp4', {method: 'HEAD'}).then(r => { if (!r.ok) throw 0; }).catch(() => {
