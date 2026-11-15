@@ -209,6 +209,42 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const { rows } = await q('select * from escalas where equipe_id=$1 order by criado_em desc limit 20', [req.equipe.id]);
     res.json(await escalasComOcorrencias(rows));
   }));
+  // a semana (segunda a domingo) da unidade. Mecanismo único: se não existe escala para a semana,
+  // ela é montada sozinha; se a equipe ou o funcionamento mudou, as semanas futuras são refeitas sozinhas.
+  const segundaDe = d => somaDias(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
+  app.get('/api/equipes/:id/semana', L, minhaEquipe, erro(async (req, res) => {
+    const hoje = hojeBR(), seg = segundaDe(dataValida(req.query.data) || hoje), dom = somaDias(seg, 6);
+    const eq = req.equipe;
+    const { rows: fs } = await q('select id from funcionarios where equipe_id=$1 and ativo', [eq.id]);
+    const { rows: cand } = await q(`select * from escalas where equipe_id=$1 and inicio <= $2 and inicio + semanas * 7 > $3::date
+      order by criado_em desc limit 10`, [eq.id, seg, dom]);
+    let escala = cand.find(e => diasEntre(e.inicio, seg) % 7 === 0) || null;
+    const podeMontar = req.conta.papel !== 'contador' && req.conta.liberado && fs.length > 0;
+    const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const desatualizada = escala && (
+      !igual(escala.funcionarios.map(f => f.id).sort((a, b) => a - b), fs.map(f => f.id).sort((a, b) => a - b))
+      || !igual(escala.abertos, eq.abertos) || !igual(escala.minimo, eq.minimo));
+    let montada = false;
+    // monta: semana sem escala (da atual em diante) ou semana futura desatualizada. A semana em curso nunca é refeita sozinha.
+    if (podeMontar && ((!escala && seg >= segundaDe(hoje)) || (desatualizada && seg > hoje)) && seg <= somaDias(hoje, 26 * 7)) {
+      try { escala = await gerarParaEquipe(req, eq, seg, 4); montada = true; }
+      catch (e) { if (!e.status) throw e; }
+    }
+    if (escala && !montada) escala = (await escalasComOcorrencias([escala]))[0];
+    const semana = escala ? diasEntre(escala.inicio, seg) / 7 : null;
+    const motivo = escala ? null : !fs.length ? 'sem_pessoas' : !req.conta.liberado ? 'nao_pago' : seg < segundaDe(hoje) ? 'passado' : 'sem_escala';
+    res.json({ inicio: seg, escala, semana, montada, motivo, novos: escala ? fs.filter(f => !escala.funcionarios.some(x => x.id === f.id)).length : 0, checkout: CHECKOUT_URL });
+  }));
+  // refaz as semanas a partir de uma data (depois de lançar férias ou afastamento). Nunca mexe na semana em curso.
+  app.post('/api/equipes/:id/refazer', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
+    const hoje = hojeBR(), de = dataValida(req.body?.de) || hoje, ate = dataValida(req.body?.ate) || de;
+    let seg = segundaDe(de > hoje ? de : hoje);
+    if (seg <= hoje) seg = somaDias(seg, 7);
+    if (ate < seg) return res.json({ ok: true, refeito: false });
+    const semanas = Math.max(4, Math.min(8, Math.ceil((diasEntre(seg, ate) + 1) / 7)));
+    try { await gerarParaEquipe(req, req.equipe, seg, semanas); res.json({ ok: true, refeito: true, de: seg }); }
+    catch (e) { if (e.status) return res.json({ ok: true, refeito: false, aviso: e.message }); throw e; }
+  }));
   // ajuste manual de uma célula (trabalha <-> folga)
   app.patch('/api/escalas/:eid', LE, erro(async (req, res) => {
     const { semana, funcionario, dia } = req.body || {};

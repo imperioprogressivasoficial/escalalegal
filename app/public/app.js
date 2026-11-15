@@ -1,24 +1,37 @@
-// Escala Blindada — app (JS puro). Telas: primeiro acesso guiado, início, unidade (escala, análise,
-// pessoas, funcionamento), férias e faltas, fechamento, espaço do contador, acessos, empresa, minha conta.
-const DIAS = Escala.DIAS, SETORES = Escala.SETORES, OC = Escala.OCORRENCIAS, COD = Escala.COD_NOME;
+// Escala Blindada — app (JS puro). Um mecanismo só: abriu, vê a semana. Quem trabalha, quem folga.
+// Toca no nome para trocar a folga ou lançar falta. A escala se monta e se ajusta sozinha.
+const DIAS = Escala.DIAS, SETORES = Escala.SETORES, COD = Escala.COD_NOME;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const br = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
 const dm = d => d.slice(8, 10) + '/' + d.slice(5, 7);
-const ROTULO = {ferias: 'Férias', atestado: 'Atestado médico', falta: 'Falta', afastamento: 'Afastamento (INSS, licença)', folga_extra: 'Folga extra (compensação)', banco_horas: 'Banco de horas'};
-const DICA = {ferias: 'A pessoa sai da escala nesses dias. Gere a escala de novo para redistribuir as folgas.', atestado: 'Os dias de atestado aparecem na escala e no fechamento.', falta: 'Falta sem justificativa. Vai para o fechamento do mês.', afastamento: 'INSS, licença maternidade etc. A pessoa sai da escala no período.', folga_extra: 'Folga além das 2 da semana (compensação de banco de horas, por exemplo).', banco_horas: 'Positivo = hora extra (crédito). Negativo = saiu mais cedo (débito).'};
+const soma = Escala.somaDias;
+const DIA_LONGO = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const ROTULO = {ferias: 'Férias', atestado: 'Atestado', falta: 'Falta', afastamento: 'Afastamento', folga_extra: 'Folga extra', banco_horas: 'Banco de horas'};
+const TIPOS = [
+  ['falta', 'Faltou', 'sem avisar ou sem atestado'], ['atestado', 'Atestado', 'trouxe atestado médico'],
+  ['ferias', 'Férias', 'a escala se refaz sozinha'], ['afastamento', 'Afastamento', 'INSS, licença'],
+  ['folga_extra', 'Folga extra', 'compensação, banco'], ['banco_horas', 'Banco de horas', 'hora extra ou a menos']];
 const CURTO = {T: 'T', F: 'F', V: 'FÉ', M: 'AT', X: 'FA', L: 'AF', E: 'FX'};
-const PAPEL = {dono: 'Dono', gestor: 'Gestor', contador: 'Contador'};
-const PORTES = {mei: ['MEI', 'Microempreendedor individual'], me: ['ME', 'Microempresa'], epp: ['EPP', 'Empresa de pequeno porte'], media: ['Média ou grande', ''], nao_sei: ['Não sei', 'Pergunte ao contador depois']};
-let eu = null, conta = null, equipes = [], atual = null, funcs = [], escalas = [], escalaAtual = null, semanaAtual = 0, modo = 'login', tipoCadastro = '';
+const PAPEL = {dono: 'Dono', gestor: 'Gerente', contador: 'Contador'};
+const PORTES = {mei: ['MEI', 'até 1 funcionário'], me: ['Microempresa', 'ME'], epp: ['Pequena empresa', 'EPP'], media: ['Média ou grande', ''], nao_sei: ['Não sei', 'vejo depois']};
+const SEG_ORDEM = ['mercado', 'farmacia', 'varejo', 'restaurante', 'padaria', 'salao', 'clinica', 'academia', 'posto', 'escritorio', 'seguranca', 'outro'];
+const seg = k => SETORES[k] || SETORES.outro;
+
+let eu = null, conta = null, equipes = [], atual = null, funcs = [], semana = null, semData = null, diaSel = null, porPessoa = false, recem = false, modo = 'login', tipoCadastro = '';
 const hojeIso = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const segundaDe = d => soma(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
 const mesAtual = () => hojeIso().slice(0, 7);
-const lerConta = () => { try { return +localStorage.getItem('conta') || null; } catch { return null; } };
-const gravarConta = id => { try { localStorage.setItem('conta', id || ''); } catch {} };
+const ler = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const gravar = (k, v) => { try { localStorage.setItem(k, v ?? ''); } catch {} };
 const podeEditar = () => conta && conta.papel !== 'contador';
 const ehModoContador = () => eu?.contador && conta?.id === eu.id && !eu.empresa;
-const proxSegunda = () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+const dataLonga = d => { const x = new Date(d + 'T12:00:00'); return `${DIA_LONGO[(x.getDay() + 6) % 7]}, ${x.getDate()} de ${MES[x.getMonth()]}`; };
+const nomeCurto = n => String(n || '').split(' ')[0];
+const naDia = d => (d >= 5 ? 'no ' : 'na ') + DIA_LONGO[d].toLowerCase();
+const hora = h => { const [a, b] = String(h || '').split(':'); return a ? `${+a}h${b && b !== '00' ? b : ''}` : ''; };
 
 async function api(url, opts = {}) {
   const headers = {'Content-Type': 'application/json'};
@@ -26,15 +39,17 @@ async function api(url, opts = {}) {
   const r = await fetch(url, {method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    if (j.trocar_conta) { gravarConta(null); location.hash = ''; location.reload(); }
-    const e = new Error(j.erro || 'Erro'); e.status = r.status; throw e;
+    if (j.trocar_conta) { gravar('conta', ''); location.hash = ''; location.reload(); }
+    const e = new Error(j.erro || 'Algo deu errado. Tente de novo.'); e.status = r.status; throw e;
   }
   return j;
 }
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3400); }
+function toast(msg) { $$('.toast').forEach(t => t.remove()); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3600); }
 async function copiar(texto, msg) { try { await navigator.clipboard.writeText(texto); toast(msg); } catch { prompt('Copie:', texto); } }
+function folha(html) { $('#folhaCorpo').innerHTML = html; const d = $('#folha'); if (!d.open) d.showModal(); d.scrollTop = 0; return d; }
+const fechaFolha = () => $('#folha').close();
 
-// ---------- entrada ----------
+// ================= entrada =================
 function modoEntrada(m) {
   modo = m; $$('.abas button').forEach(x => x.classList.toggle('on', x.dataset.modo === m));
   $('.so-cad').classList.toggle('hide', m !== 'cadastro');
@@ -47,7 +62,7 @@ function modoEntrada(m) {
 $$('.abas button').forEach(b => b.onclick = () => modoEntrada(b.dataset.modo));
 $('#btnSouContador').onclick = () => {
   tipoCadastro = 'contador';
-  $('#entradaTitulo').textContent = 'Os clientes liberam o acesso e você acompanha escalas, faltas e o fechamento do mês num lugar só.';
+  $('#entradaTitulo').textContent = 'Seus clientes liberam o acesso e você vê escalas, faltas e o fechamento do mês num lugar só.';
   modoEntrada('cadastro');
 };
 $('#formEntrada').onsubmit = async e => {
@@ -59,17 +74,14 @@ $('#formEntrada').onsubmit = async e => {
   } catch (err) { $('#erroEntrada').textContent = err.message; }
   $('#btnEntrar').disabled = false;
 };
-$('#btnSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); gravarConta(null); location.href = '/app'; };
 $('#btnEsqueci').onclick = () => { $('#eqEmail').value = $('#cEmail').value; $('#erroEsqueci').textContent = ''; $('#dlgEsqueci').showModal(); };
 $('#formEsqueci').onsubmit = async e => {
   if (e.submitter?.value !== 'ok') return;
   e.preventDefault(); $('#btnEsqueciEnviar').disabled = true; $('#erroEsqueci').textContent = '';
-  try { await api('/api/senha/esqueci', {method: 'POST', body: {email: $('#eqEmail').value}}); $('#dlgEsqueci').close(); toast('Se o e-mail tiver conta, o link chega em instantes. Confira também o spam.'); }
+  try { await api('/api/senha/esqueci', {method: 'POST', body: {email: $('#eqEmail').value}}); $('#dlgEsqueci').close(); toast('Se o e-mail tiver conta, o link chega em instantes. Olhe também o spam.'); }
   catch (err) { $('#erroEsqueci').textContent = err.message; }
   $('#btnEsqueciEnviar').disabled = false;
 };
-
-// link do e-mail: criar / redefinir senha
 const tokenAcesso = new URLSearchParams(location.search).get('acesso');
 async function telaSenha() {
   $('#telaEntrada').classList.remove('hide'); $('#formEntrada').classList.add('hide'); $('#formSenha').classList.remove('hide');
@@ -78,7 +90,7 @@ async function telaSenha() {
   catch (err) {
     $('#sTitulo').textContent = 'Link expirado'; $('#sTexto').textContent = err.message;
     $('#formSenha').querySelectorAll('label,input,#sDados,#btnSenha').forEach(x => x.classList.add('hide'));
-    $('#formSenha').insertAdjacentHTML('beforeend', '<a class="btn" style="margin-top:16px" href="/app">Ir para o login</a>');
+    $('#formSenha').insertAdjacentHTML('beforeend', '<a class="btn cheio" style="margin-top:16px" href="/app">Ir para o login</a>');
     return;
   }
   $('#sTitulo').textContent = t.tem_senha ? 'Crie uma senha nova' : 'Falta só criar sua senha';
@@ -99,65 +111,74 @@ async function telaSenha() {
   };
 }
 
-// ---------- painel ----------
+// ================= início =================
 async function iniciar() {
   try { eu = await api('/api/eu'); } catch {
-    $('#telaEntrada').classList.remove('hide'); $('#telaPainel').classList.add('hide');
+    $('#telaEntrada').classList.remove('hide'); $('#telaApp').classList.add('hide');
     const qs = new URLSearchParams(location.search);
     if (qs.has('contador')) $('#btnSouContador').click(); else if (qs.has('cadastro')) modoEntrada('cadastro');
     return;
   }
-  // empresa: a última escolhida; quem só foi convidado (sem empresa própria) cai na empresa de quem convidou
-  const salva = lerConta();
+  const salva = +ler('conta') || null;
   const escolhida = eu.contas.find(c => c.id === salva) || (!eu.empresa && !eu.contador && eu.contas[1]) || eu.contas[0];
   conta = {id: escolhida.id};
   conta = await api('/api/conta');
-  gravarConta(conta.id);
-  const mc = ehModoContador();
-  document.body.classList.toggle('so-leitura', conta.papel === 'contador');
-  $$('.so-dono').forEach(x => x.classList.toggle('hide', conta.papel !== 'dono' || mc));
-  $$('.na-empresa').forEach(x => x.classList.toggle('hide', mc));
-  $$('.so-contador-nav').forEach(x => x.classList.toggle('hide', !eu.contador));
-  $('#contaSel').classList.toggle('hide', eu.contas.length < 2);
-  $('#selConta').innerHTML = eu.contas.map(c => `<option value="${c.id}" ${c.id === conta.id ? 'selected' : ''}>${esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa')}${c.papel !== 'dono' ? ` (${PAPEL[c.papel]})` : ''}</option>`).join('');
-  $('#selConta').onchange = () => { gravarConta(+$('#selConta').value); location.hash = ''; location.reload(); };
-  $('#telaEntrada').classList.add('hide'); $('#telaPainel').classList.remove('hide');
-  $('#nomeEmpresa').textContent = mc ? eu.nome : (conta.empresa || eu.empresa || eu.nome);
-  $('#papelEu').innerHTML = conta.papel !== 'dono' ? ` <span class="papel">${PAPEL[conta.papel]}</span>` : mc ? ' <span class="papel">Contador</span>' : '';
-  $('#avisoPag').classList.toggle('hide', conta.liberado || mc);
-  $('#avisoPagTxt').textContent = conta.papel === 'dono' ? 'Seu acesso ainda não foi liberado. Conclua o pagamento para gerar as escalas.' : 'O acesso desta empresa ainda não foi liberado pelo dono.';
-  if (eu.checkout) $('#btnPagar').href = eu.checkout;
+  gravar('conta', conta.id);
+  document.body.classList.toggle('so-leitura', !podeEditar());
+  $('#telaEntrada').classList.add('hide'); $('#telaApp').classList.remove('hide');
+  // contador olhando um cliente: a 2ª aba vira o fechamento
+  const nav = $('#navPessoas');
+  if (conta.papel === 'contador') { nav.dataset.ir = 'fechamento'; nav.textContent = 'Fechamento'; }
+  $('#barraBaixo').classList.toggle('hide', ehModoContador());
   await carregaEquipes();
   rota();
 }
+async function carregaEquipes() {
+  if (ehModoContador()) { equipes = []; atual = null; return pintaTopo(); }
+  equipes = await api('/api/equipes');
+  atual = equipes.find(e => e.id === +ler('unidade')) || equipes[0] || null;
+  if (atual) { gravar('unidade', atual.id); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); }
+  pintaTopo();
+}
+function pintaTopo() {
+  const sel = $('#selUnidade');
+  sel.classList.toggle('hide', equipes.length < 2);
+  sel.innerHTML = equipes.map(e => `<option value="${e.id}" ${e.id === atual?.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('');
+  $('#topoQuem').classList.toggle('hide', equipes.length > 1);
+  $('#topoQuem').textContent = ehModoContador() ? eu.nome : conta.papel === 'contador' ? (conta.empresa || '') : (atual?.nome || conta.empresa || '');
+}
+$('#selUnidade').onchange = async () => {
+  atual = equipes.find(e => e.id === +$('#selUnidade').value); gravar('unidade', atual.id);
+  funcs = await api(`/api/equipes/${atual.id}/funcionarios`); semana = null; rota();
+};
 
-// rotas: #visao, #comecar, #equipe/ID/aba, #ocorrencias, #fechamento, #contador, #acessos, #empresa, #conta
+// rotas: #escala #pessoas #mais #comecar #funcionamento #ocorrencias #fechamento #contador #acessos #empresa #conta
 window.onhashchange = () => rota();
-const ir = h => { document.body.classList.remove('menu-aberto'); if (location.hash === '#' + h) rota(); else location.hash = h; };
-$('#btnMenu').onclick = () => document.body.classList.toggle('menu-aberto');
+const ir = h => { if (location.hash === '#' + h) rota(); else location.hash = h; };
 document.addEventListener('click', e => {
-  if (document.body.classList.contains('menu-aberto') && !e.target.closest('#lateral') && !e.target.closest('#btnMenu')) document.body.classList.remove('menu-aberto');
-  const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); ir(b.dataset.ir); }
-  if (e.target.closest('[data-ir-oc]')) abreDlgOc({funcionario_id: e.target.closest('[data-func]')?.dataset.func});
+  const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); if ($('#folha').open) fechaFolha(); ir(b.dataset.ir); }
+  if (e.target.closest('[data-faltar]')) folhaFaltar();
 });
 async function rota() {
   if (!conta) return;
-  let [v, id, aba] = (location.hash.slice(1) || '').split('/');
+  let [v, extra] = (location.hash.slice(1) || '').split('/');
   const mc = ehModoContador();
-  if (mc && !['contador', 'conta'].includes(v)) v = 'contador';
-  if (!v) v = conta.papel === 'dono' && !equipes.length ? 'comecar' : 'visao';
-  // dono sem nenhuma unidade: sempre começa pelo primeiro acesso guiado
-  if (conta.papel === 'dono' && !equipes.length && ['visao', 'equipe', 'ocorrencias', 'fechamento'].includes(v)) v = 'comecar';
-  if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono') || (v === 'comecar' && !podeEditar())) v = 'visao';
-  if (v === 'equipe' && !equipes.some(e => e.id === +id)) v = 'visao';
+  if (mc && !['contador', 'conta', 'mais'].includes(v)) v = 'contador';
+  if (!v) v = 'escala';
+  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos'].includes(v)) v = 'comecar';
+  if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono')
+    || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : 'escala';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
-  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.ir === v));
-  $$('#listaEquipes button').forEach(b => b.classList.toggle('on', v === 'equipe' && +b.dataset.id === +id));
+  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (v === 'funcionamento' && b.dataset.ir === 'mais')));
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador'].includes(v));
+  $('#barraBaixo').classList.toggle('hide', v === 'comecar' || mc);
   window.scrollTo(0, 0);
   try {
-    if (v === 'comecar') wizInicio(id === 'unidade' || equipes.length > 0);
-    else if (v === 'visao') await telaVisao();
-    else if (v === 'equipe') await abreEquipe(+id, aba);
+    if (v === 'comecar') wizInicio(extra === 'unidade');
+    else if (v === 'escala') await telaEscala();
+    else if (v === 'pessoas') telaPessoas();
+    else if (v === 'mais') telaMais();
+    else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'ocorrencias') await telaOcorrencias();
     else if (v === 'fechamento') await telaFechamento();
     else if (v === 'contador') await telaContador();
@@ -166,561 +187,541 @@ async function rota() {
     else if (v === 'conta') telaConta();
   } catch (err) { toast(err.message); }
 }
-async function carregaEquipes() {
-  if (ehModoContador()) { equipes = []; return; }
-  equipes = await api('/api/equipes');
-  $('#listaEquipes').innerHTML = equipes.map(e => `<li><button data-id="${e.id}" data-ir="equipe/${e.id}"><span>${esc(e.nome)}</span><small>${e.total}</small></button></li>`).join('');
-}
-$('#btnNova').onclick = () => ir('comecar/unidade');
 
-// ---------- primeiro acesso guiado (se adapta ao segmento) ----------
+// ================= primeiro acesso =================
 let wz = null;
-const SEG_ORDEM = ['mercado', 'farmacia', 'varejo', 'restaurante', 'padaria', 'salao', 'clinica', 'academia', 'posto', 'escritorio', 'seguranca', 'outro'];
-const SEG_EX = {mercado: 'mercadinho, supermercado, atacarejo', farmacia: 'farmácia, drogaria, manipulação', varejo: 'roupas, calçados, loja de shopping', restaurante: 'restaurante, lanchonete, bar, pizzaria',
-  padaria: 'padaria, confeitaria, delicatessen', salao: 'salão, barbearia, estética, manicure', clinica: 'clínica, consultório, laboratório, odonto', academia: 'academia, estúdio, crossfit',
-  posto: 'posto de gasolina, conveniência', escritorio: 'escritório, imobiliária, agência', seguranca: 'condomínio, portaria, vigilância, limpeza', outro: 'qualquer outro negócio'};
-const seg = k => SETORES[k] || SETORES.outro;
 function wizInicio(soUnidade) {
-  const base = soUnidade && equipes[0] ? equipes[0].setor : '';
-  wz = {passo: soUnidade ? 2 : 0, soUnidade, empresa: {nome: conta.empresa || eu.empresa || '', porte: conta.porte || '', uf: conta.uf || '', cidade: '', feriados_locais: ''}, pessoas: [], texto: ''};
-  wzSegmento(base || 'outro', !!base);
+  const base = soUnidade && atual ? atual.setor : '';
+  wz = {passo: 0, soUnidade, setor: base, empresa: {nome: conta.empresa || eu.empresa || '', porte: conta.porte || '', uf: conta.uf || '', cidade: ''}, texto: '', marcados: new Set(), mudar: false, nomeUn: ''};
+  if (base) aplicaSetor(base);
   wizDesenha();
 }
-function wzSegmento(k, escolhido) {
-  const s = seg(k);
-  wz.segmento = escolhido ? k : wz.segmento;
-  wz.unidade = {nome: '', setor: k, abertos: [...s.abertos], minimo: [...s.minimo], horas_dia: 8, abre: s.abre, fecha: s.fecha,
-    criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))};
+function aplicaSetor(k) {
+  const s = seg(k); wz.setor = k;
+  wz.un = {abertos: [...s.abertos], minimo: [...s.minimo], abre: s.abre, fecha: s.fecha, horas_dia: 8, criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))};
 }
-function wizBarra() { const total = wz.soUnidade ? [2, 3] : [0, 1, 2, 3]; return `<div class="wiz-passos">${total.map(p => `<span class="${p <= wz.passo ? 'on' : ''}"></span>`).join('')}</div>`; }
-const quem = s => s.local === 'local' ? 'seu negócio' : ['farmácia', 'clínica', 'academia', 'padaria'].includes(s.local) ? `sua ${s.local}` : `seu ${s.local}`;
+const passosWiz = () => wz.soUnidade ? [0, 2] : [0, 1, 2];
+function barra() { const p = passosWiz(); return `<div class="passos">${p.map(x => `<span class="${x <= wz.passo ? 'on' : ''}"></span>`).join('')}</div>`; }
 function wizDesenha() {
-  const w = $('#wiz'), u = wz.unidade, s = seg(u.setor);
+  const w = $('#v-comecar');
   if (wz.passo === 0) {
-    w.innerHTML = `${wizBarra()}<h1>Olá, ${esc((eu.nome || '').split(' ')[0])}! Qual é o seu negócio?</h1>
-      <p class="sub">A escala muda de um negócio para outro. Escolha o seu e a Escala Blindada já vem com os dias, os horários, as funções e as regras certas.</p>
-      <div class="segmentos">${SEG_ORDEM.map(k => `<button type="button" class="seg ${wz.segmento === k ? 'on' : ''}" data-seg="${k}"><b>${esc(seg(k).nome)}</b><small>${esc(SEG_EX[k])}</small></button>`).join('')}</div>
-      <p class="erro" id="wzErro"></p>
-      <div class="wiz-acoes"><span></span><button class="btn" id="wzProx">Continuar</button></div>`;
-    $$('.seg').forEach(b => b.onclick = () => { wzSegmento(b.dataset.seg, true); $$('.seg').forEach(x => x.classList.toggle('on', x === b)); });
+    w.innerHTML = `${barra()}<h1>${wz.soUnidade ? 'Qual é o tipo desta unidade?' : `Oi, ${esc(nomeCurto(eu.nome))}! Qual é o seu negócio?`}</h1>
+      <p class="sub">Toque no seu. A escala já vem com as regras certas para ele.</p>
+      <div class="segs">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>
+      ${wz.soUnidade ? '<p style="text-align:center;margin-top:18px"><button class="link" data-ir="mais">Cancelar</button></p>' : ''}`;
+    $$('[data-seg]').forEach(b => b.onclick = () => { aplicaSetor(b.dataset.seg); wz.passo = wz.soUnidade ? 2 : 1; wizDesenha(); });
   } else if (wz.passo === 1) {
-    const e = wz.empresa, ds = s.comercio ? 3 : 7;
-    w.innerHTML = `${wizBarra()}<h1>O que muda para ${quem(s)}</h1>
-      <p class="sub">A lei acabou com a escala 6x1 (Emenda 141/2026). Na prática, para ${quem(s)}:</p>
-      <div class="cartao"><div class="lei-pontos">
-        <div><b class="n">2</b><span><b>Cada pessoa tem 2 folgas por semana.</b> Ninguém trabalha 6 dias seguidos.</span></div>
-        <div><b class="n">8h</b><span><b>Até 8 horas por dia.</b> Limite de 42h por semana a partir de 16/12/2026 e de 40h a partir de 16/12/2027. Sem reduzir salário.</span></div>
-        <div><b class="n">D</b><span><b>Domingo:</b> ${s.comercio ? 'no comércio, cada pessoa folga pelo menos 1 domingo a cada 3 semanas (Lei 10.101).' : `cada pessoa folga pelo menos 1 domingo a cada ${ds} semanas (Portaria do Ministério do Trabalho).`}</span></div>
-        ${s.criticas.map(c => `<div><b class="n">!</b><span><b>${esc(c.nome)} todo dia.</b> ${esc(c.explica)}</span></div>`).join('')}
-        ${s.aviso12x36 ? '<div><b class="n">12</b><span><b>Escala 12x36:</b> continua permitida, mas a média de 42h passa das 40h em 2027 e depende da convenção coletiva. A Escala Blindada monta a 5x2 de 8h, que já fica dentro da lei. Se sua equipe é 12x36, confirme com o contador.</span></div>' : ''}
-      </div><p class="dica">A Escala Blindada já monta a escala seguindo tudo isso.</p></div>
-      <h2 style="margin:22px 0 4px">Sua empresa</h2><p class="sub">Para acertar os feriados e as regras do seu porte.</p>
+    const e = wz.empresa;
+    w.innerHTML = `${barra()}<h1>Onde fica sua empresa?</h1>
+      <p class="sub">Para colocar os feriados certos na escala.</p>
       <div class="cartao">
-        <label for="wzNome" style="margin-top:0">Nome da empresa</label><input id="wzNome" value="${esc(e.nome)}" placeholder="Ex.: Drogaria Central">
-        <label>Porte da empresa</label>
-        <div class="opcoes">${Object.entries(PORTES).map(([k, [n, d]]) => `<label><input type="radio" name="wzPorte" value="${k}" ${e.porte === k ? 'checked' : ''}>${n}${d ? `<small>${d}</small>` : ''}</label>`).join('')}</div>
-        <div id="wzPorteNota"></div>
-        <div class="form-linha" style="margin-top:12px">
-          <div><label for="wzUf">Estado</label><select id="wzUf"><option value="">Escolha</option>${Escala.UFS.map(x => `<option ${e.uf === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-          <div style="flex:2 1 200px"><label for="wzCidade">Cidade</label><input id="wzCidade" value="${esc(e.cidade)}" placeholder="Ex.: Salvador"></div>
+        <label for="wzNome" style="margin-top:0">Nome da empresa</label><input id="wzNome" value="${esc(e.nome)}" placeholder="Ex.: Mercado Bom Preço">
+        <div class="form-linha">
+          <div style="flex:0 1 110px"><label for="wzUf">Estado</label><select id="wzUf"><option value="">—</option>${Escala.UFS.map(x => `<option ${e.uf === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+          <div style="flex:2 1 160px"><label for="wzCidade">Cidade</label><input id="wzCidade" value="${esc(e.cidade)}" placeholder="Ex.: Salvador"></div>
         </div>
-        <label for="wzFer">Feriados da sua cidade (opcional)</label><input id="wzFer" value="${esc(e.feriados_locais)}" placeholder="Dia/mês. Ex.: 24/06, 08/12">
-        <p class="dica" style="margin-top:6px">Feriados nacionais e do seu estado já entram sozinhos.</p>
+        <label>Tamanho da empresa</label>
+        <div class="portes">${Object.entries(PORTES).filter(([k]) => k !== 'media').map(([k, [n, d]]) => `<button type="button" data-porte="${k}" class="${e.porte === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}</div>
+        <div id="wzNota"></div>
         <p class="erro" id="wzErro"></p>
       </div>
-      <div class="wiz-acoes"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">Continuar</button></div>`;
+      <div class="lado fixo-baixo"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">Continuar</button></div>`;
     const nota = () => {
-      const p = $('input[name=wzPorte]:checked')?.value;
-      $('#wzPorteNota').innerHTML = p === 'mei' ? '<div class="nota">MEI pode ter <b>só 1 empregado</b> registrado (LC 123/2006). Com 1 pessoa, ela folga 2 dias por semana e nesses dias quem cobre é você.</div>'
-        : p === 'me' || p === 'epp' ? '<div class="nota info">A lei pode ganhar uma transição especial para micro e pequenas empresas, mas ela ainda não existe. Por enquanto a regra é igual para todos.</div>' : '';
+      $('#wzNota').innerHTML = e.porte === 'mei' ? '<div class="nota">MEI pode ter <b>só 1 funcionário</b> registrado. Ele folga 2 dias por semana e nesses dias quem cobre é você.</div>'
+        : e.porte === 'me' || e.porte === 'epp' ? '<div class="nota info">Por enquanto a regra é a mesma para todas as empresas. Se sair uma regra especial para micro e pequena empresa, a gente avisa.</div>' : '';
     };
-    $$('input[name=wzPorte]').forEach(i => i.onchange = nota); nota();
+    $$('[data-porte]').forEach(b => b.onclick = () => { e.porte = b.dataset.porte; $$('[data-porte]').forEach(x => x.classList.toggle('on', x === b)); nota(); });
+    nota();
+    $('#wzVolta').onclick = () => { wz.passo = 0; wizDesenha(); };
+    $('#wzProx').onclick = () => {
+      Object.assign(e, {nome: $('#wzNome').value.trim(), uf: $('#wzUf').value, cidade: $('#wzCidade').value.trim()});
+      if (!e.nome) return $('#wzErro').textContent = 'Escreva o nome da empresa.';
+      if (!e.uf) return $('#wzErro').textContent = 'Escolha o estado.';
+      if (!e.porte) e.porte = 'nao_sei';
+      wz.passo = 2; wizDesenha();
+    };
   } else if (wz.passo === 2) {
-    w.innerHTML = `${wizBarra()}<h1>${wz.soUnidade ? 'Nova unidade' : `Como funciona ${quem(s)}`}</h1><p class="sub">Já preenchemos com o comum de ${esc(s.nome.toLowerCase())}. Ajuste ao seu dia a dia. Se você tem mais de uma unidade, cadastre a primeira agora.</p>
-      <div class="cartao">
-        <label for="wzUn" style="margin-top:0">Nome ${s.local === 'local' ? 'do local' : `d${['farmácia', 'clínica', 'academia', 'padaria'].includes(s.local) ? 'a' : 'o'} ${esc(s.local)}`}</label><input id="wzUn" value="${esc(u.nome)}" placeholder="Ex.: ${esc(s.local === 'local' ? 'Unidade Centro' : s.local.charAt(0).toUpperCase() + s.local.slice(1) + ' Centro')}">
-        ${wz.soUnidade ? `<label for="wzSetor">Tipo de negócio</label><select id="wzSetor">${SEG_ORDEM.map(k => `<option value="${k}" ${u.setor === k ? 'selected' : ''}>${esc(seg(k).nome)}</option>`).join('')}</select>` : ''}
-        <div class="form-linha" style="margin-top:12px">
-          <div><label for="wzAbre">Abre às</label><input id="wzAbre" type="time" value="${u.abre}"></div>
-          <div><label for="wzFecha">Fecha às</label><input id="wzFecha" type="time" value="${u.fecha}"></div>
-          <div><label for="wzHoras">Horas de trabalho por pessoa (sem o almoço)</label><input id="wzHoras" type="number" min="1" max="12" step="0.25" value="${u.horas_dia}"></div>
-        </div>
-        <p class="dica" id="wzHorasDica" style="margin-top:6px"></p>
-        <label>Dias abertos e quantas pessoas trabalhando no mínimo em cada dia (somando todos os turnos)</label>
-        <div class="dias-conf" id="wzDias"></div>
-        ${u.criticas.map((c, ci) => `<label>Mínimo de ${esc(c.nome)} em cada dia</label><div class="dias-conf" data-crit="${ci}"></div><p class="dica" style="margin-top:6px">${esc(c.explica)}</p>`).join('')}
-        ${s.dicas.length ? `<div class="nota info">${s.dicas.map(esc).join('<br>')}</div>` : ''}
-        <p class="erro" id="wzErro"></p>
-      </div>
-      <div class="wiz-acoes"><button class="btn sec" id="wzVolta">${wz.soUnidade ? 'Cancelar' : 'Voltar'}</button><button class="btn" id="wzProx">Continuar</button></div>`;
-    const desenhaDias = () => {
-      $('#wzDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-i="${i}">${d}</button><input type="number" min="0" max="200" value="${u.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${u.abertos[i] ? '' : 'disabled'}></div>`).join('');
-      $$('#wzDias .tg').forEach(b => b.onclick = () => { const i = +b.dataset.i; u.abertos[i] = u.abertos[i] ? 0 : 1; if (!u.abertos[i]) { u.minimo[i] = 0; u.criticas.forEach(c => c.minimo[i] = 0); } else { if (!u.minimo[i]) u.minimo[i] = 1; u.criticas.forEach(c => { if (!c.minimo[i]) c.minimo[i] = 1; }); } desenhaDias(); });
-      $$('#wzDias input').forEach(inp => inp.oninput = () => u.minimo[+inp.dataset.m] = Math.max(0, +inp.value || 0));
-      $$('[data-crit]').forEach(el => {
-        const c = u.criticas[+el.dataset.crit];
-        el.innerHTML = DIAS.map((d, i) => `<div><span class="dia-rot">${d}</span><input type="number" min="0" max="50" value="${c.minimo[i]}" data-cm="${i}" aria-label="${esc(c.nome)} ${d}" ${u.abertos[i] ? '' : 'disabled'}></div>`).join('');
-        el.querySelectorAll('input').forEach(inp => inp.oninput = () => c.minimo[+inp.dataset.cm] = Math.max(0, +inp.value || 0));
-      });
-    };
-    const dicaHoras = () => {
-      const h = +String($('#wzHoras').value).replace(',', '.') || 0, sem = Math.round(h * 50) / 10, ha = Escala.horasAberto($('#wzAbre').value, $('#wzFecha').value);
-      const turnos = ha && h ? Math.ceil(ha / (h + 1)) : 1;
-      $('#wzHorasDica').textContent = `${String(sem).replace('.', ',')}h por semana: ${h > 8 ? 'acima de 8h por dia só com acordo ou convenção coletiva.' : sem <= 40 ? 'já dentro do limite final de 40h.' : sem <= 42 ? 'dentro de 42h, mas acima das 40h que valem a partir de 16/12/2027.' : 'acima do limite da lei.'}`
-        + (turnos > 1 ? ` Aberto ${String(ha).replace('.', ',')}h por dia: são ${turnos} turnos. Some as pessoas de todos os turnos no mínimo de cada dia.` : '');
-    };
-    if ($('#wzSetor')) $('#wzSetor').onchange = () => { const nome = $('#wzUn').value; wzSegmento($('#wzSetor').value, false); wz.unidade.nome = nome; wizDesenha(); };
-    ['#wzHoras', '#wzAbre', '#wzFecha'].forEach(x => $(x).oninput = dicaHoras);
-    desenhaDias(); dicaHoras();
-  } else if (wz.passo === 3) {
-    const funcoes = s.funcoes;
-    w.innerHTML = `${wizBarra()}<h1>Quem trabalha ${s.local === 'local' ? 'aí' : `n${['farmácia', 'clínica', 'academia', 'padaria'].includes(s.local) ? 'a' : 'o'} ${esc(u.nome)}`}?</h1><p class="sub">Escreva ou cole os nomes, um por linha${funcoes.length ? '. Depois escolha a função de cada um' : ''}.</p>
-      <div class="cartao">
-        <textarea id="wzPessoas" rows="7" placeholder="Ana Souza&#10;Bruna Lima&#10;Carlos Henrique&#10;...">${esc(wz.texto)}</textarea>
-        <div id="wzFuncoes"></div>
-        <div id="wzConta"></div>
-        <p class="erro" id="wzErro"></p>
-      </div>
-      <div class="wiz-acoes"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">${conta.liberado ? 'Gerar minha escala' : 'Ver minha análise'}</button></div>`;
-    const atualiza = () => {
-      wz.texto = $('#wzPessoas').value;
-      const nomes = wz.texto.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [nome, ...c] = l.split(/\s+[-–]\s+/); return {nome: nome.trim(), cargo: c.join(' - ').trim()}; });
-      const antes = Object.fromEntries(wz.pessoas.map(p => [p.nome, p.cargo]));
-      wz.pessoas = nomes.map((p, i) => ({nome: p.nome, cargo: p.cargo || antes[p.nome] || (funcoes.length ? (s.criticas.length && i < Math.max(...s.criticas[0].minimo) ? s.criticas[0].nome : funcoes.find(f => !s.criticas.some(c => c.nome === f)) || funcoes[0]) : '')}));
-      if (funcoes.length && wz.pessoas.length) {
-        $('#wzFuncoes').innerHTML = `<p class="rotulo" style="margin-top:14px">Função de cada pessoa</p><div class="funcoes-lista">${wz.pessoas.map((p, i) => `<div><span>${esc(p.nome)}</span><select data-fp="${i}">${[...new Set([...funcoes, p.cargo].filter(Boolean))].map(f => `<option ${f === p.cargo ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></div>`).join('')}</div>`;
-        $$('[data-fp]').forEach(sel => sel.onchange = () => { wz.pessoas[+sel.dataset.fp].cargo = sel.value; contagem(); });
-      } else $('#wzFuncoes').innerHTML = '';
-      contagem();
+    const s = seg(wz.setor), u = wz.un, crit = u.criticas[0];
+    w.innerHTML = `${barra()}<h1>Quem trabalha com você?</h1>
+      <p class="sub">Escreva um nome por linha. Pode colar a lista do WhatsApp.</p>
+      ${wz.soUnidade ? `<label for="wzUn" style="margin-top:0">Nome desta unidade</label><input id="wzUn" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" style="margin-bottom:12px">` : ''}
+      <textarea id="wzPessoas" rows="7" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea>
+      <div id="wzCrit"></div>
+      <div id="wzConta"></div>
+      <div class="resumo-func"><span id="wzResumo"></span><button class="link" id="wzMudar">${wz.mudar ? 'Fechar' : 'Mudar'}</button></div>
+      <div id="wzFunc" class="cartao ${wz.mudar ? '' : 'hide'}" style="margin-top:8px"></div>
+      <p class="erro" id="wzErro"></p>
+      <div class="lado fixo-baixo"><button class="btn sec" id="wzVolta">Voltar</button><button class="btn" id="wzProx">Montar minha escala</button></div>`;
+    const nomes = () => wz.texto.split('\n').map(l => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 200);
+    const resumo = () => {
+      const ab = u.abertos.map((a, i) => a ? i : -1).filter(i => i >= 0), mins = ab.map(i => u.minimo[i]);
+      const dias = ab.length === 7 ? 'todo dia' : ab.length === 6 && !u.abertos[6] ? 'de segunda a sábado' : ab.length === 5 && !u.abertos[5] && !u.abertos[6] ? 'de segunda a sexta' : ab.map(i => DIAS[i]).join(', ');
+      const mn = Math.min(...mins), mx = Math.max(...mins);
+      $('#wzResumo').innerHTML = `Aberto <b>${dias}</b>, ${hora(u.abre)} às ${hora(u.fecha)}. Pelo menos <b>${mn === mx ? mn : `${mn} a ${mx}`} ${mx === 1 ? 'pessoa' : 'pessoas'}</b> por dia.`;
     };
     const contagem = () => {
-      const n = wz.pessoas.length, total = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
-      let html = !n ? '' : `<p class="contagem">${plural(n, 'pessoa', 'pessoas')}.</p>` + (n >= precisa
-        ? `<div class="nota info">Para o mínimo que você definiu, a 5x2 precisa de pelo menos ${precisa} pessoas. Você tem ${n}: dá para cobrir todos os dias.</div>`
-        : `<div class="nota">Para o mínimo que você definiu, a 5x2 precisa de pelo menos ${precisa} pessoas e você tem ${n}. A escala sai, mas com dias abaixo do mínimo. A análise mostra quais.</div>`);
-      for (const c of u.criticas) {
-        const tem = wz.pessoas.filter(p => Escala.casaFuncao(p.cargo, c.chave)).length, prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5);
-        if (n && tem < prec) html += `<div class="nota">Para ter ${esc(c.nome)} todo dia com 2 folgas por semana, são precisas ${prec} pessoas com essa função. Você marcou ${tem}.</div>`;
+      const lista = nomes(), n = lista.length, total = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
+      let html = '';
+      if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
+        : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente. Você pode diminuir o mínimo em "Mudar".</div>`;
+      if (crit && n) {
+        const tem = lista.filter(x => wz.marcados.has(x)).length, prec = Math.ceil(crit.minimo.reduce((a, m) => a + m, 0) / 5);
+        if (tem < prec) html += `<div class="nota">Para ter ${esc(crit.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>`;
       }
-      if (wz.empresa.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 empregado registrado. Confira com seu contador.</div>';
+      if (wz.empresa.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
       $('#wzConta').innerHTML = html;
     };
-    $('#wzPessoas').oninput = atualiza; atualiza();
+    const desenhaCrit = () => {
+      const lista = nomes();
+      if (!crit || !lista.length) return $('#wzCrit').innerHTML = '';
+      $('#wzCrit').innerHTML = `<label>Toque em quem é ${esc(crit.nome.toLowerCase())}</label><div class="marcar">${lista.map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <p class="dica" style="margin-top:6px">${esc(crit.explica)}</p>`;
+      $$('[data-m]').forEach(b => b.onclick = () => { const x = b.dataset.m; wz.marcados.has(x) ? wz.marcados.delete(x) : wz.marcados.add(x); b.classList.toggle('on'); contagem(); });
+    };
+    const desenhaFunc = () => {
+      const min = Math.max(...u.minimo.filter((_, i) => u.abertos[i]), 1);
+      $('#wzFunc').innerHTML = `<div class="form-linha"><div><label for="wzAbre" style="margin-top:0">Abre às</label><input id="wzAbre" type="time" value="${u.abre}"></div><div><label for="wzFecha" style="margin-top:0">Fecha às</label><input id="wzFecha" type="time" value="${u.fecha}"></div></div>
+        <label>Dias que abre</label><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div>
+        <label>Pessoas trabalhando, no mínimo, em cada dia</label>
+        <div class="contador-mais"><button type="button" id="wzMenos">−</button><output id="wzMin">${min}</output><button type="button" id="wzMais">+</button><span class="dica">contando todos os turnos</span></div>`;
+      const setMin = v => { v = Math.max(1, Math.min(200, v)); u.minimo = u.minimo.map((_, i) => u.abertos[i] ? v : 0); $('#wzMin').textContent = v; resumo(); contagem(); };
+      $('#wzMenos').onclick = () => setMin(+$('#wzMin').textContent - 1);
+      $('#wzMais').onclick = () => setMin(+$('#wzMin').textContent + 1);
+      $$('[data-ab]').forEach(b => b.onclick = () => {
+        const i = +b.dataset.ab; u.abertos[i] = u.abertos[i] ? 0 : 1;
+        u.minimo[i] = u.abertos[i] ? +$('#wzMin').textContent : 0; u.criticas.forEach(c => c.minimo[i] = u.abertos[i] ? (c.minimo.find(Boolean) || 1) : 0);
+        b.classList.toggle('on'); resumo(); contagem();
+      });
+      ['#wzAbre', '#wzFecha'].forEach(x => $(x).onchange = () => { u.abre = $('#wzAbre').value; u.fecha = $('#wzFecha').value; resumo(); });
+    };
+    $('#wzPessoas').oninput = () => { wz.texto = $('#wzPessoas').value; desenhaCrit(); contagem(); };
+    $('#wzMudar').onclick = () => { wz.mudar = !wz.mudar; $('#wzFunc').classList.toggle('hide', !wz.mudar); $('#wzMudar').textContent = wz.mudar ? 'Fechar' : 'Mudar'; };
+    desenhaFunc(); resumo(); desenhaCrit(); contagem();
+    $('#wzVolta').onclick = () => { if (wz.soUnidade) wz.nomeUn = $('#wzUn').value; wz.passo = wz.soUnidade ? 0 : 1; wizDesenha(); };
+    $('#wzProx').onclick = () => wizGerar(nomes());
   }
-  const prox = $('#wzProx'), volta = $('#wzVolta');
-  if (volta) volta.onclick = () => { if (wz.soUnidade && wz.passo === 2) return ir(equipes[0] ? `equipe/${equipes[0].id}` : 'visao'); wz.passo--; wizDesenha(); };
-  if (prox) prox.onclick = () => wizAvanca();
   window.scrollTo(0, 0);
 }
-async function wizAvanca() {
+async function wizGerar(lista) {
   const erro = m => { $('#wzErro').textContent = m; };
-  if (wz.passo === 0 && !wz.segmento) return erro('Escolha o tipo do seu negócio. Se não achar, marque "Outro tipo de negócio".');
-  if (wz.passo === 1) {
-    Object.assign(wz.empresa, {nome: $('#wzNome').value.trim(), porte: $('input[name=wzPorte]:checked')?.value || '', uf: $('#wzUf').value, cidade: $('#wzCidade').value.trim(), feriados_locais: $('#wzFer').value});
-    if (!wz.empresa.nome) return erro('Informe o nome da empresa.');
-    if (!wz.empresa.porte) return erro('Escolha o porte. Se não souber, marque "Não sei".');
-  }
-  if (wz.passo === 2) {
-    Object.assign(wz.unidade, {nome: $('#wzUn').value.trim(), horas_dia: +String($('#wzHoras').value).replace(',', '.') || 8, abre: $('#wzAbre').value, fecha: $('#wzFecha').value});
-    if (!wz.unidade.nome) return erro('Dê um nome. Ex.: Loja Centro.');
-    if (!wz.unidade.abertos.some(Boolean)) return erro('Marque pelo menos um dia aberto.');
-  }
-  if (wz.passo === 3) {
-    if (!wz.pessoas.length) return erro('Escreva pelo menos uma pessoa.');
-    return wizGerar();
-  }
-  wz.passo++; wizDesenha();
-}
-async function wizGerar() {
-  const btn = $('#wzProx'); btn.disabled = true; btn.textContent = 'Montando sua escala…';
+  if (!lista.length) return erro('Escreva pelo menos um nome.');
+  const crit = wz.un.criticas[0];
+  const nomeUn = wz.soUnidade ? $('#wzUn').value.trim() : wz.empresa.nome;
+  if (wz.soUnidade && !nomeUn) return erro('Dê um nome para a unidade. Ex.: Loja Shopping.');
+  const btn = $('#wzProx'); btn.disabled = true; btn.textContent = 'Montando…';
   try {
-    const r = await api('/api/onboarding', {method: 'POST', body: {empresa: wz.soUnidade ? undefined : wz.empresa, unidade: wz.unidade, pessoas: wz.pessoas, inicio: proxSegunda(), semanas: 4}});
+    const pessoas = lista.map(nome => ({nome, cargo: crit && wz.marcados.has(nome) ? crit.nome : ''}));
+    const r = await api('/api/onboarding', {method: 'POST', body: {
+      empresa: wz.soUnidade ? undefined : {...wz.empresa, feriados_locais: ''},
+      unidade: {...wz.un, nome: nomeUn, setor: wz.setor}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}});
     conta = await api('/api/conta');
-    if (!wz.soUnidade) { eu = await api('/api/eu'); $('#nomeEmpresa').textContent = eu.empresa || eu.nome; }
-    await carregaEquipes();
-    wizResultado(r);
-  } catch (err) { $('#wzErro').textContent = err.message; btn.disabled = false; btn.textContent = 'Tentar de novo'; }
+    if (!wz.soUnidade) eu = await api('/api/eu');
+    gravar('unidade', r.equipe.id); await carregaEquipes();
+    if (!r.escala) return telaPagar(r.checkout);
+    recem = true; semData = segundaDe(hojeIso()); diaSel = null; ir('escala');
+  } catch (err) { erro(err.message); btn.disabled = false; btn.textContent = 'Tentar de novo'; }
 }
-const opcoesAnalise = eq => ({horasDia: +eq.horas_dia || 8, ctx: conta.ctx, criticas: eq.criticas || [], domingoSemanas: Escala.domingoSemanasDe(eq.setor), abre: eq.abre, fecha: eq.fecha});
-function wizResultado(r) {
-  const eq = r.equipe, n = wz.pessoas.length, s = seg(eq.setor);
-  let corpo;
-  if (r.escala) {
-    const a = Escala.analisar(r.escala, opcoesAnalise(eq));
-    corpo = `<h1>Pronto! A escala ${s.local === 'local' ? '' : `d${['farmácia', 'clínica', 'academia', 'padaria'].includes(s.local) ? 'a' : 'o'} `}${esc(eq.nome)} está montada.</h1>
-      <p class="sub">${plural(n, 'pessoa', 'pessoas')}, 4 semanas a partir de ${br(r.escala.inicio)}, seguindo as regras de ${esc(s.nome.toLowerCase())}. Veja o diagnóstico:</p>
-      ${htmlAnalise(a)}
-      <div class="wiz-acoes"><button class="btn sec" id="wzLink">Mandar para a equipe no WhatsApp</button><button class="btn" data-ir="equipe/${eq.id}">Ver a escala</button></div>
-      <div class="cartao" style="margin-top:14px"><h3 class="sec-tit">Próximos passos</h3>
-        <ul class="diag">
-          <li><span class="ic info">1</span><div><b>Confira e ajuste</b><span>Na escala, toque em um dia para trocar trabalho e folga. A análise se atualiza sozinha.</span></div></li>
-          <li><span class="ic info">2</span><div><b>Mande para a equipe</b><span>Cada pessoa abre o link, escolhe o próprio nome e vê as folgas. Sem instalar nada.</span></div></li>
-          <li><span class="ic info">3</span><div><b>Chame seu contador</b><span>Ele acompanha faltas, férias e o fechamento do mês sem você mandar planilha. <button class="link" data-ir="acessos">Dar acesso</button></span></div></li>
-          ${equipes.length === 1 ? '<li><span class="ic info">4</span><div><b>Tem outra loja ou unidade?</b><span><button class="link" data-ir="comecar/unidade">Cadastrar outra unidade</button></span></div></li>' : ''}
-        </ul></div>`;
-  } else {
-    const total = eq.minimo.reduce((t, m, d) => t + (eq.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
-    corpo = `<h1>Tudo pronto para gerar a escala de ${esc(eq.nome)}.</h1>
-      <p class="sub">Seus dados estão salvos. Uma prévia do que encontramos:</p>
-      <ul class="diag"><li><span class="ic ${n >= precisa ? 'ok' : 'ruim'}">${n >= precisa ? '✓' : '!'}</span><div><b>${n >= precisa ? 'Gente suficiente' : `Falta${precisa - n > 1 ? 'm' : ''} ${precisa - n} pessoa${precisa - n > 1 ? 's' : ''}`}</b><span>Com o mínimo que você definiu, a 5x2 precisa de ${precisa} pessoas. Você tem ${n}.</span></div></li></ul>
-      <div class="cartao" style="margin-top:14px"><h3 class="sec-tit">Libere o acesso para gerar a escala</h3>
-        <p>Pagamento único de R$ 47. A escala, a análise e o acesso do contador ficam liberados na hora.</p>
-        <div class="acoes">${r.checkout ? `<a class="btn" href="${esc(r.checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : ''}<button class="btn sec" data-ir="equipe/${eq.id}">Ver a unidade</button></div></div>`;
-  }
-  $('#wiz').innerHTML = corpo;
-  window.scrollTo(0, 0);
-  if ($('#wzLink')) $('#wzLink').onclick = () => linkEquipe(eq.id);
+function telaPagar(checkout) {
+  $('#v-comecar').innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h1>Tudo pronto!</h1>
+    <p>Sua equipe está salva. Falta só liberar o acesso para a escala aparecer.</p>
+    ${checkout ? `<a class="btn cheio" href="${esc(checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : '<p class="dica">Fale com o suporte para liberar.</p>'}
+    <p class="dica">Pagamento único. Depois de pagar, volte aqui.</p></div>`;
 }
 
-// ---------- análise ----------
+// ================= escala (tela principal) =================
+const opcoesAnalise = (eq, e) => ({horasDia: +eq.horas_dia || 8, ctx: conta.ctx, criticas: eq.criticas || [], domingoSemanas: Escala.domingoSemanasDe(eq.setor), abre: eq.abre, fecha: eq.fecha});
+$('#semAnt').onclick = () => { recem = false; semData = soma(semData, -7); diaSel = null; telaEscala(); };
+$('#semProx').onclick = () => { recem = false; semData = soma(semData, 7); diaSel = null; telaEscala(); };
+function tituloSemana(seg) {
+  const fim = soma(seg, 6), a = new Date(seg + 'T12:00:00'), b = new Date(fim + 'T12:00:00');
+  return a.getMonth() === b.getMonth() ? `${a.getDate()} a ${b.getDate()} de ${MES[b.getMonth()]}` : `${a.getDate()} de ${MES[a.getMonth()].slice(0, 3)} a ${b.getDate()} de ${MES[b.getMonth()].slice(0, 3)}`;
+}
+async function telaEscala() {
+  if (!atual) {
+    $('#escAviso').innerHTML = ''; $('.sem-nav').classList.add('hide');
+    $('#escCorpo').innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma unidade ainda</h2><p>${conta.papel === 'dono' ? '' : 'O dono da empresa ainda não montou a escala.'}</p>${conta.papel === 'dono' ? '<button class="btn" data-ir="comecar">Começar</button>' : ''}</div>`;
+    return;
+  }
+  $('.sem-nav').classList.remove('hide');
+  const hoje = hojeIso(), segHoje = segundaDe(hoje);
+  if (!semData) semData = segHoje;
+  $('#semTit').textContent = tituloSemana(semData);
+  $('#semSub').textContent = semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
+  $('#escCorpo').innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
+  const pedido = semData;
+  const r = await api(`/api/equipes/${atual.id}/semana?data=${semData}`);
+  if (pedido !== semData) return; // trocou de semana enquanto carregava
+  semana = r;
+  let aviso = '';
+  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala. Toque em um nome para trocar a folga. Depois é só mandar para a equipe.</div>`;
+  if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
+  $('#escAviso').innerHTML = aviso;
+  if (!r.escala) {
+    const m = {
+      sem_pessoas: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Coloque sua equipe</h2><p>Escreva quem trabalha com você e a escala aparece na hora.</p>${podeEditar() ? '<button class="btn" data-ir="pessoas">Colocar a equipe</button>' : ''}</div>`,
+      nao_pago: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Falta liberar o acesso</h2><p>Sua equipe está salva. Libere e a escala aparece na hora.</p>${r.checkout && conta.papel === 'dono' ? `<a class="btn cheio" href="${esc(r.checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : '<p class="dica">O dono da empresa precisa liberar o acesso.</p>'}</div>`,
+      passado: '<div class="vazio"><h2>Sem escala nesta semana</h2><p>Essa semana já passou e não tinha escala no sistema.</p></div>',
+      sem_escala: `<div class="vazio"><h2>Sem escala nesta semana</h2><p>${podeEditar() ? 'Não deu para montar esta semana. Se o mês já foi fechado, reabra em Mais › Fechar o mês.' : 'A empresa ainda não montou a escala desta semana.'}</p></div>`,
+    };
+    $('#escCorpo').innerHTML = m[r.motivo] || m.sem_escala;
+    return;
+  }
+  const e = r.escala, s = r.semana;
+  if (diaSel === null) { const i = semData === segHoje ? (new Date(hoje + 'T12:00:00').getDay() + 6) % 7 : e.abertos.findIndex(Boolean); diaSel = Math.max(0, i); }
+  desenhaSemana();
+}
+function semanaDados() { const e = semana.escala; return e.dados[semana.semana]; }
+function desenhaSemana() {
+  const e = semana.escala, s = semana.semana, sem = semanaDados(), hoje = hojeIso(), ed = podeEditar();
+  // a lei nesta semana
+  const fatia = {...e, inicio: semData, semanas: 1, dados: [sem]};
+  const a = Escala.analisar(fatia, opcoesAnalise(atual));
+  const furos = DIAS.map((_, d) => e.abertos[d] && sem.filter(x => x[d] === 'T').length < e.minimo[d]).filter(Boolean).length;
+  const status = !a.problemas ? `<button class="status ok" id="btnAnalise"><span class="ic">✓</span><span>Escala dentro da lei<small>Toque para ver os detalhes</small></span></button>`
+    : `<button class="status ruim" id="btnAnalise"><span class="ic">!</span><span>${esc(a.resumo)}<small>${furos ? `${plural(furos, 'dia fica', 'dias ficam')} com menos gente. ` : ''}Toque para ver o que fazer</small></span></button>`;
+  const pills = DIAS.map((d, i) => {
+    const data = soma(semData, i), p = sem.filter(x => x[i] === 'T').length, fer = Escala.feriado(data, conta.ctx);
+    const falta = e.abertos[i] && p < e.minimo[i];
+    return `<button data-dia="${i}" class="${i === diaSel ? 'on' : ''} ${data === hoje ? 'hoje' : ''} ${e.abertos[i] ? '' : 'fechado'}"><small>${d}</small><b>${data.slice(8)}</b>${falta ? '<i></i>' : fer ? '<i class="fer"></i>' : ''}</button>`;
+  }).join('');
+  let corpo;
+  if (porPessoa) {
+    corpo = `<ul class="pp">${e.funcionarios.map((f, fi) => {
+      const dias = sem[fi], folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIA_LONGO[d].toLowerCase() : null).filter(Boolean);
+      const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
+      return `<li data-pessoa="${fi}"><div class="top"><b>${esc(f.nome)}</b><span class="folga">${fora.length ? esc(fora.join(', ')) : folgas.length ? 'Folga ' + folgas.join(' e ') : 'Sem folga'}</span></div>
+        <div class="sem">${dias.map((c, d) => `<span class="c-${e.abertos[d] ? c : '0'}">${DIAS[d].slice(0, 3)}<br>${!e.abertos[d] ? '–' : c === 'T' ? 'trab.' : c === 'F' ? 'folga' : CURTO[c]}</span>`).join('')}</div></li>`;
+    }).join('')}</ul>`;
+  } else {
+    const d = diaSel, data = soma(semData, d), fer = Escala.feriado(data, conta.ctx);
+    if (!e.abertos[d]) corpo = `<div class="dia-tit"><h2>${dataLonga(data)}</h2></div><div class="grupo"><p class="vazio-grupo">Fechado neste dia. Ninguém trabalha.</p></div>`;
+    else {
+      const grupo = cod => sem.map((x, f) => ({x: x[d], f})).filter(o => cod === 'A' ? COD[o.x] : o.x === cod);
+      const T = grupo('T'), F = grupo('F'), A = grupo('A');
+      const btn = (o, cls) => `<button class="nome ${cls}" data-f="${o.f}">${esc(e.funcionarios[o.f]?.nome)}${cls === 'A' ? `<small>${esc(COD[o.x])}</small>` : e.funcionarios[o.f]?.cargo ? `<small>${esc(e.funcionarios[o.f].cargo)}</small>` : ''}</button>`;
+      corpo = `<div class="dia-tit"><h2>${dataLonga(data)}</h2><span class="${T.length >= e.minimo[d] ? 'ok' : 'baixo'}">${T.length} trabalhando · mínimo ${e.minimo[d]}</span></div>
+        ${fer ? `<div class="nota" style="margin:0 0 10px">Feriado: <b>${esc(fer)}</b>. Quem trabalha hoje recebe em dobro ou ganha outra folga.</div>` : ''}
+        ${T.length < e.minimo[d] ? `<div class="nota" style="margin:0 0 10px">Falta gente: precisa de pelo menos ${e.minimo[d]} trabalhando.${ed ? ' Toque em quem folga para trocar.' : ''}</div>` : ''}
+        <div class="grupo T"><h3>Trabalham <em>${T.length}</em></h3><div class="nomes">${T.map(o => btn(o, 'T')).join('') || '<span class="vazio-grupo">Ninguém</span>'}</div></div>
+        <div class="grupo F"><h3>Folgam <em>${F.length}</em></h3><div class="nomes">${F.map(o => btn(o, 'F')).join('') || '<span class="vazio-grupo">Ninguém</span>'}</div></div>
+        ${A.length ? `<div class="grupo A"><h3>Não vêm <em>${A.length}</em></h3><div class="nomes">${A.map(o => btn(o, 'A')).join('')}</div></div>` : ''}`;
+    }
+  }
+  $('#escCorpo').innerHTML = `${status}<div class="dias">${pills}</div>${corpo}
+    ${ed ? `<div class="acoes-esc"><button class="btn" id="btnMandar">Mandar para a equipe</button><button class="btn sec" data-faltar>Alguém vai faltar?</button></div>`
+      : '<div class="acoes-esc"><button class="btn sec" id="btnImprimir2">Imprimir</button><span></span></div>'}
+    <button class="link ver-pessoa" id="btnModo">${porPessoa ? 'Ver dia por dia' : 'Ver a semana de cada pessoa'}</button>`;
+  $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; porPessoa = false; desenhaSemana(); });
+  $('#btnModo').onclick = () => { porPessoa = !porPessoa; desenhaSemana(); };
+  $('#btnAnalise').onclick = () => folhaAnalise();
+  if ($('#btnMandar')) $('#btnMandar').onclick = () => linkEquipe(atual.id);
+  if ($('#btnImprimir2')) $('#btnImprimir2').onclick = imprimir;
+  if (ed) {
+    $$('#escCorpo [data-f]').forEach(b => b.onclick = () => folhaPessoaDia(+b.dataset.f, diaSel));
+    $$('#escCorpo [data-pessoa]').forEach(li => li.onclick = () => folhaPessoaSemana(+li.dataset.pessoa));
+  }
+}
+
+// --- folhas de ação ---
 function htmlAnalise(a) {
   const ic = i => i.ok === true ? '<span class="ic ok">✓</span>' : i.ok === false ? '<span class="ic ruim">!</span>' : '<span class="ic info">i</span>';
   return `<div class="diag-topo ${a.problemas ? 'ruim' : 'ok'}"><img src="/img/mascote.svg" alt=""><div><b>${esc(a.resumo)}</b>
-      ${plural(a.n, 'pessoa', 'pessoas')} · precisa de ${a.necessarios} · ${String(a.horasSemana).replace('.', ',')}h por semana</div></div>
+    ${plural(a.n, 'pessoa', 'pessoas')} · ${String(a.horasSemana).replace('.', ',')}h por semana cada</div></div>
     <ul class="diag">${a.itens.map(i => `<li>${ic(i)}<div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>`;
 }
-function desenhaAnalise() {
-  const area = $('#areaAnalise');
-  if (!escalaAtual) {
-    const total = atual.minimo.reduce((s, m, d) => s + (atual.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
-    area.innerHTML = `<div class="cartao"><div class="numeros"><div><b>${funcs.length}</b><span>pessoas</span></div><div><b>${precisa}</b><span>precisa para cobrir o mínimo</span></div></div>
-      <p>Gere a escala para ver a análise completa: cobertura dia a dia, folgas, domingos, horas e feriados.</p></div>`;
+function folhaAnalise() {
+  const e = semana.escala, fatia = {...e, inicio: semData, semanas: 1, dados: [semanaDados()]};
+  folha(`<h2>Esta semana e a lei</h2>${htmlAnalise(Escala.analisar(fatia, opcoesAnalise(atual)))}
+    <p class="dica" style="margin-top:12px">Quer entender a lei? <a class="link" href="/ajuda">Abra a ajuda</a>.</p>`);
+}
+async function trocaCelulas(pares, msg) {
+  try {
+    let dados;
+    for (const [f, d] of pares) dados = (await api(`/api/escalas/${semana.escala.id}`, {method: 'PATCH', body: {semana: semana.semana, funcionario: f, dia: d}})).dados;
+    semana.escala.dados = dados; recem = false; $('#escAviso').innerHTML = ''; fechaFolha(); desenhaSemana(); toast(msg);
+  } catch (err) { toast(err.message); }
+}
+function folhaPessoaDia(f, d) {
+  const e = semana.escala, sem = semanaDados(), c = sem[f][d], nome = e.funcionarios[f].nome, n1 = nomeCurto(nome);
+  const data = soma(semData, d), quando = `${naDia(d)} (${dm(data)})`;
+  const outros = cod => sem[f].map((x, i) => x === cod && e.abertos[i] && i !== d ? i : -1).filter(i => i >= 0);
+  const botoesDias = (lista, acao) => `<div class="dias-escolha">${lista.map(i => `<button data-${acao}="${i}">${DIA_LONGO[i]}<small>${dm(soma(semData, i))}</small></button>`).join('')}</div>`;
+  if (COD[c]) {
+    return folha(`<h2>${esc(nome)}</h2><p style="margin-top:6px">${esc(COD[c])} ${quando}.</p>
+      <div class="opcoes-grandes"><button data-ir="ocorrencias">Ver ou apagar o que foi lançado<small>Férias, faltas e atestados do mês</small></button></div>`);
+  }
+  if (c === 'F') {
+    const trab = outros('T');
+    folha(`<h2>${esc(n1)} folga ${quando}</h2><p style="margin-top:6px">Para qual dia você quer mudar a folga?</p>
+      ${trab.length ? botoesDias(trab, 'para') : '<p class="dica" style="margin-top:12px">Não tem outro dia para trocar nesta semana.</p>'}`);
+    $$('[data-para]').forEach(b => b.onclick = () => trocaCelulas([[f, d], [f, +b.dataset.para]], `Pronto. ${n1} agora folga ${DIA_LONGO[+b.dataset.para].toLowerCase()}.`));
     return;
   }
-  const a = Escala.analisar(escalaAtual, opcoesAnalise(atual));
-  const folgasDom = escalaAtual.funcionarios.map((f, i) => ({nome: f.nome, dom: escalaAtual.dados.filter(s => s[i]?.[6] === 'F').length}));
-  area.innerHTML = `${htmlAnalise(a)}
-    <div class="cartao" style="margin-top:14px"><h3 class="sec-tit">Quem folga no domingo</h3>
-      <p class="dica">Nas ${escalaAtual.semanas} semanas desta escala.</p>
-      <div class="pessoas" style="margin-top:8px">${folgasDom.map(f => `<span class="pessoa">${esc(f.nome)}: ${plural(f.dom, 'domingo', 'domingos')}</span>`).join('')}</div>
-    </div>`;
-}
-
-// ---------- início ----------
-async function telaVisao() {
-  const h = new Date().getHours();
-  $('#vOla').textContent = `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}, ${(eu.nome || '').split(' ')[0]}`;
-  if (!equipes.length) { $('#vData').textContent = ''; $('#vEquipes').innerHTML = '<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma unidade ainda</h2><p>O dono da empresa ainda não cadastrou as unidades.</p></div>'; $('#vProx').innerHTML = ''; return; }
-  const v = await api('/api/visao?data=' + hojeIso());
-  const dt = new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'});
-  $('#vData').textContent = dt.charAt(0).toUpperCase() + dt.slice(1) + (v.feriado ? ` · Feriado: ${v.feriado}` : '');
-  const pessoas = (l, cls = '') => l.length ? `<div class="pessoas">${l.map(p => `<span class="pessoa ${cls}">${esc(p.nome)}${p.motivo ? ' · ' + esc(p.motivo) : ''}</span>`).join('')}</div>` : '<p class="dica" style="margin-top:4px">Ninguém</p>';
-  $('#vEquipes').innerHTML = v.equipes.map(e => {
-    const hoje = e.dias[0], semEscalaHoje = hoje.presentes === null;
-    return `<article class="cartao">
-      <div class="eq-top"><h3>${esc(e.nome)}</h3><button class="link" data-ir="equipe/${e.id}">Abrir</button></div>
-      ${!e.total ? `<p class="dica" style="margin-top:10px">Ninguém cadastrado.</p><button class="btn pq edita" style="margin-top:10px" data-ir="equipe/${e.id}/funcionarios">Cadastrar pessoas</button>` : `
-      <p class="grande">${semEscalaHoje ? '–' : e.hoje.trabalham.length}<small>${!hoje.aberto ? 'fechado hoje' : semEscalaHoje ? 'sem escala para hoje' : `trabalhando hoje · mínimo ${hoje.minimo}`}</small></p>
-      <div class="semana7">${e.dias.map((d, i) => {
-        const cls = !d.aberto ? 'd-fech' : d.presentes === null ? 'd-sem' : d.presentes >= d.minimo ? 'd-ok' : 'd-baixo';
-        return `<div class="${cls} ${i === 0 ? 'd-hoje' : ''}" title="${br(d.data)}${d.feriado ? ' · ' + esc(d.feriado) : ''}">${d.dia}<b>${!d.aberto ? '–' : d.presentes === null ? '?' : d.presentes + '/' + d.minimo}</b>${d.feriado ? '<span class="fer-tag">feriado</span>' : ''}</div>`;
-      }).join('')}</div>
-      ${!semEscalaHoje ? `<p class="rotulo">Folgam hoje</p>${pessoas(e.hoje.folgam)}` : ''}
-      ${e.hoje.ausentes.length ? `<p class="rotulo">Fora hoje</p>${pessoas(e.hoje.ausentes, 'aus')}` : ''}
-      ${e.proxima_semana_sem_escala || semEscalaHoje ? `<div class="alerta-eq"><span>${semEscalaHoje ? 'Sem escala para esta semana.' : 'A próxima semana ainda não tem escala.'}</span><button class="btn pq edita" data-ir="equipe/${e.id}">Gerar</button></div>` : ''}`}
-    </article>`;
-  }).join('');
-  $('#vProx').innerHTML = v.ocorrencias.length ? v.ocorrencias.map(o => `<li><span class="tipo tipo-${o.tipo}">${esc(ROTULO[o.tipo] || o.tipo)}</span> <b>${esc(o.funcionario)}</b><br><span class="dica">${esc(o.equipe)} · ${o.inicio === o.fim ? br(o.inicio) : br(o.inicio) + ' a ' + br(o.fim)}</span></li>`).join('')
-    : '<li class="dica">Nenhuma férias, atestado ou afastamento lançado.</li>';
-}
-
-// ---------- unidade ----------
-async function abreEquipe(id, aba) {
-  atual = equipes.find(e => e.id === id) || equipes[0];
-  $('#tEquipe').textContent = atual.nome;
-  $('#tSetor').textContent = `${seg(atual.setor).nome}${atual.abre ? ` · ${atual.abre} às ${atual.fecha}` : ''}`;
-  abreAba(aba || 'escala', false);
-  [funcs, escalas] = await Promise.all([api(`/api/equipes/${atual.id}/funcionarios`), api(`/api/equipes/${atual.id}/escalas`)]);
-  escalaAtual = escalas[0] || null; semanaAtual = 0;
-  if (!$('#eInicio').value) $('#eInicio').value = proxSegunda();
-  desenhaFuncs(); desenhaEscala(); desenhaConfig(); desenhaAnalise();
-}
-$$('.tabs button').forEach(b => b.onclick = () => abreAba(b.dataset.aba, true));
-function abreAba(aba, mudaUrl) {
-  if (!$(`[data-painel="${aba}"]`)) aba = 'escala';
-  $$('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.aba === aba));
-  $$('[data-painel]').forEach(p => p.classList.toggle('hide', p.dataset.painel !== aba));
-  if (mudaUrl && atual) history.replaceState(null, '', `#equipe/${atual.id}/${aba}`);
-}
-
-// ---------- pessoas ----------
-function chipsFixa(el, sel) {
-  el.innerHTML = DIAS.map((d, i) => `<button type="button" data-d="${i}" class="${sel.includes(i) ? 'on' : ''}">${d}</button>`).join('');
-  el.querySelectorAll('button').forEach(b => b.onclick = () => {
-    const d = +b.dataset.d, i = sel.indexOf(d);
-    if (i >= 0) sel.splice(i, 1); else { if (sel.length >= 2) sel.shift(); sel.push(d); }
-    chipsFixa(el, sel);
-  });
-}
-$('#formFunc').onsubmit = async e => {
-  e.preventDefault();
-  const lista = $('#fNome').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [nome, ...c] = l.split(/\s+[-–]\s+/); return {nome, cargo: c.join(' - ')}; });
-  if (!lista.length) return $('#fNome').focus();
-  try {
-    await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: lista});
-    $('#fNome').value = '';
-    funcs = await api(`/api/equipes/${atual.id}/funcionarios`); desenhaFuncs(); carregaContagem();
-    toast(`${plural(lista.length, 'pessoa cadastrada', 'pessoas cadastradas')}. Gere a escala de novo para incluir.`);
-  } catch (err) { toast(err.message); }
-};
-function desenhaFuncs() {
-  $('#listaFunc').innerHTML = funcs.length ? funcs.map(f => `<li data-func="${f.id}">
-    <div><b>${esc(f.nome)}</b> ${f.cargo ? `<small>· ${esc(f.cargo)}</small>` : ''}${f.matricula ? `<small> · matr. ${esc(f.matricula)}</small>` : ''}${f.folga_fixa.length ? ` <span class="tag">Folga fixa: ${f.folga_fixa.map(d => DIAS[d]).join(' e ')}</span>` : ''}</div>
-    <div></div>
-    <div class="edita" style="display:flex;gap:12px;flex-wrap:wrap"><button class="link" data-ir-oc>Falta/férias</button><button class="link" data-edit="${f.id}">Editar</button><button class="link perigo" data-del="${f.id}">Remover</button></div></li>`).join('')
-    : `<li><span class="dica">Ninguém cadastrado ainda.</span></li>`;
-  $$('[data-del]').forEach(b => b.onclick = async () => {
-    const f = funcs.find(x => x.id === +b.dataset.del);
-    if (!confirm(`Remover ${f.nome}? As escalas antigas continuam salvas.`)) return;
-    await api(`/api/funcionarios/${f.id}`, {method: 'DELETE'});
-    funcs = funcs.filter(x => x.id !== f.id); desenhaFuncs(); carregaContagem();
-  });
-  $$('[data-edit]').forEach(b => b.onclick = () => abreEditFunc(funcs.find(x => x.id === +b.dataset.edit)));
-}
-let editFixa = [], editId = null;
-function abreEditFunc(f) {
-  editId = f.id; editFixa = [...f.folga_fixa];
-  $('#efNome').value = f.nome; $('#efCargo').value = f.cargo || ''; $('#efMat').value = f.matricula || '';
-  $('#efAdm').value = f.admissao ? String(f.admissao).slice(0, 10) : ''; $('#efTel').value = f.telefone || ''; $('#efErro').textContent = '';
-  chipsFixa($('#efFixa'), editFixa); $('#dlgFunc').showModal();
-}
-$('#formEditFunc').onsubmit = async e => {
-  if (e.submitter?.value !== 'ok') return;
-  e.preventDefault();
-  try {
-    await api(`/api/funcionarios/${editId}`, {method: 'PUT', body: {nome: $('#efNome').value, cargo: $('#efCargo').value, matricula: $('#efMat').value, admissao: $('#efAdm').value, telefone: $('#efTel').value, folga_fixa: editFixa}});
-    $('#dlgFunc').close(); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); desenhaFuncs(); toast('Salvo.');
-  } catch (err) { $('#efErro').textContent = err.message; }
-};
-async function carregaContagem() {
-  equipes = await api('/api/equipes');
-  $$('#listaEquipes button').forEach(b => { const e = equipes.find(x => x.id === +b.dataset.id); if (e) b.querySelector('small').textContent = e.total; });
-}
-
-// ---------- funcionamento ----------
-let cfg = null;
-function desenhaConfig() {
-  cfg = {nome: atual.nome, setor: atual.setor, abertos: [...atual.abertos], minimo: [...atual.minimo], criticas: (atual.criticas || []).map(c => ({...c, minimo: [...c.minimo]}))};
-  const ro = !podeEditar() ? 'disabled' : '';
-  $('#cfSetor').innerHTML = SEG_ORDEM.map(k => `<option value="${k}">${esc(seg(k).nome)}</option>`).join('');
-  $('#cfNome').value = cfg.nome; $('#cfSetor').value = cfg.setor; $('#cfHoras').value = +atual.horas_dia || 8;
-  $('#cfAbre').value = atual.abre || seg(cfg.setor).abre; $('#cfFecha').value = atual.fecha || seg(cfg.setor).fecha;
-  ['#cfNome', '#cfSetor', '#cfHoras', '#cfAbre', '#cfFecha'].forEach(x => { $(x).disabled = !podeEditar(); });
-  $('#cfDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${cfg.abertos[i] ? 'on' : ''}" data-i="${i}" ${ro}>${d}</button><input type="number" min="0" max="200" value="${cfg.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${cfg.abertos[i] && podeEditar() ? '' : 'disabled'}></div>`).join('');
-  $$('#cfDias .tg').forEach(b => b.onclick = () => { const i = +b.dataset.i; cfg.abertos[i] = cfg.abertos[i] ? 0 : 1; if (!cfg.abertos[i]) cfg.criticas.forEach(c => c.minimo[i] = 0); redesenhaConfig(); });
-  $$('#cfDias input').forEach(inp => inp.oninput = () => cfg.minimo[+inp.dataset.m] = +inp.value || 0);
-  $('#cfCriticas').innerHTML = cfg.criticas.map((c, ci) => `<label>Mínimo de ${esc(c.nome)} em cada dia</label><div class="dias-conf">${DIAS.map((d, i) => `<div><span class="dia-rot">${d}</span><input type="number" min="0" max="50" value="${c.minimo[i]}" data-cc="${ci}" data-ci="${i}" ${cfg.abertos[i] && podeEditar() ? '' : 'disabled'}></div>`).join('')}</div><p class="dica" style="margin-top:6px">${esc(c.explica || '')}</p>`).join('');
-  $$('[data-cc]').forEach(inp => inp.oninput = () => cfg.criticas[+inp.dataset.cc].minimo[+inp.dataset.ci] = +inp.value || 0);
-  // funções do segmento para cadastrar e editar pessoas
-  const f = seg(cfg.setor).funcoes;
-  $('#listaFuncoes').innerHTML = f.map(x => `<option value="${esc(x)}">`).join('');
-  $('#fFuncoesDica').textContent = f.length ? `Funções de ${seg(cfg.setor).nome.toLowerCase()}: ${f.join(', ')}.` : '';
-}
-function redesenhaConfig() {
-  const nome = $('#cfNome').value;
-  atual = {...atual, abertos: cfg.abertos, minimo: cfg.minimo, criticas: cfg.criticas};
-  desenhaConfig(); $('#cfNome').value = nome;
-}
-$('#cfSetor').onchange = () => {
-  const s = seg($('#cfSetor').value), nome = $('#cfNome').value;
-  atual = {...atual, setor: $('#cfSetor').value, abertos: [...s.abertos], minimo: [...s.minimo], abre: s.abre, fecha: s.fecha, criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))};
-  desenhaConfig(); $('#cfNome').value = nome;
-};
-$('#btnSalvarCfg').onclick = async () => {
-  try {
-    const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value, horas_dia: $('#cfHoras').value, abre: $('#cfAbre').value, fecha: $('#cfFecha').value}});
-    await carregaEquipes(); atual = equipes.find(x => x.id === e.id); $('#tEquipe').textContent = atual.nome; desenhaAnalise(); desenhaEscala(); toast('Salvo. Gere a escala de novo para aplicar.');
-  } catch (err) { toast(err.message); }
-};
-$('#btnExcluir').onclick = async () => {
-  if (!confirm(`Excluir "${atual.nome}" com todas as pessoas e escalas?`)) return;
-  await api(`/api/equipes/${atual.id}`, {method: 'DELETE'}); atual = null; await carregaEquipes(); ir('visao');
-};
-
-// ---------- escala ----------
-$('#btnGerar').onclick = async () => {
-  if (!funcs.length) { abreAba('funcionarios', true); return toast('Cadastre as pessoas primeiro.'); }
-  if (escalaAtual && $('#eInicio').value < Escala.somaDias(escalaAtual.inicio.slice(0, 10), escalaAtual.semanas * 7) && !confirm('Já existe escala para parte desse período. A nova substitui a anterior nesses dias (a antiga fica guardada). Continuar?')) return;
-  $('#btnGerar').disabled = true;
-  try {
-    escalaAtual = await api(`/api/equipes/${atual.id}/escalas`, {method: 'POST', body: {inicio: $('#eInicio').value, semanas: +$('#eSemanas').value}});
-    escalas.unshift(escalaAtual); semanaAtual = 0; desenhaEscala(); desenhaAnalise(); toast('Escala gerada. Férias e atestados já lançados foram respeitados.');
-  } catch (err) { toast(err.message); if (err.status === 402) $('#avisoPag').classList.remove('hide'); }
-  $('#btnGerar').disabled = false;
-};
-const dataDe = (inicio, s, d) => Escala.somaDias(inicio.slice(0, 10), s * 7 + d);
-const ferDe = data => Escala.feriado(data, conta.ctx);
-function tabelaSemana(e, s, editavel) {
-  const sem = e.dados[s];
-  return `<table class="esc"><thead><tr><th></th>${DIAS.map((d, i) => { const fer = ferDe(dataDe(e.inicio, s, i)); return `<th class="${fer ? 'fer' : ''}" ${fer ? `title="${esc(fer)}"` : ''}>${d}<small>${dm(dataDe(e.inicio, s, i))}${fer ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead><tbody>
-  ${sem.map((dias, f) => `<tr><td>${esc(e.funcionarios[f]?.nome)}${e.funcionarios[f]?.cargo ? `<small>${esc(e.funcionarios[f].cargo)}</small>` : ''}</td>
-    ${dias.map((c, d) => !e.abertos[d] ? '<td class="X">fechado</td>'
-      : COD[c] ? `<td class="A" title="${esc(COD[c])}">${esc(COD[c])}</td>`
-      : `<td class="${c}" ${editavel ? `data-f="${f}" data-d="${d}" title="Clique para trocar"` : ''}>${c === 'F' ? 'Folga' : 'Trabalha'}</td>`).join('')}</tr>`).join('')}
-  <tr class="tot"><td>Presentes / mínimo</td>${DIAS.map((_, d) => { if (!e.abertos[d]) return '<td class="X">—</td>'; const p = sem.filter(x => x[d] === 'T').length; return `<td class="${p >= e.minimo[d] ? 'ok' : 'baixo'}">${p} / ${e.minimo[d]}</td>`; }).join('')}</tr>
-  </tbody></table>`;
-}
-// no celular: um cartão por dia, com quem trabalha, quem folga e quem está fora
-function listaSemana(e, s, editavel) {
-  const sem = e.dados[s];
-  return DIAS.map((d, i) => {
-    const data = dataDe(e.inicio, s, i), fer = ferDe(data);
-    if (!e.abertos[i]) return `<div class="dia-card"><h4>${d} ${dm(data)} <small>fechado</small></h4></div>`;
-    const grupo = cod => sem.map((x, f) => ({x: x[i], f})).filter(o => cod === 'A' ? COD[o.x] : o.x === cod);
-    const p = grupo('T').length, chip = (o, cls) => `<button class="chip ${cls}" ${editavel && cls !== 'A' ? `data-f="${o.f}" data-d="${i}"` : ''}>${esc(e.funcionarios[o.f]?.nome)}${cls === 'A' ? ' · ' + esc(COD[o.x]) : ''}</button>`;
-    return `<div class="dia-card"><h4><span>${d} ${dm(data)}${fer ? ` <small>· ${esc(fer)}</small>` : ''}</span><small class="${p >= e.minimo[i] ? 'ok' : 'baixo'}">${p} de ${e.minimo[i]}</small></h4>
-      <div class="grupo"><b>Trabalham</b>${grupo('T').map(o => chip(o, 'T')).join('') || '—'}</div>
-      <div class="grupo"><b>Folgam</b>${grupo('F').map(o => chip(o, 'F')).join('') || '—'}</div>
-      ${grupo('A').length ? `<div class="grupo"><b>Fora</b>${grupo('A').map(o => chip(o, 'A')).join('')}</div>` : ''}</div>`;
-  }).join('');
-}
-function desenhaEscala() {
-  const a = $('#areaEscala');
-  if (!escalaAtual) {
-    a.innerHTML = `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma escala ainda</h2><p>${funcs.length ? (podeEditar() ? `${plural(funcs.length, 'pessoa', 'pessoas')}. Escolha a data de início e clique em <b>Gerar escala</b>.` : 'A empresa ainda não gerou a escala desta unidade.') : 'Cadastre as pessoas na aba <b>Pessoas</b>.'}</p></div>`;
-    return;
-  }
-  const e = escalaAtual, editavel = podeEditar();
-  const an = Escala.analisar(e, opcoesAnalise(atual));
-  const fim = Escala.somaDias(e.inicio.slice(0, 10), e.semanas * 7 - 1);
-  a.innerHTML = `
-    <div class="resumo-escala ${an.problemas ? 'ruim' : 'ok'}"><span>${esc(an.resumo)}</span><button class="link" data-aba-ir="analise">Ver análise</button></div>
-    <p class="dica" style="margin-bottom:10px">De ${br(e.inicio)} a ${br(fim)}</p>
-    <div class="semanas">${e.dados.map((_, i) => `<button data-s="${i}" class="${i === semanaAtual ? 'on' : ''}">Semana ${i + 1}</button>`).join('')}</div>
-    <div class="rolagem sem-print">${tabelaSemana(e, semanaAtual, editavel)}</div>
-    <div class="dias-lista">${listaSemana(e, semanaAtual, editavel)}</div>
-    <div class="hide todas-semanas">${e.dados.map((_, i) => `<div class="semana-print hide"><h3>${esc(atual.nome)} · Semana ${i + 1}</h3>${tabelaSemana(e, i, false)}</div>`).join('')}</div>
-    <div class="legenda"><span><i style="background:var(--azul-claro)"></i>Trabalha</span><span><i style="background:var(--amarelo)"></i>Folga</span><span><i style="background:#ece7fb"></i>Férias, atestado, falta</span>${editavel ? '<span>Toque em um nome ou dia para trocar trabalho e folga.</span>' : ''}</div>
-    <div class="acoes">${editavel ? '<button class="btn" id="btnLinkEq">Mandar para a equipe</button>' : ''}<button class="btn sec" id="btnZap">Copiar texto para o WhatsApp</button><button class="btn sec" id="btnImprimir">Imprimir</button></div>
-    <p class="hist">Gerada em ${new Date(e.criado_em).toLocaleString('pt-BR')}</p>`;
-  $$('[data-aba-ir]').forEach(b => b.onclick = () => abreAba(b.dataset.abaIr, true));
-  $$('.semanas button').forEach(b => b.onclick = () => { semanaAtual = +b.dataset.s; desenhaEscala(); });
-  $$('#areaEscala td.A').forEach(td => td.onclick = () => toast('Esse dia tem férias, atestado ou falta lançado. Para mudar, apague em "Férias e faltas".'));
-  $$('#areaEscala [data-f]').forEach(td => td.onclick = async () => {
-    try {
-      const r = await api(`/api/escalas/${e.id}`, {method: 'PATCH', body: {semana: semanaAtual, funcionario: +td.dataset.f, dia: +td.dataset.d}});
-      e.dados = r.dados; desenhaEscala(); desenhaAnalise();
-    } catch (err) { toast(err.message); }
-  });
-  if ($('#btnLinkEq')) $('#btnLinkEq').onclick = () => linkEquipe(atual.id);
-  $('#btnImprimir').onclick = () => { $('.todas-semanas').classList.remove('hide'); window.print(); $('.todas-semanas').classList.add('hide'); };
-  $('#btnZap').onclick = () => {
-    let t = `*${atual.nome} — Escala 5x2*\n`;
-    e.dados.forEach((s, i) => { t += `\n*Semana ${i + 1}* (a partir de ${dm(dataDe(e.inicio, i, 0))})\n`;
-      s.forEach((dias, f) => {
-        const folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIAS[d] : null).filter(Boolean);
-        const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
-        t += `${e.funcionarios[f].nome}: ${folgas.length ? 'folga ' + folgas.join(' e ') : 'sem folga'}${fora.length ? ` (${fora.join(', ').toLowerCase()})` : ''}\n`;
-      }); });
-    copiar(t, 'Texto copiado. Cole no grupo da equipe.');
+  const folgas = outros('F');
+  folha(`<h2>${esc(n1)} trabalha ${quando}</h2>
+    <div class="opcoes-grandes">
+      <button id="fpFolga">Dar folga neste dia<small>A folga de outro dia vira trabalho</small></button>
+      <button id="fpFalta">${esc(n1)} faltou<small>Fica marcado como falta</small></button>
+      <button id="fpAtestado">${esc(n1)} trouxe atestado</button>
+      <button id="fpMais">Férias, afastamento ou outro</button>
+    </div>`);
+  $('#fpFolga').onclick = () => {
+    if (!folgas.length) return trocaCelulas([[f, d]], `${n1} folga ${DIA_LONGO[d].toLowerCase()}.`);
+    folha(`<h2>Dar folga para ${esc(n1)} ${quando}</h2><p style="margin-top:6px">Em troca, ${esc(n1)} trabalha em qual dia?</p>${botoesDias(folgas, 'de')}`);
+    $$('[data-de]').forEach(b => b.onclick = () => trocaCelulas([[f, d], [f, +b.dataset.de]], `Pronto. ${n1} folga ${DIA_LONGO[d].toLowerCase()} e trabalha ${DIA_LONGO[+b.dataset.de].toLowerCase()}.`));
   };
+  const fid = e.funcionarios[f].id;
+  $('#fpFalta').onclick = () => salvaOcorrencia({funcionario_id: fid, tipo: 'falta', inicio: data, fim: data}, `Falta de ${n1} lançada.`);
+  $('#fpAtestado').onclick = () => folhaDatas(fid, nome, 'atestado', data);
+  $('#fpMais').onclick = () => folhaTipo(fid, nome, data);
+}
+function folhaPessoaSemana(f) {
+  const e = semana.escala, nome = e.funcionarios[f].nome;
+  folha(`<h2>${esc(nome)}</h2><p style="margin-top:6px">Toque no dia que quer mudar.</p>${`<div class="dias-escolha">${DIAS.map((d, i) => e.abertos[i] ? `<button data-dd="${i}">${DIA_LONGO[i]}<small>${semanaDados()[f][i] === 'T' ? 'trabalha' : semanaDados()[f][i] === 'F' ? 'folga' : esc(COD[semanaDados()[f][i]] || '')}</small></button>` : '').join('')}</div>`}`);
+  $$('[data-dd]').forEach(b => b.onclick = () => folhaPessoaDia(f, +b.dataset.dd));
+}
+function folhaFaltar() {
+  if (!podeEditar()) return;
+  if (!funcs.length) return toast('Coloque sua equipe primeiro.');
+  folha(`<h2>Quem vai faltar?</h2><div class="opcoes-grandes">${funcs.map(f => `<button data-quem="${f.id}">${esc(f.nome)}${f.cargo ? `<small>${esc(f.cargo)}</small>` : ''}</button>`).join('')}</div>`);
+  $$('[data-quem]').forEach(b => b.onclick = () => { const f = funcs.find(x => x.id === +b.dataset.quem); folhaTipo(f.id, f.nome, diaSel !== null && semData ? soma(semData, diaSel) : hojeIso()); });
+}
+function folhaTipo(fid, nome, data) {
+  folha(`<h2>O que aconteceu com ${esc(nomeCurto(nome))}?</h2><div class="tipos">${TIPOS.map(([k, n, d]) => `<button data-tipo="${k}">${n}<small>${d}</small></button>`).join('')}</div>`);
+  $$('[data-tipo]').forEach(b => b.onclick = () => folhaDatas(fid, nome, b.dataset.tipo, data));
+}
+function folhaDatas(fid, nome, tipo, data) {
+  const banco = tipo === 'banco_horas', n1 = nomeCurto(nome);
+  folha(`<h2>${ROTULO[tipo]} de ${esc(n1)}</h2>
+    <div class="lado"><div><label for="odIni">${banco ? 'Dia' : 'De'}</label><input id="odIni" type="date" value="${data}"></div>
+    ${banco ? '<div><label for="odHoras">Horas</label><input id="odHoras" inputmode="decimal" placeholder="2 ou -1,5"></div>' : `<div><label for="odFim">Até</label><input id="odFim" type="date" value="${data}"></div>`}</div>
+    ${banco ? '<p class="dica" style="margin-top:6px">Positivo = fez hora extra. Negativo = saiu mais cedo.</p>' : ''}
+    ${tipo === 'ferias' || tipo === 'afastamento' ? '<p class="dica" style="margin-top:8px">A escala das próximas semanas se refaz sozinha para cobrir.</p>' : ''}
+    <p class="erro" id="odErro"></p>
+    <button class="btn cheio" id="odSalvar">Salvar</button>`);
+  if (!banco) $('#odIni').onchange = () => { if ($('#odFim').value < $('#odIni').value) $('#odFim').value = $('#odIni').value; };
+  $('#odSalvar').onclick = () => salvaOcorrencia({funcionario_id: fid, tipo, inicio: $('#odIni').value, fim: banco ? $('#odIni').value : $('#odFim').value, horas: banco ? $('#odHoras').value : undefined},
+    `${ROTULO[tipo]} de ${n1} lançad${['falta', 'ferias'].includes(tipo) ? 'a' : 'o'}.`, $('#odErro'));
+}
+async function salvaOcorrencia(body, msg, elErro) {
+  try {
+    await api('/api/ocorrencias', {method: 'POST', body});
+    let extra = '';
+    if (['ferias', 'afastamento'].includes(body.tipo)) {
+      const f = funcs.find(x => x.id === body.funcionario_id), eqId = f?.equipe_id || atual.id;
+      const r = await api(`/api/equipes/${eqId}/refazer`, {method: 'POST', body: {de: body.inicio, ate: body.fim}}).catch(() => ({}));
+      if (r.refeito) extra = ' A escala das próximas semanas foi refeita.';
+    }
+    fechaFolha(); toast(msg + extra);
+    if (location.hash.startsWith('#ocorrencias')) telaOcorrencias(); else telaEscala();
+  } catch (err) { if (elErro) elErro.textContent = err.message; else toast(err.message); }
 }
 async function linkEquipe(id) {
   try {
     const {link} = await api(`/api/equipes/${id}/link`, {method: 'POST', body: {}});
-    const msg = `Escala da equipe: ${link}\nAbra, escolha seu nome e veja suas folgas.`;
+    const msg = `Escala da equipe: ${link}\nAbra, toque no seu nome e veja suas folgas.`;
     if (navigator.share) { try { await navigator.share({text: msg}); return; } catch {} }
-    copiar(msg, 'Link copiado. Cole no grupo da equipe: cada um escolhe o nome e vê as folgas.');
+    folha(`<h2>Mandar para a equipe</h2><p style="margin-top:6px">Cada um abre o link, toca no próprio nome e vê as folgas. Não precisa instalar nada.</p>
+      <div class="opcoes-grandes"><a class="btn cheio" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Mandar no WhatsApp</a>
+      <button id="lkCopiar">Copiar o link</button><button id="lkTexto">Copiar a escala em texto</button><button id="lkImprimir">Imprimir para o mural</button></div>`);
+    $('#lkCopiar').onclick = () => copiar(msg, 'Link copiado. Cole no grupo da equipe.');
+    $('#lkTexto').onclick = () => copiar(textoEscala(), 'Texto copiado. Cole no grupo da equipe.');
+    $('#lkImprimir').onclick = () => { fechaFolha(); imprimir(); };
   } catch (err) { toast(err.message); }
 }
+function textoEscala() {
+  const e = semana.escala;
+  let t = `*${atual.nome} — Escala*\n`;
+  for (let s = semana.semana; s < e.dados.length; s++) {
+    t += `\n*Semana de ${dm(soma(e.inicio, s * 7))}*\n`;
+    e.dados[s].forEach((dias, f) => {
+      const folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIA_LONGO[d].toLowerCase() : null).filter(Boolean);
+      const fora = [...new Set(dias.map(c => COD[c]).filter(Boolean))];
+      t += `${e.funcionarios[f].nome}: ${folgas.length ? 'folga ' + folgas.join(' e ') : 'sem folga'}${fora.length ? ` (${fora.join(', ').toLowerCase()})` : ''}\n`;
+    });
+  }
+  return t;
+}
+function imprimir() {
+  if (!semana?.escala) return toast('Abra a escala primeiro.');
+  const e = semana.escala;
+  let h = '';
+  for (let s = semana.semana; s < e.dados.length; s++) {
+    const ini = soma(e.inicio, s * 7);
+    h += `<h2>${esc(atual.nome)} · semana de ${br(ini)} a ${br(soma(ini, 6))}</h2><table><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d} ${dm(soma(ini, i))}</th>`).join('')}</tr></thead><tbody>
+      ${e.dados[s].map((dias, f) => `<tr><td>${esc(e.funcionarios[f].nome)}</td>${dias.map((c, d) => `<td class="${e.abertos[d] ? c : ''}">${!e.abertos[d] ? '–' : c === 'T' ? '' : c === 'F' ? 'FOLGA' : esc(COD[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }
+  $('#areaImpressao').innerHTML = h; window.print();
+}
 
-// ---------- férias e faltas ----------
-$('#ocTipo').innerHTML = Object.keys(OC).map(k => `<option value="${k}">${ROTULO[k]}</option>`).join('');
-$('#ocFiltroTipo').innerHTML = '<option value="">Todos</option>' + Object.keys(OC).map(k => `<option value="${k}">${ROTULO[k]}</option>`).join('');
-function ajustaTipo() {
-  const banco = $('#ocTipo').value === 'banco_horas';
-  $('#ocFimBox').classList.toggle('hide', banco); $('#ocHorasBox').classList.toggle('hide', !banco);
-  $('#ocLblIni').textContent = banco ? 'Dia' : 'De';
-  $('#ocDica').textContent = DICA[$('#ocTipo').value] || '';
+// ================= equipe =================
+function telaPessoas() {
+  if (!atual) return ir('comecar');
+  const fs = seg(atual.setor).funcoes;
+  $('#pesSub').textContent = `${plural(funcs.length, 'pessoa', 'pessoas')} em ${atual.nome}. Toque em alguém para mudar o nome, a função ou tirar da equipe.`;
+  $('#listaP').innerHTML = funcs.length ? funcs.map(f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`).join('')
+    : '<li style="cursor:default"><span class="dica">Ninguém ainda. Escreva o primeiro nome acima.</span></li>';
+  $$('[data-fid]').forEach(li => li.onclick = () => folhaFunc(funcs.find(x => x.id === +li.dataset.fid)));
 }
-$('#ocTipo').onchange = ajustaTipo;
-$('#ocIni').onchange = () => { if (!$('#ocFim').value || $('#ocFim').value < $('#ocIni').value) $('#ocFim').value = $('#ocIni').value; };
-async function abreDlgOc({funcionario_id} = {}) {
-  if (!podeEditar()) return;
-  const lista = await api('/api/funcionarios');
-  if (!lista.length) return toast('Cadastre pessoas primeiro.');
-  const grupos = {}; lista.forEach(f => (grupos[f.equipe] ||= []).push(f));
-  $('#ocFunc').innerHTML = Object.entries(grupos).map(([eq, fs]) => `<optgroup label="${esc(eq)}">${fs.map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')}</optgroup>`).join('');
-  const pre = funcionario_id || (location.hash.startsWith('#equipe') && lista.find(f => f.equipe_id === atual?.id)?.id);
-  if (pre) $('#ocFunc').value = pre;
-  $('#ocIni').value = $('#ocFim').value = hojeIso(); $('#ocHoras').value = ''; $('#ocObs').value = ''; $('#ocErro').textContent = '';
-  ajustaTipo(); $('#dlgOc').showModal();
-}
-$('#formOc').onsubmit = async e => {
-  if (e.submitter?.value !== 'ok') return;
-  e.preventDefault(); $('#btnOcSalvar').disabled = true; $('#ocErro').textContent = '';
+$('#formAdd').onsubmit = async e => {
+  e.preventDefault();
+  const nome = $('#addNome').value.trim(); if (!nome) return $('#addNome').focus();
   try {
-    await api('/api/ocorrencias', {method: 'POST', body: {funcionario_id: +$('#ocFunc').value, tipo: $('#ocTipo').value, inicio: $('#ocIni').value, fim: $('#ocFim').value, horas: $('#ocHoras').value, obs: $('#ocObs').value}});
-    $('#dlgOc').close(); toast('Lançado. Já aparece na escala e no fechamento.'); rota();
-  } catch (err) { $('#ocErro').textContent = err.message; }
-  $('#btnOcSalvar').disabled = false;
+    await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: [{nome, cargo: ''}]});
+    $('#addNome').value = ''; funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas();
+    toast(`${nomeCurto(nome)} entrou na equipe. Aparece na escala a partir de ${br(soma(segundaDe(hojeIso()), 7))}.`);
+  } catch (err) { toast(err.message); }
 };
-function opcoesEquipe(sel, todas = 'Todas') {
-  const v = sel.value;
-  sel.innerHTML = `<option value="">${todas}</option>` + equipes.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('');
-  sel.value = v;
+function folhaFunc(f) {
+  const fs = seg(atual.setor).funcoes, fixa = [...f.folga_fixa];
+  folha(`<h2>${esc(f.nome)}</h2>
+    <label for="efNome">Nome</label><input id="efNome" value="${esc(f.nome)}">
+    <label for="efCargo">Função</label>${fs.length ? `<select id="efCargo"><option value="">—</option>${[...new Set([...fs, f.cargo].filter(Boolean))].map(x => `<option ${x === f.cargo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input id="efCargo" value="${esc(f.cargo || '')}" placeholder="Ex.: Atendente">`}
+    <label>Folga fixa (só se vocês combinaram)</label><div class="dias-chip" id="efFixa"></div>
+    <details style="margin-top:14px"><summary class="link">Mais dados (para o contador)</summary>
+      <label for="efMat">Matrícula</label><input id="efMat" value="${esc(f.matricula || '')}">
+      <div class="lado"><div><label for="efAdm">Admissão</label><input id="efAdm" type="date" value="${f.admissao ? String(f.admissao).slice(0, 10) : ''}"></div><div><label for="efTel">WhatsApp</label><input id="efTel" inputmode="tel" value="${esc(f.telefone || '')}"></div></div>
+    </details>
+    <p class="erro" id="efErro"></p>
+    <button class="btn cheio" id="efSalvar">Salvar</button>
+    <button class="btn cheio perigo" id="efTirar" style="margin-top:8px">Tirar ${esc(nomeCurto(f.nome))} da equipe</button>`);
+  const chips = () => {
+    $('#efFixa').innerHTML = DIAS.map((d, i) => `<button type="button" data-d="${i}" class="${fixa.includes(i) ? 'on' : ''}">${d}</button>`).join('');
+    $$('#efFixa button').forEach(b => b.onclick = () => { const d = +b.dataset.d, i = fixa.indexOf(d); if (i >= 0) fixa.splice(i, 1); else { if (fixa.length >= 2) fixa.shift(); fixa.push(d); } chips(); });
+  };
+  chips();
+  $('#efSalvar').onclick = async () => {
+    try {
+      await api(`/api/funcionarios/${f.id}`, {method: 'PUT', body: {nome: $('#efNome').value, cargo: $('#efCargo').value, matricula: $('#efMat').value, admissao: $('#efAdm').value, telefone: $('#efTel').value, folga_fixa: fixa}});
+      fechaFolha(); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas(); toast('Salvo.');
+    } catch (err) { $('#efErro').textContent = err.message; }
+  };
+  $('#efTirar').onclick = async () => {
+    if (!confirm(`Tirar ${f.nome} da equipe? Sai da escala a partir da semana que vem.`)) return;
+    try { await api(`/api/funcionarios/${f.id}`, {method: 'DELETE'}); fechaFolha(); funcs = funcs.filter(x => x.id !== f.id); telaPessoas(); toast(`${nomeCurto(f.nome)} saiu da equipe.`); }
+    catch (err) { $('#efErro').textContent = err.message; }
+  };
 }
-const limitesMes = m => { const de = m + '-01'; return [de, Escala.somaDias(Escala.somaDias(de, 32).slice(0, 7) + '-01', -1)]; };
+
+// ================= mais =================
+function telaMais() {
+  const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
+  const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
+  let h = '';
+  if (mc) h += `<ul class="menu">${item('contador', 'Suas empresas', 'Clientes que liberaram o acesso')}</ul>`;
+  else {
+    h += '<p class="menu-tit">Escala</p><ul class="menu">';
+    if (ed) h += item('funcionamento', 'Horário e dias de funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · mínimo de pessoas por dia` : '');
+    h += item('ocorrencias', 'Férias, faltas e atestados', 'Tudo o que foi lançado no mês');
+    h += `<li><button id="mImprimir"><span>Imprimir a escala<small>Para colar no mural</small></span><span class="seta">›</span></button></li>`;
+    h += '</ul><p class="menu-tit">Contador</p><ul class="menu">';
+    h += item('fechamento', 'Fechar o mês', 'Dias trabalhados, faltas e planilha para a folha');
+    if (dono) h += item('acessos', 'Dar acesso ao contador', 'Ele vê tudo sem você mandar planilha');
+    h += '</ul><p class="menu-tit">Empresa</p><ul class="menu">';
+    if (ed) h += item('comecar/unidade', 'Outra loja ou unidade', 'Cada uma tem sua equipe e sua escala');
+    if (dono) h += item('empresa', 'Dados da empresa', 'Nome, CNPJ, cidade e feriados');
+    h += '</ul>';
+  }
+  h += '<p class="menu-tit">Você</p><ul class="menu">';
+  if (eu.contas.length > 1) h += `<li><button id="mTrocar"><span>Trocar de empresa<small>${esc(mc ? 'Meu escritório' : conta.empresa || '')}${conta.papel !== 'dono' ? ` · você é ${PAPEL[conta.papel].toLowerCase()}` : ''}</small></span><span class="seta">›</span></button></li>`;
+  h += `<li><a href="/ajuda"><span>Ajuda e a nova lei<small>O que mudou e como funciona</small></span><span class="seta">›</span></a></li>`;
+  h += item('conta', 'Minha conta', esc(eu.email));
+  h += '<li><button id="mSair"><span>Sair</span><span class="seta">›</span></button></li></ul>';
+  $('#maisTit').textContent = mc ? 'Opções' : 'Mais opções';
+  $('#maisCorpo').innerHTML = h;
+  if ($('#mImprimir')) $('#mImprimir').onclick = async () => { if (!semana?.escala) { await telaEscala().catch(() => {}); } imprimir(); };
+  if ($('#mTrocar')) $('#mTrocar').onclick = () => {
+    folha(`<h2>Trocar de empresa</h2><div class="opcoes-grandes">${eu.contas.map(c => `<button data-conta="${c.id}">${esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa')}<small>${PAPEL[c.papel]}</small></button>`).join('')}</div>`);
+    $$('[data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
+  };
+  $('#mSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); gravar('conta', ''); location.href = '/app'; };
+}
+
+// ================= funcionamento =================
+let cfg = null;
+function desenhaConfig() {
+  if (!atual) return ir('comecar');
+  cfg = {abertos: [...atual.abertos], minimo: [...atual.minimo], criticas: (atual.criticas || []).map(c => ({...c, minimo: [...c.minimo]}))};
+  $('#cfSetor').innerHTML = SEG_ORDEM.map(k => `<option value="${k}">${esc(seg(k).nome)}</option>`).join('');
+  $('#cfNome').value = atual.nome; $('#cfSetor').value = atual.setor; $('#cfHoras').value = +atual.horas_dia || 8;
+  $('#cfAbre').value = atual.abre || seg(atual.setor).abre; $('#cfFecha').value = atual.fecha || seg(atual.setor).fecha;
+  diasConfig();
+}
+function diasConfig() {
+  $('#cfDias').innerHTML = DIAS.map((d, i) => `<div><button type="button" class="tg ${cfg.abertos[i] ? 'on' : ''}" data-i="${i}">${d}</button><input type="number" min="0" max="200" value="${cfg.minimo[i]}" data-m="${i}" aria-label="Mínimo ${d}" ${cfg.abertos[i] ? '' : 'disabled'}></div>`).join('');
+  $$('#cfDias .tg').forEach(b => b.onclick = () => { const i = +b.dataset.i; cfg.abertos[i] = cfg.abertos[i] ? 0 : 1; if (!cfg.abertos[i]) { cfg.minimo[i] = 0; cfg.criticas.forEach(c => c.minimo[i] = 0); } else if (!cfg.minimo[i]) cfg.minimo[i] = 1; diasConfig(); });
+  $$('#cfDias input').forEach(inp => inp.oninput = () => cfg.minimo[+inp.dataset.m] = +inp.value || 0);
+  $('#cfCriticas').innerHTML = cfg.criticas.map((c, ci) => `<label>Mínimo de ${esc(c.nome.toLowerCase())} em cada dia</label><div class="dias-conf">${DIAS.map((d, i) => `<div><span class="dia-rot">${d}</span><input type="number" min="0" max="50" value="${c.minimo[i]}" data-cc="${ci}" data-ci="${i}" ${cfg.abertos[i] ? '' : 'disabled'}></div>`).join('')}</div><p class="dica" style="margin-top:6px">${esc(c.explica || '')}</p>`).join('');
+  $$('[data-cc]').forEach(inp => inp.oninput = () => cfg.criticas[+inp.dataset.cc].minimo[+inp.dataset.ci] = +inp.value || 0);
+}
+$('#cfSetor').onchange = () => { const s = seg($('#cfSetor').value); cfg = {abertos: [...s.abertos], minimo: [...s.minimo], criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))}; $('#cfAbre').value = s.abre; $('#cfFecha').value = s.fecha; diasConfig(); };
+$('#btnSalvarCfg').onclick = async () => {
+  try {
+    const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value, horas_dia: $('#cfHoras').value, abre: $('#cfAbre').value, fecha: $('#cfFecha').value}});
+    await carregaEquipes(); atual = equipes.find(x => x.id === e.id) || atual; pintaTopo(); semana = null;
+    toast('Salvo. A escala das próximas semanas se ajusta sozinha.'); ir('escala');
+  } catch (err) { toast(err.message); }
+};
+$('#btnExcluir').onclick = async () => {
+  if (!confirm(`Excluir "${atual.nome}" com toda a equipe e as escalas? Não dá para desfazer.`)) return;
+  await api(`/api/equipes/${atual.id}`, {method: 'DELETE'}); gravar('unidade', ''); await carregaEquipes(); ir('escala');
+};
+
+// ================= férias e faltas =================
+const limitesMes = m => { const de = m + '-01'; return [de, soma(soma(soma(de, 32).slice(0, 7) + '-01', 0), -1)]; };
+$('#ocMes').onchange = () => telaOcorrencias();
 async function telaOcorrencias() {
   if (!$('#ocMes').value) $('#ocMes').value = mesAtual();
-  opcoesEquipe($('#ocFiltroEq'));
   const [de, ate] = limitesMes($('#ocMes').value);
-  let lista = await api(`/api/ocorrencias?de=${de}&ate=${ate}${$('#ocFiltroEq').value ? '&equipe=' + $('#ocFiltroEq').value : ''}`);
-  if ($('#ocFiltroTipo').value) lista = lista.filter(o => o.tipo === $('#ocFiltroTipo').value);
+  const lista = await api(`/api/ocorrencias?de=${de}&ate=${ate}`);
   const dias = o => o.tipo === 'banco_horas' ? `${+o.horas > 0 ? '+' : ''}${String(+o.horas).replace('.', ',')}h` : plural(Math.round((Date.parse(o.fim) - Date.parse(o.inicio)) / 864e5) + 1, 'dia', 'dias');
-  $('#ocLista').innerHTML = lista.length ? `<table class="tab"><thead><tr><th>Pessoa</th><th>Unidade</th><th>Tipo</th><th>Período</th><th class="n">Dias / horas</th><th>Observação</th><th class="edita"></th></tr></thead><tbody>
-    ${lista.map(o => `<tr><td><b>${esc(o.funcionario)}</b></td><td>${esc(o.equipe)}</td><td><span class="tipo tipo-${o.tipo}">${esc(ROTULO[o.tipo])}</span></td>
-      <td>${o.inicio === o.fim ? br(o.inicio) : br(o.inicio) + ' a ' + br(o.fim)}</td><td class="n">${dias(o)}</td><td>${esc(o.obs || '')}</td>
-      <td class="edita"><button class="link perigo" data-del-oc="${o.id}">Apagar</button></td></tr>`).join('')}</tbody></table>`
-    : `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Nada lançado neste mês</h2><p>Férias, atestados, faltas e banco de horas aparecem aqui.</p>${podeEditar() ? '<button class="btn" data-ir-oc>Lançar</button>' : ''}</div>`;
+  $('#ocLista').innerHTML = lista.length ? lista.map(o => `<li><div><b>${esc(o.funcionario)}</b> <span class="tipo tipo-${o.tipo}">${esc(ROTULO[o.tipo])}</span><br>
+      <span class="dica">${o.inicio === o.fim ? br(o.inicio) : br(o.inicio) + ' a ' + br(o.fim)} · ${dias(o)}${equipes.length > 1 ? ' · ' + esc(o.equipe) : ''}</span></div>
+      ${podeEditar() ? `<button class="link perigo" data-del-oc="${o.id}">Apagar</button>` : ''}</li>`).join('')
+    : '<li><span class="dica">Nada lançado neste mês.</span></li>';
   $$('[data-del-oc]').forEach(b => b.onclick = async () => {
-    if (!confirm('Apagar? A escala volta ao normal nesses dias.')) return;
+    if (!confirm('Apagar? A pessoa volta para a escala nesses dias.')) return;
     try { await api(`/api/ocorrencias/${b.dataset.delOc}`, {method: 'DELETE'}); toast('Apagado.'); telaOcorrencias(); } catch (err) { toast(err.message); }
   });
 }
-['#ocMes', '#ocFiltroEq', '#ocFiltroTipo'].forEach(s => $(s).onchange = () => telaOcorrencias());
 
-// ---------- fechamento do mês ----------
+// ================= fechamento do mês =================
 let fech = null;
-async function telaFechamento(mes) {
-  if (mes) $('#fechMes').value = mes;
-  if (!$('#fechMes').value) {
-    const d = new Date(); // até o dia 10, abre no mês anterior (época de fechar a folha)
-    $('#fechMes').value = d.getDate() <= 10 ? new Date(d.getFullYear(), d.getMonth() - 1, 15).toISOString().slice(0, 7) : mesAtual();
-  }
-  opcoesEquipe($('#fechEq'), 'Todas as unidades');
+['#fechMes', '#fechEq'].forEach(s => $(s).onchange = () => telaFechamento());
+async function telaFechamento() {
+  if (!$('#fechMes').value) { const d = new Date(); $('#fechMes').value = d.getDate() <= 10 ? new Date(d.getFullYear(), d.getMonth() - 1, 15).toISOString().slice(0, 7) : mesAtual(); }
+  const v = $('#fechEq').value;
+  $('#fechEq').innerHTML = '<option value="">Todas as unidades</option>' + equipes.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('');
+  $('#fechEq').value = v; $('#fechEq').closest('div').classList.toggle('hide', equipes.length < 2);
   fech = await api(`/api/relatorio?mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`);
   const nomeMes = new Date(fech.de + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
   $('#fechSub').textContent = `${fech.empresa || ''}${fech.cnpj ? ' · CNPJ ' + fech.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : ''} · ${nomeMes}`;
   const nomeMesCurto = $('#fechMes').value.split('-').reverse().join('/'), futuro = $('#fechMes').value > mesAtual();
   $('#fechStatus').innerHTML = fech.fechado
-    ? `<div class="status-mes"><div><span class="selo fechado">Mês fechado</span> <span class="dica">em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Números congelados: escalas, férias e faltas deste mês não mudam mais.</span></div>${conta.papel === 'dono' ? '<button class="btn sec pq" id="btnReabrir">Reabrir mês</button>' : ''}</div>`
-    : `<div class="status-mes"><div><span class="selo aberto">Mês aberto</span> <span class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou este mês. Os números podem mudar.' : 'Confira e feche o mês: o contador recebe o aviso e os números ficam congelados.'}</span></div>${podeEditar() && !futuro ? '<button class="btn pq" id="btnFecharMes">Fechar mês e avisar o contador</button>' : ''}</div>`;
+    ? `<div class="status-mes"><div><span class="selo fechado">Mês fechado</span></div><p class="dica">Fechado em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números não mudam mais.</p>${conta.papel === 'dono' ? '<button class="btn sec" id="btnReabrir">Reabrir o mês</button>' : ''}</div>`
+    : `<div class="status-mes"><div><span class="selo aberto">Mês aberto</span></div><p class="dica">${futuro ? 'Este mês ainda não começou.' : conta.papel === 'contador' ? 'A empresa ainda não fechou este mês. Os números podem mudar.' : 'No fim do mês, confira e feche. O contador recebe um aviso e os números ficam guardados.'}</p>${podeEditar() && !futuro ? '<button class="btn" id="btnFecharMes">Fechar o mês e avisar o contador</button>' : ''}</div>`;
   if ($('#btnFecharMes')) $('#btnFecharMes').onclick = async () => {
-    const semEscala = fech.linhas.filter(l => l.sem_escala).length;
-    if (semEscala && !confirm(`Atenção: ${plural(semEscala, 'pessoa tem', 'pessoas têm')} dias sem escala em ${nomeMesCurto}. Gere as escalas que faltam antes de fechar.\n\nFechar mesmo assim?`)) return;
-    if (!confirm(`Fechar ${nomeMesCurto}? Os números ficam congelados, o contador é avisado e as escalas do mês não podem mais ser alteradas.`)) return;
-    try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? 'Mês fechado. Seu contador foi avisado.' : 'Mês fechado. Dica: dê acesso ao seu contador.'); telaFechamento(); }
+    if (!confirm(`Fechar ${nomeMesCurto}? O contador é avisado e as escalas do mês não mudam mais.`)) return;
+    try { const r = await api('/api/fechamentos', {method: 'POST', body: {mes: $('#fechMes').value}}); toast(r.contadores_avisados ? 'Mês fechado. Seu contador foi avisado.' : 'Mês fechado. Dica: dê acesso ao seu contador em Mais.'); telaFechamento(); }
     catch (err) { toast(err.message); }
   };
   if ($('#btnReabrir')) $('#btnReabrir').onclick = async () => {
     if (!confirm(`Reabrir ${nomeMesCurto}? Depois de corrigir, feche de novo para avisar o contador.`)) return;
     await api('/api/fechamentos/' + $('#fechMes').value, {method: 'DELETE'}); toast('Mês reaberto.'); telaFechamento();
   };
-  $('#fechAvisos').innerHTML = fech.sem_matricula && fech.linhas.length ? `<div class="alerta" style="margin-bottom:14px">${plural(fech.sem_matricula, 'pessoa está', 'pessoas estão')} sem matrícula. Se o contador usar matrícula, preencha em Unidade › Pessoas › Editar.</div>` : '';
+  $('#fechAvisos').innerHTML = '';
   const L = fech.linhas;
-  if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Ninguém neste filtro.</p>'; $('#fechEspelho').innerHTML = ''; return; }
+  if (!L.length) { $('#fechResumo').innerHTML = '<p class="dica">Ninguém neste mês.</p>'; $('#fechEspelho').innerHTML = ''; return; }
   const n = v => v ? `<b>${v}</b>` : '<span class="dica">0</span>';
   const h = v => v ? `<b>${v > 0 ? '+' : ''}${String(v).replace('.', ',')}h</b>` : '<span class="dica">0</span>';
-  $('#fechResumo').innerHTML = `<table class="tab"><thead><tr><th>Pessoa</th><th>Unidade</th><th class="n">Trabalhados</th><th class="n">Folgas</th><th class="n">Domingos trab.</th><th class="n">Feriados trab.</th><th class="n">Faltas</th><th class="n">Atestado</th><th class="n">Férias</th><th class="n">Afast.</th><th class="n">Banco de horas</th><th class="n">Sem escala</th></tr></thead><tbody>
-    ${L.map(l => `<tr><td><b>${esc(l.nome)}</b>${l.matricula ? ` <span class="dica">${esc(l.matricula)}</span>` : ''}</td><td>${esc(l.equipe)}</td>
+  $('#fechResumo').innerHTML = `<table class="tab"><thead><tr><th>Pessoa</th>${equipes.length > 1 ? '<th>Unidade</th>' : ''}<th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th><th class="n">Faltas</th><th class="n">Atestado</th><th class="n">Férias</th><th class="n">Afast.</th><th class="n">Banco</th></tr></thead><tbody>
+    ${L.map(l => `<tr><td><b>${esc(l.nome)}</b>${l.matricula ? ` <span class="dica">${esc(l.matricula)}</span>` : ''}</td>${equipes.length > 1 ? `<td>${esc(l.equipe)}</td>` : ''}
       <td class="n">${n(l.trabalhados)}</td><td class="n">${n(l.folgas)}</td><td class="n">${n(l.domingos)}</td><td class="n">${n(l.feriados)}</td><td class="n">${n(l.faltas)}</td><td class="n">${n(l.atestado)}</td>
-      <td class="n">${n(l.ferias)}</td><td class="n">${n(l.afastamento)}</td><td class="n">${h(l.banco_mes)}</td><td class="n">${l.sem_escala ? `<span class="badge-esp">${l.sem_escala}</span>` : n(0)}</td></tr>`).join('')}</tbody></table>
-    <p class="dica" style="margin-top:10px">Feriado trabalhado: pagar em dobro ou dar outra folga (Lei 605/49). "Sem escala": dias do mês ainda sem escala gerada.</p>`;
+      <td class="n">${n(l.ferias)}</td><td class="n">${n(l.afastamento)}</td><td class="n">${h(l.banco_mes)}</td></tr>`).join('')}</tbody></table>
+    <p class="dica" style="margin-top:10px">Domingos e feriados = dias trabalhados. Feriado trabalhado: pagar em dobro ou dar outra folga (Lei 605/49).</p>`;
   $('#fechEspelho').innerHTML = `<table class="espelho"><thead><tr><th>Pessoa</th>${fech.dias.map(d => `<th class="${d.dia === 'Dom' ? 'dom' : ''} ${d.feriado ? 'fer' : ''}" title="${d.feriado ? esc(d.feriado) : ''}">${d.data.slice(8)}<br>${d.dia.slice(0, 1)}</th>`).join('')}</tr></thead><tbody>
     ${L.map(l => `<tr><td>${esc(l.nome)}</td>${l.codigos.map((c, i) => `<td class="${c ? 'c-' + c : ''} ${fech.dias[i].dia === 'Dom' && !c ? 'dom' : ''}">${CURTO[c] || ''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
-['#fechMes', '#fechEq'].forEach(s => $(s).onchange = () => telaFechamento());
 $('#btnImpFech').onclick = () => { document.body.classList.add('print-fech'); window.print(); document.body.classList.remove('print-fech'); };
 $('#btnCsv').onclick = async () => {
   $('#btnCsv').disabled = true;
@@ -734,44 +735,41 @@ $('#btnCsv').onclick = async () => {
   $('#btnCsv').disabled = false;
 };
 
-// ---------- espaço do contador ----------
+// ================= espaço do contador =================
 async function telaContador() {
   const r = await api('/api/contador');
   const mAnt = r.mes_anterior.split('-').reverse().join('/');
-  $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : 'Todas as empresas que liberarem acesso para você aparecem aqui.';
+  $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : '';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
-      <p>Peça para o seu cliente entrar na Escala Blindada, abrir <b>Contador e gestores</b> e dar acesso para o e-mail <b>${esc(eu.email)}</b>.</p>
-      <p class="dica">Assim que ele liberar, a empresa aparece aqui com as escalas, as faltas e o fechamento de cada mês.</p></div>`;
+      <p>Peça para o seu cliente abrir a Escala Blindada, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
+      <p class="dica">Assim que ele liberar, a empresa aparece aqui.</p></div>`;
     return;
   }
   $('#contEmpresas').innerHTML = `<div class="empresas">${r.empresas.map(e => `<article class="cartao emp-card">
       <h3>${esc(e.nome_fantasia || e.empresa)}</h3>
       <p class="meta">${e.cnpj ? 'CNPJ ' + esc(e.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')) + ' · ' : ''}${esc(e.porte_nome || '')}${e.uf ? ' · ' + esc(e.uf) : ''}</p>
       <div class="linha-st"><span>Pessoas</span><b>${e.funcionarios} em ${plural(e.unidades, 'unidade', 'unidades')}</b></div>
-      <div class="linha-st"><span>Fechamento de ${mAnt}</span>${e.fechado_ant ? '<span class="selo fechado">Fechado</span>' : '<span class="selo aberto">Aguardando a empresa</span>'}</div>
+      <div class="linha-st"><span>Fechamento de ${mAnt}</span>${e.fechado_ant ? '<span class="selo fechado">Fechado</span>' : '<span class="selo aberto">Aguardando</span>'}</div>
       <div class="linha-st"><span>Faltas e atestados em ${mAnt}</span><b>${e.faltas_atestados_ant}</b></div>
-      <div class="acoes"><button class="btn pq" data-abrir="${e.id}" data-mes="${r.mes_anterior}">Ver fechamento de ${mAnt}</button><button class="btn sec pq" data-abrir="${e.id}">Ver escalas</button></div>
+      <div class="acoes"><button class="btn pq" data-abrir="${e.id}" data-mes="${r.mes_anterior}">Fechamento de ${mAnt}</button><button class="btn sec pq" data-abrir="${e.id}">Ver a escala</button></div>
     </article>`).join('')}</div>`;
   $$('[data-abrir]').forEach(b => b.onclick = () => {
-    gravarConta(+b.dataset.abrir);
-    location.hash = b.dataset.mes ? 'fechamento' : 'visao';
+    gravar('conta', b.dataset.abrir); gravar('unidade', '');
     if (b.dataset.mes) try { sessionStorage.setItem('fechMes', b.dataset.mes); } catch {}
-    location.reload();
+    location.hash = b.dataset.mes ? 'fechamento' : 'escala'; location.reload();
   });
 }
 
-// ---------- contador e gestores ----------
+// ================= acessos =================
 async function telaAcessos() {
   const m = await api('/api/membros');
-  $('#listaMembros').innerHTML = m.length ? `<table class="tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Acesso</th><th>Situação</th><th></th></tr></thead><tbody>
-    ${m.map(x => `<tr><td><b>${esc(x.nome)}</b></td><td>${esc(x.email)}</td>
-      <td><select data-papel="${x.id}" style="width:auto"><option value="contador" ${x.papel === 'contador' ? 'selected' : ''}>Contador</option><option value="gestor" ${x.papel === 'gestor' ? 'selected' : ''}>Gestor</option></select></td>
-      <td>${x.ativo ? '<span class="badge-ok">Ativo</span>' : '<span class="badge-esp">Ainda não criou a senha</span>'}</td>
-      <td><button class="link perigo" data-rm="${x.id}">Remover</button></td></tr>`).join('')}</tbody></table>`
-    : '<p class="dica">Ninguém além de você tem acesso. Comece pelo seu contador: ele recebe um e-mail e já entra vendo tudo.</p>';
+  $('#listaMembros').innerHTML = m.map(x => `<li><div><b>${esc(x.nome)}</b> · ${esc(x.email)}</div>
+      <div class="form-linha"><div><select data-papel="${x.id}"><option value="contador" ${x.papel === 'contador' ? 'selected' : ''}>Contador</option><option value="gestor" ${x.papel === 'gestor' ? 'selected' : ''}>Gerente</option></select></div>
+      <div style="flex:0 0 auto">${x.ativo ? '<span class="badge-ok">Ativo</span>' : '<span class="badge-esp">Ainda não entrou</span>'}</div>
+      <div style="flex:0 0 auto"><button class="link perigo" data-rm="${x.id}">Tirar acesso</button></div></div></li>`).join('');
   $$('[data-papel]').forEach(s => s.onchange = async () => { try { await api(`/api/membros/${s.dataset.papel}`, {method: 'PATCH', body: {papel: s.value}}); toast('Alterado.'); } catch (err) { toast(err.message); } });
-  $$('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm('Remover este acesso? A pessoa deixa de ver a empresa na hora.')) return; await api(`/api/membros/${b.dataset.rm}`, {method: 'DELETE'}); telaAcessos(); });
+  $$('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm('Tirar o acesso? A pessoa deixa de ver a empresa na hora.')) return; await api(`/api/membros/${b.dataset.rm}`, {method: 'DELETE'}); telaAcessos(); });
 }
 $('#formMembro').onsubmit = async e => {
   e.preventDefault(); $('#erroMembro').textContent = ''; $('#conviteBox').innerHTML = '';
@@ -784,7 +782,7 @@ $('#formMembro').onsubmit = async e => {
   } catch (err) { $('#erroMembro').textContent = err.message; }
 };
 
-// ---------- empresa ----------
+// ================= empresa =================
 async function telaEmpresa() {
   const [c, h] = await Promise.all([api('/api/empresa'), api('/api/historico')]);
   $('#emNome').value = c.nome; $('#emRazao').value = c.razao_social; $('#emCidade').value = c.cidade;
@@ -792,19 +790,18 @@ async function telaEmpresa() {
   $('#emPorte').innerHTML = Object.entries(PORTES).map(([k, [n, d]]) => `<label><input type="radio" name="emPorte" value="${k}" ${c.porte === k ? 'checked' : ''}>${n}${d ? `<small>${d}</small>` : ''}</label>`).join('');
   $('#emUf').innerHTML = '<option value="">—</option>' + c.ufs.map(u => `<option ${c.uf === u ? 'selected' : ''}>${u}</option>`).join('');
   $('#emFer').value = c.feriados_locais.map(md => md.slice(3) + '/' + md.slice(0, 2)).join(', ');
-  $('#listaHist').innerHTML = h.length ? `<table class="tab"><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th></tr></thead><tbody>
-    ${h.slice(0, 100).map(x => `<tr><td class="dica" style="white-space:nowrap">${new Date(x.criado_em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</td><td>${esc(x.quem)}</td><td>${esc(x.acao)}</td></tr>`).join('')}</tbody></table>`
+  $('#listaHist').innerHTML = h.length ? `<table class="tab"><tbody>${h.slice(0, 60).map(x => `<tr><td class="dica" style="white-space:nowrap">${new Date(x.criado_em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</td><td>${esc(x.quem)}: ${esc(x.acao)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="dica">Nada registrado ainda.</p>';
 }
 $('#formEmpresa').onsubmit = async e => {
   e.preventDefault(); $('#erroEmpresa').textContent = '';
   try {
     await api('/api/empresa', {method: 'PUT', body: {nome: $('#emNome').value, razao_social: $('#emRazao').value, cnpj: $('#emCnpj').value, porte: $('input[name=emPorte]:checked')?.value, uf: $('#emUf').value, cidade: $('#emCidade').value, feriados_locais: $('#emFer').value}});
-    conta = await api('/api/conta'); $('#nomeEmpresa').textContent = conta.empresa || $('#emNome').value; toast('Dados da empresa salvos.');
+    conta = await api('/api/conta'); pintaTopo(); toast('Dados da empresa salvos.');
   } catch (err) { $('#erroEmpresa').textContent = err.message; }
 };
 
-// ---------- minha conta ----------
+// ================= minha conta =================
 function telaConta() { $('#contaEmail').textContent = eu.email; $('#mcNome').value = eu.nome || ''; $('#mcZap').value = eu.whatsapp || ''; }
 $('#formConta').onsubmit = async e => {
   e.preventDefault();
@@ -816,6 +813,5 @@ $('#formTrocaSenha').onsubmit = async e => {
   catch (err) { $('#erroSenhaConta').textContent = err.message; }
 };
 
-// mês escolhido no espaço do contador
 try { const m = sessionStorage.getItem('fechMes'); if (m) { $('#fechMes').value = m; sessionStorage.removeItem('fechMes'); } } catch {}
 if (tokenAcesso) telaSenha(); else iniciar();
