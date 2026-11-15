@@ -355,7 +355,9 @@ async function telaInicio() {
     !cont && { k: 'enviar', ir: 'escala/publicar', alt: 'Publique a escala por WhatsApp, PDF, Excel ou link. Cada colaborador vê as próprias folgas no celular.' },
     { k: 'kit', ir: 'materiais', alt: 'Kit RH, calculadora e plaquinhas: termo aditivo, folha de ponto e avisos prontos para imprimir.' },
     dono && { k: 'contador', ir: 'fechamento/contabilidade', alt: 'Acesso da contabilidade, sem custo: acompanha a escala e recebe o fechamento.' },
-  ].filter(b => b && !(ps && b.ir === ps.ir) && !(b.k === 'contador' && (!p.escala_enviada || p.contador)));
+  ].filter(b => b && !(ps && b.ir === ps.ir) && !(b.k === 'contador' && (!p.escala_enviada || p.contador))
+    // banner de passo já feito não aparece: quem já gerou não vê "Gerar escala", quem já publicou não vê "Publique"
+    && !(b.k === 'escala' && p.unidades) && !(b.k === 'enviar' && p.escala_enviada));
   let faixaFechada = false; try { faixaFechada = sessionStorage.getItem('faixaFechada') === '1'; } catch {}
   const carrosselImg = faixaFechada ? '' : `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
