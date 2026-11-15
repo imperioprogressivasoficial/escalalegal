@@ -60,7 +60,7 @@ fetch('/api/publico/escala/' + encodeURIComponent(token)).then(async r => {
 
 function desenha() {
   $('#titulo').textContent = dados.equipe;
-  $('#sub').textContent = dados.empresa || '';
+  $('#sub').textContent = dados.empresa && dados.empresa !== dados.equipe ? dados.empresa : '';
   const p = dados.pessoas.find(x => x.nome === eu);
   const semanas = [0, 1, 2, 3].filter(s => dados.pessoas.some(x => x.dias.slice(s * 7, s * 7 + 7).some(Boolean)));
   if (!semanas.includes(semana)) semana = semanas[0] ?? 0;
