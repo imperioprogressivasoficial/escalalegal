@@ -288,7 +288,7 @@ table.tabela-escala{width:100%;border-collapse:separate;border-spacing:4px;min-w
 /* aula da lei */
 .aula-etq{font:700 .78rem var(--corpo);text-transform:uppercase;letter-spacing:.05em;color:var(--azul);margin-top:6px}
 .aula h1{margin-top:4px}
-.aula-video{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:16px;margin-bottom:16px}.aula-video h2{font-size:1.15rem;margin-bottom:10px}.aula-video video{display:block;width:100%;aspect-ratio:16/9;border-radius:12px;background:#000;margin-bottom:8px}
+video.aula-video{display:block;width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;margin:6px 0 10px}
 .aula-txt{font-size:1.08rem;color:var(--tinta);margin-bottom:14px}
 .aula-ex{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:16px;margin-bottom:4px}
 .ex-tit{font-weight:700;color:var(--mut);font-size:.85rem;margin-bottom:8px}
@@ -744,13 +744,12 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-trilho::-webkit-scrollbar{display:none}
 .bn-item{flex:0 0 100%;scroll-snap-align:start;display:block;line-height:0}
 .bn-item img{display:block;width:100%;height:auto}
-.bn-ctl{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:2px;background:rgba(6,21,51,.72);color:#fff;border-radius:99px;padding:2px 4px 2px 10px;font:700 .75rem var(--corpo);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.bn-ctl{display:flex;justify-content:flex-end;align-items:center;gap:2px;margin-top:6px;color:var(--mut);font:700 .78rem var(--corpo)}
+.nf .bn-ctl{color:#93a3bd}
 .bn-ctl span{margin-right:2px;min-width:2.4em;text-align:center}
-.bn-ctl button{width:28px;height:28px;border:0;border-radius:50%;background:none;color:#fff;font-size:1.15rem;line-height:1;cursor:pointer}
-.bn-ctl button:hover{background:rgba(255,255,255,.16)}
-.bn-x{position:absolute;right:8px;top:8px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(6,21,51,.55);color:#fff;font-size:1rem;line-height:1;cursor:pointer;opacity:.75}
-.bn-x:hover{opacity:1}
-@media(max-width:760px){.bn-ctl{right:6px;bottom:6px;padding-left:8px}.bn-ctl button{width:26px;height:26px}.bn-x{right:6px;top:6px}}
+.bn-ctl button{width:30px;height:30px;border:0;border-radius:50%;background:none;color:inherit;font-size:1.15rem;line-height:1;cursor:pointer}
+.bn-ctl button:hover{background:rgba(127,140,160,.18)}
+.bn-ctl .bn-x{font-size:1.05rem;margin-left:4px}
 /* menu em grupos (sanfona) */
 .lateral nav{display:grid;gap:2px}
 .lat-item,.lat-g{width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px 12px;font-weight:600;color:var(--texto);cursor:pointer;font-size:.95rem;position:relative;display:block;text-decoration:none}
@@ -855,6 +854,7 @@ body.ini-escuro{background:#0b1220}
 .nf-txt b{color:#fff;font-size:.98rem;line-height:1.25}
 .nf-txt small{color:#93a3bd;font-size:.82rem;line-height:1.35}
 .nf-etq{font-style:normal;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#ffcd07}
+.nf-formatos{display:flex;gap:6px;margin-top:6px}.nf-formatos img{width:20px;height:20px;object-fit:contain;background:#fff;border-radius:5px;padding:2px}
 .nf-acao{margin-top:8px;justify-self:start;background:#168821;color:#fff;font-weight:800;font-size:.84rem;border-radius:8px;padding:7px 12px}
 .nf-num{display:grid;place-items:center;width:100%;height:100%;font:800 3.2rem/1 var(--display);font-stretch:85%;color:#fff;letter-spacing:-.02em}
 .nf-num.c0{background:linear-gradient(140deg,#1351b4,#0b2d6b)}.nf-num.c1{background:linear-gradient(140deg,#1f9a2c,#0d5c16)}
@@ -1161,13 +1161,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=24"></script>
-<script src="/cadastro.js?v=24"></script>
-<script src="/exportar.js?v=24"></script>
-<script src="/aula.js?v=24"></script>
-<script src="/extras.js?v=24"></script>
-<script src="/inicio.js?v=24"></script>
-<script src="/extras-materiais.js?v=24"></script>
-<script src="/app.js?v=24"></script>
+<script src="/scheduler.js?v=25"></script>
+<script src="/cadastro.js?v=25"></script>
+<script src="/exportar.js?v=25"></script>
+<script src="/aula.js?v=25"></script>
+<script src="/extras.js?v=25"></script>
+<script src="/inicio.js?v=25"></script>
+<script src="/extras-materiais.js?v=25"></script>
+<script src="/app.js?v=25"></script>
 </body>
 </html>

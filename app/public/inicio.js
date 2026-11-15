@@ -317,6 +317,7 @@ const cartaoImg = ({ ir, href, img, tit, sub, etq, cls = '', acao, alvo }) => {
     <span class="nf-txt">${etq ? `<em class="nf-etq">${etq}</em>` : ''}<b>${tit}</b>${sub ? `<small>${sub}</small>` : ''}${acao ? `<span class="nf-acao">${acao}</span>` : ''}</span>
   </${href ? 'a' : 'button'}>`;
 };
+const FORMATOS_MAT = { kit_rh: [['word', 'Word'], ['excel', 'Excel'], ['pdf', 'PDF']], calculadora: [['excel', 'Excel'], ['sheets', 'Google Planilhas']], plaquinhas: [['pdf', 'PDF'], ['powerpoint', 'PowerPoint']] };
 const foto = (src, alt = '') => `<img src="${src}" alt="${alt}" loading="lazy" decoding="async">`;
 async function telaInicio() {
   const v = $('#v-inicio'), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
@@ -338,8 +339,7 @@ async function telaInicio() {
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
         <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=3" width="1200" height="400">
         <img src="/img/banners/${b.k}-pc.webp?v=3" alt="${esc(b.alt)}" width="2400" height="300" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
-      <div class="bn-ctl"><span id="bnN" aria-live="polite">1/${bannersImg.length}</span><button type="button" id="bnAnt" aria-label="Destaque anterior">‹</button><button type="button" id="bnProx" aria-label="Próximo destaque">›</button></div>
-      <button type="button" class="bn-x" id="bnX" aria-label="Esconder os destaques">×</button>
+      <div class="bn-ctl"><span id="bnN" aria-live="polite">1/${bannersImg.length}</span><button type="button" id="bnAnt" aria-label="Destaque anterior">‹</button><button type="button" id="bnProx" aria-label="Próximo destaque">›</button><button type="button" class="bn-x" id="bnX" aria-label="Esconder os destaques">×</button></div>
     </section>`;
   const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
       <div class="ban-quiz-txt"><span class="ban-etq">Próximo passo</span><h2 id="tQuiz">Monte a escala da sua equipe em 2 minutos</h2>
@@ -359,16 +359,16 @@ async function telaInicio() {
   // 2. aula da nova lei: o vídeo do app (quando existir) e as 8 lições
   const lic = typeof licoes === 'function' ? licoes() : [];
   const aula = [
-    video && `<button type="button" class="nf-card video" role="listitem" data-video><span class="nf-arte"><img src="/video/aula-app.jpg?v=1" alt="" loading="lazy" decoding="async" class="nf-poster"><span class="nf-play" aria-hidden="true"></span></span>
-      <span class="nf-txt"><em class="nf-etq">Vídeo</em><b>Como usar o app</b><small>Vídeo de 1 min, com legenda</small></span></button>`,
-    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: `<span class="nf-num c${i % 4}" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>`, tit: esc(l.tit), sub: `Lição ${i + 1} de ${lic.length} · 1 min`, cls: 'aula' })),
+    video && `<button type="button" class="nf-card video" role="listitem" data-ir="aula"><span class="nf-arte"><img src="/video/aula-app.jpg?v=1" alt="" loading="lazy" decoding="async" class="nf-poster"><span class="nf-play" aria-hidden="true"></span></span>
+      <span class="nf-txt"><em class="nf-etq">Aula 1 · Vídeo</em><b>Como usar o app</b><small>1 min, com legenda</small></span></button>`,
+    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: `<span class="nf-num c${i % 4}" aria-hidden="true">${String(i + 2).padStart(2, '0')}</span>`, tit: esc(l.tit), sub: `Aula ${i + 2} de ${lic.length + 1} · A nova lei · 1 min`, cls: 'aula' })),
   ].filter(Boolean);
   // 3. seus materiais (comprados: baixar; não comprados: preço e liberar)
   const CAPA = { kit_rh: ['Kit RH', 'Termo aditivo, comunicado e folha de ponto'], calculadora: ['Calculadora', 'Horas, custo e hora extra da 5x2'], plaquinhas: ['Plaquinhas', 'Avisos prontos para imprimir'] };
   const mats = (Array.isArray(extras) ? extras : []).map(x => cartaoImg({
     ...(x.comprado ? { ir: 'materiais' } : { href: x.checkout, alvo: true }),
     img: `<span class="nf-capa ${esc(x.extra)}" aria-hidden="true"><i></i><b>${esc(CAPA[x.extra]?.[0] || x.nome)}</b></span>`,
-    tit: esc(x.nome), sub: esc(CAPA[x.extra]?.[1] || x.resumo || ''), cls: 'mat',
+    tit: esc(x.nome), sub: esc(CAPA[x.extra]?.[1] || x.resumo || '') + `<span class="nf-formatos">${(FORMATOS_MAT[x.extra] || []).map(([f, n]) => `<img src="/img/formatos/${f}.svg?v=1" alt="${n}" width="20" height="20" loading="lazy">`).join('')}</span>`, cls: 'mat',
     etq: x.comprado ? 'Liberado' : '', acao: x.comprado ? 'Baixar' : `R$ ${Number(x.preco).toFixed(2).replace('.', ',')} · Liberar`,
   }));
   // 4. atalhos
@@ -387,20 +387,12 @@ async function telaInicio() {
       <p class="nf-data">${dataLonga(hojeIso())}${atual ? ` · ${esc(atual.nome)}` : ''}${hojeU ? ` · <b data-conta="${hojeU.trabalham.length}">${hojeU.trabalham.length}</b> trabalham hoje` : ''}</p></header>
     ${quiz}${carrosselImg}${aviso}
     ${fileira('fContinuar', 'Continue de onde parou', continuar)}
-    ${fileira('fAula', 'Aula da nova lei', aula, '<button class="nf-ver" data-ir="aula">Ver tudo</button>')}
+    ${fileira('fAula', 'Aulas', aula, '<button class="nf-ver" data-ir="aula">Ver tudo</button>')}
     ${fileira('fMat', 'Seus materiais', mats, '<button class="nf-ver" data-ir="materiais">Ver tudo</button>')}
     ${fileira('fAtalhos', 'Atalhos', atalhos)}
   </div>`;
   ligaCarrosselImg(); animaContadores(v);
   $$('#v-inicio [data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
-  const bv = $('#v-inicio [data-video]');
-  if (bv) bv.onclick = abreVideoAula;
-}
-function abreVideoAula() {
-  {
-    folha('<h2>Como usar o app</h2><video controls autoplay playsinline preload="none" poster="/video/aula-app.jpg?v=1" style="width:100%;border-radius:14px;margin-top:12px;background:#000"><source src="/video/aula-app.mp4?v=1" type="video/mp4"><track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>');
-    $('#folha').addEventListener('close', () => $('#folha video')?.pause(), { once: true });
-  }
 }
 
 // escala mandada para a equipe (qualquer saída: WhatsApp, PDF, Excel, link...) marca o passo do progresso
@@ -415,7 +407,7 @@ window.marcaEnviada = () => {
 // Menu em grupos que abrem e fecham (sanfona). O grupo da tela atual abre sozinho; os que a pessoa abriu ficam salvos.
 function itensMenu() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador', ed = podeEditar();
-  const aprender = { g: 'aprender', t: 'Aprender', itens: [['@video', 'Aula do app (vídeo)'], ['aula', 'Aula da nova lei'], ['@ajuda', 'Ajuda']] };
+  const aprender = { g: 'aprender', t: 'Aprender', itens: [['aula', 'Aulas'], ['@ajuda', 'Ajuda']] };
   if (mc) return [['contador', 'Suas empresas'], aprender, { g: 'config', t: 'Configurações', itens: [['conta', 'Minha conta'], ['instalar', 'Colocar na tela inicial']] }];
   if (cont) return [
     { g: 'escala', t: 'Escala', itens: [['escala', 'Escala da semana'], ['tabela', 'Baixar ou imprimir']] },
@@ -440,7 +432,6 @@ const gruposAbertos = () => { try { return new Set(JSON.parse(ler('menuAberto') 
 function botaoMenu([r, t], sub) {
   const cls = sub ? 'lat-item sub' : 'lat-item';
   if (r === '@ajuda') return `<a class="${cls}" href="/ajuda">${esc(t)}</a>`;
-  if (r === '@video') return `<button type="button" class="${cls}" data-acao="video">${esc(t)}</button>`;
   if (r === '@outra') return `<button type="button" class="${cls}" data-acao="outra">${esc(t)}</button>`;
   if (r.startsWith('@un:')) { const id = +r.slice(4); return `<button type="button" class="${cls} ${id === atual?.id ? 'atual' : ''}" data-unidade="${id}">${esc(t)}</button>`; }
   return `<button type="button" class="${cls}" data-ir="${r}" data-lat="${r.split('/')[0] === 'empresa' && r.includes('/') ? 'historico' : r}">${esc(t)}</button>`;
@@ -515,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (e.target.closest('[data-sair]')) sair();
     else if (g) { const el = g.closest('.lat-grupo'); abreGrupo(el.dataset.grupo, !el.classList.contains('aberto')); }
     else if (un) trocaUnidade(+un.dataset.unidade);
-    else if (acao === 'video') { fechaGaveta(); abreVideoAula(); }
     else if (acao === 'outra') { fechaGaveta(); folhaOutraEmpresa(); }
   });
   // menu do usuário no topo (computador): Minha conta e Sair

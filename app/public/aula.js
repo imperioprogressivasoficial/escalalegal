@@ -51,40 +51,47 @@ function licoes() {
       exp: 'Ajuda. Em uma fiscalização ou processo, a escala por escrito mostra que as folgas foram dadas.'},
   ];
 }
+// Aulas: a 1 é o vídeo de como usar o app; da 2 à 9, a nova lei. aulaI 0 = vídeo, aulaI k = lição k da lei.
 function telaAula() {
-  const L = licoes(), total = L.length;
+  const L = licoes(), total = L.length + 1;
   if (aulaI >= total) {
-    $('#v-aula').innerHTML = `<div class="quiz"><div class="vazio quiz-oi"><img src="/img/mascote.svg?v=20261115b" alt=""><h1>Pronto! Você já sabe o principal.</h1>
-      <p>A Sua Escala 5x2 já monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
+    $('#v-aula').innerHTML = `<div class="quiz"><div class="vazio quiz-oi"><img src="/img/mascote.svg?v=20261115b" alt=""><h1>Pronto! Você terminou as aulas.</h1>
+      <p>Você já sabe usar o app e o principal da nova lei. A Sua Escala 5x2 monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
       <button class="btn cheio" data-ir="escala">Ver minha escala</button>
-      <p style="text-align:center;margin-top:14px"><a class="link" href="/ajuda">Ler a ajuda completa</a> · <button class="link" id="aulaDeNovo">Ver a aula de novo</button></p></div>`;
+      <p style="text-align:center;margin-top:14px"><a class="link" href="/ajuda">Ler a ajuda completa</a> · <button class="link" id="aulaDeNovo">Ver as aulas de novo</button></p></div>`;
     $('#aulaDeNovo').onclick = () => { aulaI = 0; telaAula(); };
     return;
   }
-  const l = L[aulaI];
-  // na primeira lição, a aula em vídeo de como usar o app vem antes
-  const video = aulaI === 0 ? `<section class="aula-video" aria-labelledby="tAulaVideo"><h2 id="tAulaVideo">Aula: como usar o app</h2>
-    <video controls preload="none" playsinline poster="/video/aula-app.jpg?v=1"><source src="/video/aula-app.mp4?v=1" type="video/mp4">
-      <track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>
-    <p class="dica">1 minuto, com legenda. Depois, as 8 lições da nova lei.</p></section>` : '';
-  $('#v-aula').innerHTML = `${video}<div class="quiz">
-    <div class="quiz-topo"><button class="link" id="aulaVolta">‹ ${aulaI ? 'Voltar' : 'Sair'}</button><span>Lição ${aulaI + 1} de ${total}</span></div>
-    <div class="passos"><span class="on" style="flex:${aulaI + 1}"></span><span style="flex:${Math.max(total - aulaI - 1, 0.0001)}"></span></div>
+  const topo = `<div class="quiz-topo"><button class="link" id="aulaVolta">‹ ${aulaI ? 'Voltar' : 'Sair'}</button><span>Aula ${aulaI + 1} de ${total}</span></div>
+    <div class="passos"><span class="on" style="flex:${aulaI + 1}"></span><span style="flex:${Math.max(total - aulaI - 1, 0.0001)}"></span></div>`;
+  const proximo = `<button class="btn cheio fixo-baixo" id="aulaProx">${aulaI === total - 1 ? 'Terminar' : 'Próxima aula'}</button>`;
+  if (aulaI === 0) {
+    $('#v-aula').innerHTML = `<div class="quiz">${topo}
+      <div class="quiz-q aula"><p class="aula-etq">Aula 1 · Vídeo</p><h1>Como usar o app</h1>
+        <p class="aula-txt">Em 1 minuto, com legenda: a semana, trocar uma folga, lançar falta e mandar a escala para a equipe.</p>
+        <video class="aula-video" controls preload="none" playsinline poster="/video/aula-app.jpg?v=1"><source src="/video/aula-app.mp4?v=1" type="video/mp4">
+          <track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>
+        <p class="dica">Depois vêm as 8 aulas da nova lei, de 1 minuto cada.</p></div>
+      ${proximo}</div>`;
+  } else {
+    const l = L[aulaI - 1];
+    $('#v-aula').innerHTML = `<div class="quiz">${topo}
     <div class="quiz-q aula">
-      <p class="aula-etq">A nova lei, sem juridiquês</p>
+      <p class="aula-etq">Aula ${aulaI + 1} · A nova lei, sem juridiquês</p>
       <h1>${l.tit}</h1>
       <p class="aula-txt">${l.texto}</p>
       <div class="aula-ex">${l.exemplo}</div>
       <div class="nota info"><b>Na prática:</b> ${l.pratica}</div>
       <div class="aula-teste"><p><b>Teste rápido:</b> ${esc(l.p)}</p><div class="lado">${l.op.map((o, i) => `<button class="btn sec" data-r="${i}">${esc(o)}</button>`).join('')}</div><div id="aulaResp"></div></div>
     </div>
-    <button class="btn cheio fixo-baixo" id="aulaProx">${aulaI === total - 1 ? 'Terminar' : 'Próxima lição'}</button></div>`;
-  $$('[data-r]').forEach(b => b.onclick = () => {
-    const ok = +b.dataset.r === l.certa;
-    $$('[data-r]').forEach(x => { x.disabled = true; x.classList.toggle('certa', +x.dataset.r === l.certa); x.classList.toggle('errada', x === b && !ok); });
-    $('#aulaResp').innerHTML = `<div class="nota ${ok ? 'ok' : ''}">${ok ? 'Isso! ' : 'Quase. '}${esc(l.exp)}</div>`;
-  });
-  $('#aulaVolta').onclick = () => { if (!aulaI) return ir(podeEditar() ? 'escala' : 'mais'); aulaI--; telaAula(); };
-  $('#aulaProx').onclick = () => { aulaI++; telaAula(); window.scrollTo(0, 0); };
+    ${proximo}</div>`;
+    $$('[data-r]').forEach(b => b.onclick = () => {
+      const ok = +b.dataset.r === l.certa;
+      $$('[data-r]').forEach(x => { x.disabled = true; x.classList.toggle('certa', +x.dataset.r === l.certa); x.classList.toggle('errada', x === b && !ok); });
+      $('#aulaResp').innerHTML = `<div class="nota ${ok ? 'ok' : ''}">${ok ? 'Isso! ' : 'Quase. '}${esc(l.exp)}</div>`;
+    });
+  }
+  $('#aulaVolta').onclick = () => { if (!aulaI) return ir(podeEditar() ? 'inicio' : 'mais'); aulaI--; telaAula(); };
+  $('#aulaProx').onclick = () => { $('#v-aula video')?.pause(); aulaI++; telaAula(); window.scrollTo(0, 0); };
   window.scrollTo(0, 0);
 }

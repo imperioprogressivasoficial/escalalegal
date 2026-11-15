@@ -197,7 +197,7 @@ async function rota() {
     else if (v === 'personalizar') telaPersonalizar();
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
-    else if (v === 'aula') { aulaI = Math.max(0, +extra || 0); telaAula(); }
+    else if (v === 'aula') { aulaI = extra === undefined || extra === '' || extra === 'app' || isNaN(+extra) ? 0 : Math.max(0, +extra) + 1; telaAula(); }
     else if (v === 'materiais') await renderizarMateriais($('#v-materiais'));
     else if (v === 'instalar') telaInstalar();
     else if (v === 'indique') await telaIndique();
@@ -592,7 +592,7 @@ async function telaEscala() {
   if (pedido !== semData) return; // trocou de semana enquanto carregava
   semana = r;
   let aviso = '';
-  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar". <button class="link" data-ir="aula">Entenda a lei em 3 minutos ›</button></div>`;
+  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar". <button class="link" data-ir="aula">Ver as aulas ›</button></div>`;
   if (!recem && r.escala) aviso += avisoInstalar();
   if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
   $('#escAviso').innerHTML = aviso;
@@ -671,7 +671,7 @@ function htmlAnalise(a) {
 function folhaAnalise() {
   const e = semana.escala, fatia = {...e, inicio: semData, semanas: 1, dados: [semanaDados()]};
   folha(`<h2>Esta semana e a lei</h2>${htmlAnalise(Escala.analisar(fatia, opcoesAnalise(atual)))}
-    <button class="btn cheio sec" data-ir="aula" style="margin-top:12px">Entender a lei em 3 minutos</button>`);
+    <button class="btn cheio sec" data-ir="aula/0" style="margin-top:12px">Ver as aulas da nova lei</button>`);
 }
 async function trocaCelulas(pares, msg) {
   try {
@@ -852,7 +852,7 @@ function telaMais() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
   const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
   let h = '';
-  h += `<ul class="menu"><li><button data-ir="aula" class="menu-aula"><span>Aprenda a nova lei em 3 minutos<small>Sem juridiquês, com exemplos e teste rápido</small></span><span class="seta">›</span></button></li></ul>`;
+  h += `<ul class="menu"><li><button data-ir="aula" class="menu-aula"><span>Aulas: o app e a nova lei<small>Vídeo de 1 minuto e 8 aulas curtas, com teste rápido</small></span><span class="seta">›</span></button></li></ul>`;
   if (mc) h += `<ul class="menu" style="margin-top:8px">${item('contador', 'Suas empresas', 'Clientes que liberaram o acesso')}</ul>`;
   else {
     h += '<p class="menu-tit">Escala</p><ul class="menu">';

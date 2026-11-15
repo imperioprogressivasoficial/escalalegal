@@ -19,8 +19,10 @@
 .mat-lista a{display:flex;align-items:center;gap:12px;padding:12px 18px;text-decoration:none;color:var(--tinta,#0c1b33);font-weight:600;font-size:.94rem}
 .mat-lista a:hover{background:var(--cinza,#f3f5f8)}
 .mat-lista a.mat-tudo{background:var(--azul-claro,#e8f0fb);font-weight:800}
-.mat-tipo{flex:none;width:46px;text-align:center;font:800 .68rem/1 var(--corpo,system-ui,sans-serif);padding:6px 0;border-radius:6px;color:#fff;letter-spacing:.03em}
-.mat-tipo.pdf{background:#c4161c}.mat-tipo.docx{background:#1351b4}.mat-tipo.xlsx{background:#168821}.mat-tipo.pptx{background:#c2571a}.mat-tipo.zip{background:#071d41}
+.mat-logo{flex:none;width:30px;height:30px;object-fit:contain}
+.mat-formatos{display:flex;gap:8px;margin-top:10px}.mat-formatos img{width:22px;height:22px;object-fit:contain}
+.mat-tipo{flex:none;width:40px;text-align:center;font:800 .62rem/1 var(--corpo,system-ui,sans-serif);padding:4px 0;border-radius:5px;color:var(--mut,#566173);background:var(--cinza,#f3f5f8);letter-spacing:.03em}
+
 .mat-nome{flex:1;min-width:0}.mat-nome small{display:block;color:var(--mut,#566173);font-weight:500;font-size:.78rem}
 .mat-baixar{flex:none;color:var(--azul,#1351b4);font-weight:800;font-size:.85rem}
 .mat-oferta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-top:1px solid var(--linha,#dfe3ea);background:var(--cinza,#f3f5f8)}
@@ -32,6 +34,10 @@
 @media (max-width:520px){.mat-cab{padding:16px 14px 12px}.mat-lista a{padding:12px 14px}.mat-oferta{padding:14px}.mat-comprar{width:100%;text-align:center}}`;
   const QUERO = { kit_rh: 'Quero o Kit RH', calculadora: 'Quero a Calculadora', plaquinhas: 'Quero as Plaquinhas' };
   const CAPA = { kit_rh: 'Kit RH', calculadora: 'Calcu&shy;ladora', plaquinhas: 'Plaqui&shy;nhas' };
+  // logos oficiais dos formatos (img/formatos: Word, Excel, PowerPoint e PDF do Wikimedia Commons; ZIP é desenho próprio)
+  const LOGO = { pdf: 'pdf', docx: 'word', xlsx: 'excel', pptx: 'powerpoint', zip: 'zip' };
+  const FORMATOS = { kit_rh: [['word', 'Word'], ['excel', 'Excel'], ['pdf', 'PDF']], calculadora: [['excel', 'Excel'], ['sheets', 'Google Planilhas']], plaquinhas: [['pdf', 'PDF'], ['powerpoint', 'PowerPoint']] };
+  const logos = k => (FORMATOS[k] || []).map(([f, n]) => `<img src="/img/formatos/${f}.svg?v=1" alt="${n}" title="${n}" width="22" height="22" loading="lazy">`).join('');
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const kb = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
   const reais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
@@ -44,11 +50,11 @@
 
   function cartao(x, cid) {
     const capa = `<div class="mat-capa" aria-hidden="true"><span>${CAPA[x.extra] || ''}</span></div>`;
-    const cab = `<div class="mat-cab">${capa}<div><h2>${esc(x.nome)}</h2><p>${esc(x.resumo)}</p>${x.comprado ? '<span class="mat-selo">Liberado para você</span>' : ''}</div></div>`;
+    const cab = `<div class="mat-cab">${capa}<div><h2>${esc(x.nome)}</h2><p>${esc(x.resumo)}</p><span class="mat-formatos">${logos(x.extra)}</span>${x.comprado ? '<span class="mat-selo">Liberado para você</span>' : ''}</div></div>`;
     if (x.comprado) {
       const q = cid ? `?conta=${encodeURIComponent(cid)}` : '';
       const itens = x.arquivos.map(a => `<li><a class="${a.tipo === 'zip' ? 'mat-tudo' : ''}" href="${esc(a.url + q)}" download="${esc(a.arquivo)}">
-        <span class="mat-tipo ${esc(a.tipo)}">${esc(a.tipo.toUpperCase())}</span>
+        <img class="mat-logo" src="/img/formatos/${LOGO[a.tipo] || 'zip'}.svg?v=1" alt="" width="30" height="30" loading="lazy"><span class="mat-tipo ${esc(a.tipo)}">${esc(a.tipo.toUpperCase())}</span>
         <span class="mat-nome">${esc(a.titulo)}${a.bytes ? `<small>${kb(a.bytes)}</small>` : ''}</span>
         <span class="mat-baixar">Baixar</span></a></li>`).join('');
       return `<article class="mat-card">${cab}<ul class="mat-lista">${itens}</ul></article>`;

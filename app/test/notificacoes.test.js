@@ -37,6 +37,10 @@ test('notificações: escopo por empresa, papel e sem repetir', { skip: pular },
   assert.ok(na.itens.some(x => x.tipo === 'escala' && /Loja A/.test(x.titulo)));
   assert.ok(na.nao_lidas >= 1);
 
+  // gerar de novo no mesmo dia (refazer duas vezes) não repete o aviso da unidade
+  const eqA = r.json.equipe.id;
+  for (const de of ['2027-03-08', '2027-03-15']) assert.equal((await chama(`/api/equipes/${eqA}/refazer`, { method: 'POST', cookie: a.cookie, body: { de } })).status, 200);
+  assert.equal((await pool.query("select count(*)::int c from notificacoes where conta_id=$1 and tipo='escala'", [a.id])).rows[0].c, 1);
   // B não vê nada de A e não consegue marcar a notificação de A
   const nb = (await chama('/api/notificacoes', { cookie: b.cookie })).json;
   assert.ok(!nb.itens.some(x => /Loja A/.test(x.titulo)));
