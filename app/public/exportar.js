@@ -68,6 +68,8 @@ const SAIDAS = {
   link: ['LINK', 'Link da equipe', 'Cada colaborador vê as próprias folgas'],
   copiar: ['TEXTO', 'Copiar texto', 'Para colar em qualquer mensagem'],
   pdf: ['PDF', 'PDF', 'Para imprimir ou arquivar'],
+  docx: ['DOCX', 'Word', 'Documento editável'],
+  pptx: ['PPTX', 'PowerPoint', 'Para TV e mural'],
   xlsx: ['XLSX', 'Excel', 'Planilha com as cores'],
   csv: ['CSV', 'CSV', 'Abre em qualquer planilha'],
   sheets: ['SHEETS', 'Google Planilhas', 'Na sua planilha, sempre atualizada'],
@@ -75,10 +77,10 @@ const SAIDAS = {
   imprimir: ['IMPRIMIR', 'Imprimir', 'Para o mural'],
 };
 function botoesExportar() {
-  const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', csv: 'csv', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
+  const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', docx: 'word', xlsx: 'excel', pptx: 'powerpoint', csv: 'csv', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
   const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg?v=20261115b" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
   return `<p class="saida-tit">Compartilhar com a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
-    <p class="saida-tit">Arquivos e contabilidade</p><div class="tiles">${['pdf', 'xlsx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir', 'csv'].map(tile).join('')}</div>`;
+    <p class="saida-tit">Arquivos e contabilidade</p><div class="tiles">${['pdf', 'docx', 'xlsx', 'pptx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir', 'csv'].map(tile).join('')}</div>`;
 }
 function folhaExportar() {
   folha(`<h2>Publicar e compartilhar</h2><p style="margin-top:4px" class="dica">4 semanas a partir de ${dm(semData)}, com o resumo da lei.</p>
@@ -116,12 +118,14 @@ function ligaExportar(semsProntas) {
       const nome = `escala-${slug(atual.nome)}-${sems[0].inicio}`;
       if (tipo === 'pdf') baixar(await pdfDaEscala(sems), nome + '.pdf');
       else if (tipo === 'xlsx') baixar(xlsxDaEscala(sems), nome + '.xlsx');
+      else if (tipo === 'docx') baixar(new Blob([Ooxml.zipBytes(Ooxml.arquivosDocx(dadosOoxml(sems)))], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nome + '.docx');
+      else if (tipo === 'pptx') baixar(new Blob([Ooxml.zipBytes(Ooxml.arquivosPptx(dadosOoxml(sems)))], {type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}), nome + '.pptx');
       else if (tipo === 'csv') baixar(csvDaEscala(sems), nome + '.csv');
       else if (tipo === 'jpg') baixar(await jpgDaEscala(sems), nome + '.jpg');
       else if (tipo === 'copiar') await copiar(textoDaEscala(sems), 'Copiado. Cole no WhatsApp ou onde quiser.');
       else if (tipo === 'imprimir') { if ($('#folha').open) fechaFolha(); imprimirSems(sems); }
       else if (tipo === 'zap') await enviaZap(sems, nome);
-      if (['pdf', 'xlsx', 'csv', 'jpg'].includes(tipo)) toast('Baixado. Olhe na pasta de downloads.');
+      if (['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'jpg'].includes(tipo)) toast('Baixado. Confira a pasta de downloads.');
     } catch (err) { toast(err.message); }
     b.disabled = false; if (sm) sm.textContent = antes;
   });
@@ -138,6 +142,16 @@ async function folhaLink() {
     $('#lkCopiar').onclick = () => copiar(msg, 'Link copiado. Cole no grupo da equipe.');
     $('#lkVolta').onclick = folhaExportar;
   } catch (err) { toast(err.message); }
+}
+// Word e PowerPoint (ooxml.js): a mesma escala, em tabela por semana
+function dadosOoxml(sems) {
+  return {empresa: conta.empresa || atual.nome, unidade: atual.nome, semanas: sems.map(w => ({
+    titulo: `Semana de ${br(w.inicio)} a ${br(fimSemana(w))}`,
+    dias: DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}`),
+    feriados: DIAS.map((_, i) => !!Escala.feriado(soma(w.inicio, i), conta.ctx)),
+    linhas: w.linhas.map((l, f) => ({nome: w.funcionarios[f].nome, cels: l.map((c, d) => ({txt: rotuloCel(c, w.abertos[d]), tipo: !w.abertos[d] ? 'X' : COD[c] ? 'A' : c}))})),
+    total: DIAS.map((_, d) => w.abertos[d] ? `${w.linhas.filter(x => x[d] === 'T').length} (mín. ${w.minimo[d]})` : '–'),
+  }))};
 }
 const slug = t => String(t || 'escala').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'escala';
 function baixar(blob, nome) {
