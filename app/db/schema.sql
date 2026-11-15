@@ -229,3 +229,30 @@ create table if not exists config (
   valor text,
   atualizado_em timestamptz not null default now()
 );
+
+-- primeiro acesso por função: jornada e folgas de cada função (o motor usa por pessoa)
+alter table equipes add column if not exists funcoes jsonb not null default '[]'::jsonb;
+alter table funcionarios add column if not exists dias_semana int not null default 5;
+alter table funcionarios add column if not exists entrada text;
+alter table funcionarios add column if not exists saida text;
+alter table funcionarios add column if not exists intervalo_min int;
+alter table funcionarios add column if not exists folga_pref jsonb not null default '[]'::jsonb;
+alter table escalas add column if not exists ajustes jsonb not null default '[]'::jsonb;
+
+-- ---------- v9: materiais extras (order bumps do checkout: Kit RH, Calculadora, Plaquinhas) ----------
+-- um registro por e-mail e extra; reembolso/chargeback do extra muda só o status dele
+create table if not exists extras_compras (
+  id serial primary key,
+  email text not null,
+  extra text not null,
+  transacao text,
+  status text not null default 'aprovada',
+  origem text,
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now(),
+  unique (email, extra)
+);
+alter table extras_compras drop constraint if exists extras_compras_extra_check;
+alter table extras_compras add constraint extras_compras_extra_check check (extra in ('kit_rh', 'calculadora', 'plaquinhas'));
+alter table extras_compras drop constraint if exists extras_compras_status_check;
+alter table extras_compras add constraint extras_compras_status_check check (status in ('aprovada', 'reembolsada'));

@@ -131,10 +131,6 @@ async function iniciar() {
   gravar('conta', conta.id);
   document.body.classList.toggle('so-leitura', !podeEditar());
   $('#telaEntrada').classList.add('hide'); $('#telaApp').classList.remove('hide');
-  // contador olhando um cliente: a 2ª aba vira o fechamento
-  const nav = $('#navPessoas');
-  if (conta.papel === 'contador') { nav.dataset.ir = 'fechamento'; nav.textContent = 'Fechamento'; $('#navInicio').classList.add('hide'); $('.barra-baixo .in').classList.add('tres'); }
-  $('#barraBaixo').classList.toggle('hide', ehModoContador());
   pintaLateral();
   await carregaEquipes();
   rota();
@@ -172,26 +168,27 @@ async function rota() {
   if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique'].includes(v)) v = 'contador';
   if (!v) v = conta.papel === 'contador' ? 'escala' : 'inicio';
   // dono sem unidade: primeiro o cadastro completo da empresa, depois o quiz da escala
-  if (!mc && conta.papel === 'dono' && !equipes.length && !['comecar', 'cadastro', 'conta'].includes(v)) v = conta.cadastro_ok ? 'comecar' : 'cadastro';
+  if (!mc && conta.papel === 'dono' && !equipes.length && !conta.cadastro_ok && !['comecar', 'cadastro', 'conta'].includes(v)) v = 'cadastro';
+  if (!mc && conta.papel === 'dono' && !equipes.length && ['escala', 'pessoas', 'tabela', 'funcionamento', 'ocorrencias', 'resultado', 'personalizar'].includes(v)) v = 'inicio';
   if (v === 'comecar' && conta.papel === 'dono' && !conta.cadastro_ok && extra !== 'unidade') v = 'cadastro';
   if (!document.getElementById('v-' + v) || (['acessos', 'empresa', 'cadastro'].includes(v) && conta.papel !== 'dono')
-    || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : conta.papel === 'contador' ? 'escala' : 'inicio';
+    || (['comecar', 'pessoas', 'funcionamento', 'personalizar'].includes(v) && !podeEditar())) v = mc ? 'contador' : conta.papel === 'contador' ? 'escala' : 'inicio';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
+  fechaGaveta();
   ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
-  const noMais = ['funcionamento', 'ocorrencias', 'fechamento', 'acessos', 'empresa', 'conta', 'instalar', 'indique'].includes(v) && conta.papel !== 'contador';
-  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (noMais && b.dataset.ir === 'mais') || (v === 'tabela' && b.dataset.ir === 'escala')));
   pintaLateral(); marcaLateral(v);
-  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio'].includes(v));
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio', 'resultado'].includes(v));
   $('#principal').classList.toggle('quiz-pg', foco);
   document.body.classList.toggle('modo-foco', foco);
-  $('#barraBaixo').classList.toggle('hide', foco || v === 'aula' || mc);
   window.scrollTo(0, 0);
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'cadastro') await telaCadastro();
     else if (v === 'inicio') await telaInicio();
     else if (v === 'escala') await telaEscala();
+    else if (v === 'resultado') await telaResultado();
+    else if (v === 'personalizar') telaPersonalizar();
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
     else if (v === 'aula') { aulaI = 0; telaAula(); }
@@ -213,8 +210,8 @@ async function rota() {
 let wz = null;
 function wizInicio(soUnidade) {
   const base = soUnidade ? (atual?.setor || '') : (conta.segmento || '');
-  wz = {i: 0, soUnidade, setor: base, temSegmento: !soUnidade && !!conta.segmento, texto: '', marcados: new Set(),
-    nomeUn: soUnidade ? '' : (conta.empresa || ''), minMudou: false};
+  wz = {i: 0, soUnidade, setor: base, temSegmento: !soUnidade && !!conta.segmento, funcoes: [],
+    nomeUn: soUnidade ? '' : (conta.empresa || '')};
   aplicaSetor(base || 'outro');
   if (!base) wz.setor = '';
   quizDir = 1;
@@ -223,46 +220,104 @@ function wizInicio(soUnidade) {
 function aplicaSetor(k) {
   const s = seg(k); wz.setor = k;
   wz.un = {abertos: [...s.abertos], minimo: [...s.minimo], abre: s.abre, fecha: s.fecha, horas_dia: 8, criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))};
+  // funções do segmento, a que não pode faltar primeiro. A equipe é contada por função, sem digitar nomes.
+  const crit = s.criticas.map(c => c.nome), resto = (s.funcoes || []).filter(f => !crit.includes(f));
+  wz.funcoes = [...crit, ...resto].map(nome => ({nome, n: 0, critica: crit.includes(nome)}));
+  if (!wz.funcoes.length) wz.funcoes = [{nome: 'Funcionário(a)', n: 0, critica: false}];
 }
-const nomesWz = () => wz.texto.split('\n').map(l => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 200);
+// "Caixa 1" com cargo Caixa: o nome já diz a função, não repete embaixo
+const cargoVisivel = f => f?.cargo && !semAcentoWz(f.nome).startsWith(semAcentoWz(rotuloFuncao(f.cargo))) ? f.cargo : '';
+const totalWz = () => wz.funcoes.reduce((a, f) => a + f.n, 0);
+// "Repositor(a)" vira "Repositor 1", "Garçom/Garçonete" vira "Garçom 1"; o cargo fica com o nome inteiro da função
+const rotuloFuncao = f => f.replace(/\(a\)/gi, '').split('/')[0].replace(/\s+/g, ' ').trim() || 'Pessoa';
 const artigo = s => ['farmácia', 'clínica', 'academia', 'padaria', 'loja'].includes(s.local) ? 'a' : 'o';
-// a lista de perguntas muda conforme as respostas (ex.: farmácia pergunta quem é farmacêutico)
+const comPessoas = () => wz.funcoes.map((f, i) => [f, i]).filter(([f]) => f.n > 0);
+// a lista de perguntas muda conforme as respostas: cada função com gente tem a jornada e as folgas
 function perguntas() {
   const q = [];
   if (!wz.soUnidade) q.push('oi');
   if (wz.soUnidade || !wz.temSegmento) q.push('negocio');
   if (wz.soUnidade || (conta.unidades_qtd || 1) > 1) q.push('nome');
-  q.push('dias', 'horario', 'minimo', 'pessoas');
-  if (wz.un?.criticas.length) q.push('critica');
+  q.push('dias', 'funcoes');
+  comPessoas().forEach(([, i]) => q.push('jornada:' + i, 'folgas:' + i));
   return q;
 }
 const DIAS_OP = [['1111111', 'Todo dia', 'De segunda a domingo'], ['1111110', 'Segunda a sábado', 'Fecha no domingo'], ['1111100', 'Segunda a sexta', 'Fecha sábado e domingo']];
+const semAcentoWz = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+function linhaFuncao(f, i) {
+  const r = esc(rotuloFuncao(f.nome));
+  return `<div class="fn-linha ${f.critica ? 'crit' : ''} ${f.n ? 'tem' : ''}" data-i="${i}">
+    <b class="fn-nome">${esc(f.nome)}</b>${f.critica ? '<small class="fn-tag">Não pode faltar no dia</small>' : ''}
+    <div class="fn-passo"><button type="button" data-menos aria-label="Uma pessoa a menos em ${r}" ${f.n ? '' : 'disabled'}>−</button>
+      <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="200" value="${f.n}" aria-label="Pessoas em ${r}">
+      <button type="button" data-mais aria-label="Uma pessoa a mais em ${r}">+</button></div>
+  </div>`;
+}
+
+// ---- jornada: horas dentro da lei ----
+const minDe = t => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+const horaDe = m => `${String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, '0')}:${String(((m % 60) + 60) % 60).padStart(2, '0')}`;
+const fmtMin = m => m < 60 ? `${m} minutos` : Escala.hm(m / 60);
+// limite que vale para a escala que está sendo montada (olha 60 dias à frente: a lei muda em 15/12/2026 e 15/12/2027)
+const limiteWz = () => Escala.limiteSemanal(soma(hojeIso(), 60));
+function jornadaDe(f) {
+  let bruto = minDe(f.saida) - minDe(f.entrada); if (bruto <= 0) bruto += 1440;
+  const dia = Math.max(0, bruto - f.intervalo), semana = dia * f.dias / 60, lim = limiteWz();
+  const bloqueia = [], avisa = [];
+  if (semana > lim) bloqueia.push(`Passa de ${lim}h por semana. Diminua ${fmtMin(Math.ceil((semana - lim) * 60 / f.dias / 5) * 5)} por dia${f.dias > 1 ? ' ou tire um dia' : ''}.`);
+  if (dia > 600) bloqueia.push('Passa de 10h por dia, o máximo mesmo com hora extra (CLT, art. 59).');
+  if (dia > 360 && f.intervalo < 60) bloqueia.push('Mais de 6h por dia precisa de pelo menos 1h de intervalo para almoço (CLT, art. 71).');
+  else if (dia > 240 && dia <= 360 && f.intervalo < 15) bloqueia.push('De 4h a 6h por dia precisa de 15 minutos de intervalo (CLT, art. 71).');
+  if (!bloqueia.length && dia > 480) avisa.push('Mais de 8h por dia só com acordo de compensação de horas. O simples é 8h por dia.');
+  if (f.intervalo > 120) avisa.push('Intervalo acima de 2h só com acordo escrito.');
+  const hoje = Escala.limiteSemanal(hojeIso());
+  if (!bloqueia.length && lim < hoje && semana > lim - 0.01 && semana <= lim) avisa.push(`No limite: a partir de ${lim === 42 ? '15/12/2026' : '15/12/2027'} são ${lim}h por semana.`);
+  return {dia, semana, lim, bloqueia, avisa};
+}
+// sugestão dentro da lei: 5 dias, 8h por dia (40h, já no limite final), 1h de almoço, começando quando abre
+function sugereFuncao(f) {
+  if (f.dias) return;
+  f.dias = 5; f.intervalo = 60; f.entrada = wz.un.abre || '08:00'; f.saida = horaDe(minDe(f.entrada) + 8 * 60 + 60);
+  f.folga = {modo: 'rodizio', dias: []}; f.minMudou = false; f.minimo = minimoSugerido(f);
+}
+const abertosN = () => wz.un.abertos.filter(Boolean).length || 1;
+const minimoMax = f => Math.floor(f.n * f.dias / abertosN());
+function minimoSugerido(f) {
+  // deixa folga para o rodízio do domingo e as preferências: não sugere o máximo apertado
+  const cap = Math.floor(Math.max(0, f.n * f.dias - Math.ceil(f.n / 2)) / abertosN()), c = wz.un.criticas.find(x => x.nome === f.nome);
+  if (f.critica) return Math.max(1, Math.min(cap, c ? Math.max(...c.minimo) : 1));
+  return Math.min(cap, 1);
+}
+const intervalos = [[15, '15 min'], [30, '30 min'], [60, '1h'], [90, '1h30'], [120, '2h']];
+
 function wizResumo() {
-  const u = wz.un, s = seg(wz.setor || 'outro'), n = nomesWz().length, pad = u.abertos.join('');
+  const u = wz.un, n = totalWz(), pad = u.abertos.join('');
   const dias = DIAS_OP.find(o => o[0] === pad)?.[1] || DIAS.filter((_, i) => u.abertos[i]).join(', ');
-  const semana = `<div class="qr-semana">${DIAS.map((d, i) => `<span class="${u.abertos[i] ? 'a' : ''}"><small>${d}</small><b>${u.abertos[i] ? u.minimo[i] : '–'}</b></span>`).join('')}</div>
-    <p class="qr-nota">Pessoas trabalhando no mínimo, em cada dia. Cada um folga 2 dias por semana.</p>`;
+  const fs = comPessoas().map(([f]) => f);
+  const extra = fs.length ? `<ul class="qr-funcs">${fs.map(f => `<li><b>${esc(f.nome)}</b><span>${plural(f.n, 'pessoa', 'pessoas')}${f.dias ? ` · ${f.dias} dias · ${Escala.hm(jornadaDe(f).dia / 60)}` : ''}</span></li>`).join('')}</ul>
+    <p class="qr-nota">Cada um com 2 folgas por semana, dentro da nova lei.</p>` : '';
   return resumoLinhas('Sua escala', [
     ['Negócio', wz.setor ? SEG_CURTO[wz.setor] : ''], ['Unidade', wz.nomeUn], ['Abre', wz.i > perguntas().indexOf('dias') ? dias : ''],
-    ['Horário', wz.i > perguntas().indexOf('horario') ? `${hora(u.abre)} às ${hora(u.fecha)}` : ''], ['Equipe', n ? plural(n, 'pessoa', 'pessoas') : ''],
-  ], semana);
+    ['Equipe', n ? plural(n, 'pessoa', 'pessoas') : ''],
+  ], extra);
 }
 function wizDesenha() {
-  const lista = perguntas(), id = lista[wz.i], total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
-  const s = seg(wz.setor || 'outro'), u = wz.un;
+  const lista = perguntas(), cheio = lista[wz.i] || '', [id, fiStr] = cheio.split(':'), total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
+  const s = seg(wz.setor || 'outro'), u = wz.un, fi = +fiStr, f = wz.funcoes[fi];
   const local = `${artigo(s)} ${esc(s.local)}`;
   let corpo = '', botao = 'Continuar', etapa = '', desl = false;
   if (id === 'oi') {
     $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi">
       <span class="q-selo">Cadastro salvo</span><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc">
       <h1>Agora a <mark>escala 5x2</mark> ${wz.nomeUn ? `da ${esc(wz.nomeUn)}` : 'da sua equipe'}.</h1>
-      <p>Umas perguntas rápidas sobre o funcionamento e quem trabalha com você. A escala sai pronta, dentro da nova lei.</p>
-      <ul class="q-chips"><li>${plural(total, 'pergunta', 'perguntas')}</li><li>Uns 2 minutos</li><li>Sem planilha</li></ul>
+      <p>Só números: que dias abre, quantas pessoas em cada função, o horário e as folgas. A escala sai pronta, dentro da nova lei.</p>
+      <ul class="q-chips"><li>Sem digitar nomes</li><li>Uns 2 minutos</li><li>Sem planilha</li></ul>
       <div class="q-rodape"><button class="btn q-continuar" id="qOk" type="button">Começar<span aria-hidden="true" class="q-seta">→</span></button></div>
     </div></div>`;
     $('#qOk').onclick = () => { quizDir = 1; wz.i = 1; wizDesenha(); };
     return;
   }
+  const ultima = wz.i === lista.length - 1;
   if (id === 'negocio') {
     etapa = 'Seu negócio';
     corpo = `<h1>${wz.soUnidade ? 'Que tipo de <mark>negócio</mark> é esta unidade?' : 'Qual é o seu <mark>negócio</mark>?'}</h1>
@@ -280,39 +335,62 @@ function wizDesenha() {
     corpo = `<h1>Que <mark>dias</mark> ${local} abre?</h1><p class="sub">${comum ? `${esc(SEG_CURTO[wz.setor] || 'Seu negócio')} costuma abrir ${comum}.` : 'Escolha os dias de funcionamento.'}</p>
       <div class="q-ops">${DIAS_OP.map(([k, n, d]) => opcao('data-dias', k, n, d, pad === k)).join('')}${opcao('id', 'qOutros', 'Outros dias', 'Escolher um por um', !igual)}</div>
       <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:14px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div></div>`;
-  } else if (id === 'horario') {
-    etapa = 'Funcionamento';
-    corpo = `<h1>Abre às <mark>${hora(u.abre)}</mark> e fecha às <mark>${hora(u.fecha)}</mark>?</h1><p class="sub">É o horário mais comum para ${esc((SEG_CURTO[wz.setor] || 'o seu negócio').toLowerCase())}.</p>
-      <div class="q-ops duas">${opcao('id', 'qSim', 'Sim, é esse', `${hora(u.abre)} às ${hora(u.fecha)}`, false)}${opcao('id', 'qNao', 'Não, é outro', 'Escolher o horário', false)}</div>
-      <div id="qHoraBox" class="hide" style="margin-top:14px"><div class="lado"><div><label for="qAbre" style="margin-top:0">Abre às</label><input id="qAbre" type="time" value="${u.abre}"></div><div><label for="qFecha" style="margin-top:0">Fecha às</label><input id="qFecha" type="time" value="${u.fecha}"></div></div></div>`;
-  } else if (id === 'minimo') {
-    etapa = 'Funcionamento';
-    const sug = Math.max(...seg(wz.setor || 'outro').minimo), atualMin = wz.minMudou ? Math.max(...u.minimo) : sug;
-    corpo = `<h1>Quantas pessoas precisam estar <mark>trabalhando</mark> por dia?</h1>
-      <p class="sub">O mínimo para não deixar ${local} descoberto, somando todos os turnos. O comum é ${sug}.</p>
-      <div class="contador-mais grande"><button type="button" id="qMenos" aria-label="Menos">−</button><output id="qMin">${atualMin}</output><button type="button" id="qMais" aria-label="Mais">+</button></div>
-      <p class="dica" style="text-align:center;margin-top:6px">pessoas trabalhando, no mínimo</p>`;
-  } else if (id === 'pessoas') {
+  } else if (id === 'funcoes') {
     etapa = 'Equipe';
-    corpo = `<h1>Quem <mark>trabalha</mark> com você?</h1><p class="sub">Um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
-      <textarea id="qPessoas" rows="7" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea><div id="qConta"></div>`;
-    botao = u.criticas.length ? 'Continuar' : 'Montar minha escala';
-  } else if (id === 'critica') {
-    etapa = 'Equipe';
-    const c = u.criticas[0];
-    corpo = `<h1>Quem é <mark>${esc(c.nome.toLowerCase())}</mark>?</h1><p class="sub">${esc(c.explica)}</p>
-      <div class="marcar">${nomesWz().map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div><div id="qConta"></div>`;
-    botao = 'Montar minha escala';
+    corpo = `<h1>Quais <mark>funções</mark> tem e quantas pessoas em cada?</h1><p class="sub">Conte todo mundo da equipe, de todos os turnos. Sem nomes: só os números.</p>
+      <div class="fn-lista">${wz.funcoes.map((x, i) => linhaFuncao(x, i)).join('')}</div>
+      <div class="fn-nova hide" id="fnNovaBox"><input id="fnNova" maxlength="40" placeholder="Ex.: Entregador" autocomplete="off" aria-label="Nome da função"><button type="button" class="btn pq azul" id="fnNovaOk">Adicionar</button></div>
+      <div class="fn-rodape"><button type="button" class="link" id="fnOutra">+ Outra função</button><p class="fn-total" aria-live="polite"><b id="fnTotal">${totalWz()}</b> ${totalWz() === 1 ? 'pessoa' : 'pessoas'}</p></div>
+      <p class="dica">A escala sai com "Caixa 1", "Caixa 2"... Depois você pode trocar pelos nomes, se quiser.</p><div id="qConta"></div>`;
+  } else if (id === 'jornada') {
+    sugereFuncao(f);
+    etapa = esc(rotuloFuncao(f.nome));
+    const j = jornadaDe(f);
+    corpo = `<h1>Como é a jornada de <mark>${esc(rotuloFuncao(f.nome).toLowerCase())}</mark>?</h1>
+      <p class="sub">${plural(f.n, 'pessoa', 'pessoas')}. A sugestão já está dentro da lei. Ajuste se for diferente.</p>
+      <p class="jn-tit">Dias de trabalho por semana</p>
+      <div class="jn-dias"><button type="button" id="jnMenos" aria-label="Um dia a menos" ${f.dias <= 1 ? 'disabled' : ''}>−</button>
+        <output id="jnDias"><b>${f.dias}</b> ${f.dias === 1 ? 'dia' : 'dias'}</output>
+        <button type="button" id="jnMais" aria-label="Um dia a mais" ${f.dias >= 5 ? 'disabled' : ''}>+</button></div>
+      <p class="dica">Máximo da nova lei: 5 dias, com 2 folgas por semana.</p>
+      <p class="jn-tit">Horário</p>
+      <div class="jn-hora"><div><label for="jnEnt">Entrada</label><input id="jnEnt" type="time" value="${f.entrada}"></div>
+        <div><label for="jnSai">Saída</label><input id="jnSai" type="time" value="${f.saida}"></div>
+        <div><label for="jnInt">Intervalo</label><select id="jnInt">${intervalos.map(([m, t]) => `<option value="${m}" ${m === f.intervalo ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+      <div id="jnConta" aria-live="polite">${contaJornada(j)}</div>`;
+    desl = j.bloqueia.length > 0;
+  } else if (id === 'folgas') {
+    etapa = esc(rotuloFuncao(f.nome));
+    const fo = f.folga, max = fo.modo === 'fixa' ? Math.min(2, 7 - f.dias) : 7 - f.dias;
+    const dom = u.abertos[6] ? `<p class="nota info jn-dom"><b>Domingo:</b> a lei garante folga em 1 a cada ${Escala.domingoSemanasDe(wz.setor || 'outro')} domingos. O app cuida disso sozinho.</p>` : '';
+    corpo = `<h1>Quais dias de folga são melhores para <mark>${esc(rotuloFuncao(f.nome).toLowerCase())}</mark>?</h1>
+      <p class="sub">Quem decide é você. A escala segue a sua escolha dentro da lei: ${7 - f.dias} folgas por semana para cada um.</p>
+      <div class="q-ops">${opcao('data-modo', 'rodizio', 'Deixar o app escolher', 'Rodízio justo entre todos. Recomendado.', fo.modo === 'rodizio')}
+        ${opcao('data-modo', 'preferidos', 'Prefiro alguns dias', 'O app dá a folga nesses dias sempre que der', fo.modo === 'preferidos')}
+        ${opcao('data-modo', 'fixa', 'Folga fixa, igual para todos', `Todos de ${esc(rotuloFuncao(f.nome).toLowerCase())} folgam nos mesmos dias`, fo.modo === 'fixa')}</div>
+      <div id="fgDiasBox" class="${fo.modo === 'rodizio' ? 'hide' : ''}"><p class="jn-tit">Escolha até ${max} ${max === 1 ? 'dia' : 'dias'}</p>
+        <div class="fg-dias">${DIAS.map((d, i) => `<button type="button" data-fg="${i}" class="${fo.dias.includes(i) ? 'on' : ''}" aria-pressed="${fo.dias.includes(i)}" ${u.abertos[i] ? '' : 'disabled'}>${d}</button>`).join('')}</div></div>
+      ${dom}
+      <p class="jn-tit">Pelo menos quantos de ${esc(rotuloFuncao(f.nome).toLowerCase())} trabalhando por dia?</p>
+      <div class="jn-dias"><button type="button" id="mnMenos" aria-label="Menos um">−</button><output id="mnVal"><b>${f.minimo}</b></output><button type="button" id="mnMais" aria-label="Mais um">+</button></div>
+      <div id="fgConta" aria-live="polite"></div>`;
+    botao = ultima ? 'Montar minha escala' : 'Continuar';
   }
   const restam = total - num + 1;
+  const pular = (id === 'jornada' || id === 'folgas') && comPessoas().some(([, i]) => i > fi)
+    ? '<p class="q-cancelar"><button class="link" id="qSugestao" type="button">Usar a sugestão para as outras funções</button></p>' : '';
   $('#v-comecar').innerHTML = quizMoldura({etapa, num, total, minutos: `~${Math.max(1, Math.round(restam * 12 / 60))} min`, corpo, botao, botaoDesligado: desl, resumo: wizResumo(),
-    rodapeExtra: wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="mais">Cancelar</button></p>' : ''});
-  const prox = () => { quizDir = 1; wz.i = Math.min(wz.i + 1, perguntas().length - 1); wizDesenha(); };
+    rodapeExtra: (wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="mais">Cancelar</button></p>' : '') + pular});
+  const prox = () => { quizDir = 1; if (wz.i >= perguntas().length - 1) return wizGerar(); wz.i++; wizDesenha(); };
   const erro = m => { $('#wzErro').textContent = m; };
   $('#qVolta').onclick = () => { quizDir = -1; if (wz.i === 0) return ir(wz.soUnidade ? 'mais' : 'inicio'); wz.i--; wizDesenha(); };
   const ok = fn => { const b = $('#qOk'); if (b) b.onclick = fn; const t = $('#qTxt'); if (t) { if (matchMedia('(min-width: 700px)').matches) t.focus(); t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; } };
+  if ($('#qSugestao')) $('#qSugestao').onclick = () => {
+    if (id === 'jornada' && jornadaDe(f).bloqueia.length) return erro('Ajuste o horário desta função antes.');
+    comPessoas().forEach(([x]) => sugereFuncao(x)); wizGerar();
+  };
   if (id === 'negocio') {
-    ligaSegmentos(() => wz.setor, (k, seguir) => { if (k && k !== wz.setor) { aplicaSetor(k); wz.minMudou = false; wz.marcados.clear(); } if (seguir) prox(); });
+    ligaSegmentos(() => wz.setor, (k, seguir) => { if (k && k !== wz.setor) aplicaSetor(k); if (seguir) prox(); });
     ok(() => wz.setor ? prox() : erro('Escolha o tipo de negócio.'));
   }
   if (id === 'nome') ok(() => {
@@ -327,59 +405,150 @@ function wizDesenha() {
     $$('[data-ab]').forEach(b => b.onclick = () => { const i = +b.dataset.ab, p = [...u.abertos]; p[i] = p[i] ? 0 : 1; aplica(p.join('')); b.classList.toggle('on'); });
     ok(() => { if (!u.abertos.some(Boolean)) return erro('Marque pelo menos um dia.'); prox(); });
   }
-  if (id === 'horario') {
-    escolheESegue([$('#qSim')], () => {}, prox);
-    $('#qNao').onclick = () => { $('#qSim').classList.remove('on'); $('#qNao').classList.add('on'); $('#qHoraBox').classList.remove('hide'); $('#qAbre').focus(); };
-    ok(() => { if (!$('#qHoraBox').classList.contains('hide')) { u.abre = $('#qAbre').value || u.abre; u.fecha = $('#qFecha').value || u.fecha; } prox(); });
-  }
-  if (id === 'minimo') {
-    const set = v => { $('#qMin').textContent = Math.max(1, Math.min(200, v)); };
-    $('#qMenos').onclick = () => set(+$('#qMin').textContent - 1);
-    $('#qMais').onclick = () => set(+$('#qMin').textContent + 1);
-    ok(() => {
-      const v = +$('#qMin').textContent, base = seg(wz.setor || 'outro').minimo;
-      // manteve a sugestão: guarda o mínimo dia a dia do segmento (ex.: sábado com mais gente)
-      if (v === Math.max(...base) && !wz.minMudou) u.minimo = base.map((m, i) => u.abertos[i] ? (m || v) : 0);
-      else { u.minimo = u.minimo.map((_, i) => u.abertos[i] ? v : 0); wz.minMudou = true; }
-      prox();
-    });
-  }
   const contagem = () => {
-    const n = nomesWz().length, totalMin = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(totalMin / 5);
+    const n = totalWz(), totalMin = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(totalMin / 5);
     let html = '';
     if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
       : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente.</div>`;
-    const c = u.criticas[0];
-    if (id === 'critica' && c) { const tem = nomesWz().filter(x => wz.marcados.has(x)).length, prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5); html = tem < prec ? `<div class="nota">Para ter ${esc(c.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>` : `<div class="nota ok">${plural(tem, 'marcado', 'marcados')}. Dá para ter ${esc(c.nome.toLowerCase())} todo dia.</div>`; }
+    const c = u.criticas[0], fc = c && wz.funcoes.find(x => x.critica && x.nome === c.nome);
+    if (n && fc) {
+      const prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5);
+      if (fc.n < prec) html += `<div class="nota">Para ter ${esc(rotuloFuncao(c.nome).toLowerCase())} todo dia, precisa de ${prec}. Você colocou ${fc.n}.</div>`;
+    }
+    if (n > 200) html += '<div class="nota">Até 200 pessoas por unidade. Divida em mais de uma unidade.</div>';
     if (conta.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
     if ($('#qConta')) $('#qConta').innerHTML = html;
     const r = $('.quiz-resumo'); if (r) r.innerHTML = wizResumo();
   };
-  if (id === 'pessoas') {
-    $('#qPessoas').oninput = () => { wz.texto = $('#qPessoas').value; contagem(); }; contagem();
-    if (matchMedia('(min-width: 700px)').matches) $('#qPessoas').focus();
-    ok(() => { if (!nomesWz().length) return erro('Escreva pelo menos um nome.'); if (u.criticas.length) prox(); else wizGerar(); });
+  if (id === 'funcoes') {
+    const tot = () => { const t = totalWz(); $('#fnTotal').textContent = t; $('#fnTotal').nextSibling.textContent = t === 1 ? ' pessoa' : ' pessoas'; contagem(); };
+    const poe = (i, v) => {
+      const x = wz.funcoes[i], antes = x.n; x.n = Math.max(0, Math.min(200, Math.round(+v) || 0));
+      if (x.n !== antes && x.dias && !x.minMudou) x.minimo = minimoSugerido(x);
+      const l = $(`.fn-linha[data-i="${i}"]`), inp = l.querySelector('input');
+      if (document.activeElement !== inp || inp.value !== '') inp.value = x.n;
+      l.classList.toggle('tem', x.n > 0); l.querySelector('[data-menos]').disabled = !x.n;
+      tot();
+    };
+    const liga = l => {
+      const i = +l.dataset.i, inp = l.querySelector('input');
+      l.querySelector('[data-menos]').onclick = () => poe(i, wz.funcoes[i].n - 1);
+      l.querySelector('[data-mais]').onclick = () => poe(i, wz.funcoes[i].n + 1);
+      inp.oninput = () => poe(i, inp.value);
+      inp.onblur = () => { inp.value = wz.funcoes[i].n; };
+      inp.onfocus = () => inp.select();
+      inp.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); inp.blur(); } };
+    };
+    $$('.fn-linha').forEach(liga);
+    $('#fnOutra').onclick = () => { $('#fnNovaBox').classList.remove('hide'); $('#fnOutra').classList.add('hide'); $('#fnNova').focus(); };
+    const adiciona = () => {
+      const nome = $('#fnNova').value.replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (!nome) return $('#fnNova').focus();
+      let i = wz.funcoes.findIndex(x => semAcentoWz(x.nome) === semAcentoWz(nome));
+      if (i < 0) {
+        wz.funcoes.push({nome, n: 1, critica: false}); i = wz.funcoes.length - 1;
+        $('.fn-lista').insertAdjacentHTML('beforeend', linhaFuncao(wz.funcoes[i], i)); liga($(`.fn-linha[data-i="${i}"]`));
+      } else poe(i, wz.funcoes[i].n + 1);
+      $('#fnNova').value = ''; $('#fnNovaBox').classList.add('hide'); $('#fnOutra').classList.remove('hide');
+      tot(); $(`.fn-linha[data-i="${i}"] [data-mais]`).focus();
+    };
+    $('#fnNovaOk').onclick = adiciona;
+    $('#fnNova').onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); adiciona(); } };
+    contagem();
+    ok(() => { if (!totalWz()) return erro('Coloque pelo menos uma pessoa em alguma função.'); if (totalWz() > 200) return erro('Até 200 pessoas por unidade.'); prox(); });
   }
-  if (id === 'critica') {
-    $$('[data-m]').forEach(b => b.onclick = () => { const x = b.dataset.m; wz.marcados.has(x) ? wz.marcados.delete(x) : wz.marcados.add(x); b.classList.toggle('on'); contagem(); });
-    contagem(); ok(() => wizGerar());
+  if (id === 'jornada') {
+    const atualiza = () => {
+      const j = jornadaDe(f);
+      $('#jnConta').innerHTML = contaJornada(j);
+      $('#qOk').disabled = j.bloqueia.length > 0;
+      $('#jnDias').innerHTML = `<b>${f.dias}</b> ${f.dias === 1 ? 'dia' : 'dias'}`;
+      $('#jnMenos').disabled = f.dias <= 1; $('#jnMais').disabled = f.dias >= 5;
+      const r = $('.quiz-resumo'); if (r) r.innerHTML = wizResumo();
+    };
+    const muda = () => { if (!f.minMudou) f.minimo = minimoSugerido(f); f.folga.dias = f.folga.dias.slice(0, 7 - f.dias); };
+    $('#jnMenos').onclick = () => { f.dias = Math.max(1, f.dias - 1); muda(); atualiza(); };
+    $('#jnMais').onclick = () => { f.dias = Math.min(5, f.dias + 1); muda(); atualiza(); };
+    $('#jnEnt').oninput = () => { if ($('#jnEnt').value) { f.entrada = $('#jnEnt').value; atualiza(); } };
+    $('#jnSai').oninput = () => { if ($('#jnSai').value) { f.saida = $('#jnSai').value; atualiza(); } };
+    $('#jnInt').onchange = () => { f.intervalo = +$('#jnInt').value; atualiza(); };
+    ok(() => { const j = jornadaDe(f); if (j.bloqueia.length) return erro(j.bloqueia[0]); prox(); });
+  }
+  if (id === 'folgas') {
+    const fo = f.folga;
+    const confere = () => {
+      const max = fo.modo === 'fixa' ? Math.min(2, 7 - f.dias) : 7 - f.dias, cap = minimoMax(f);
+      let h = '';
+      if (fo.modo !== 'rodizio' && !fo.dias.length) h += `<div class="nota">Toque nos dias de folga (até ${max}).</div>`;
+      if (fo.modo === 'fixa' && f.minimo > 0 && fo.dias.length) h += `<div class="nota">Com a mesma folga para todos, ${fo.dias.map(d => DIAS[d]).join(' e ')} fica sem ninguém de ${esc(rotuloFuncao(f.nome).toLowerCase())}. Escolha "Prefiro alguns dias" ou zere o mínimo.</div>`;
+      if (fo.modo !== 'rodizio' && u.abertos[6] && !fo.dias.includes(6) && fo.dias.length) h += `<div class="nota info">No domingo de folga obrigatório, um desses dias vira domingo naquela semana. Fica tudo dentro da lei.</div>`;
+      if (f.minimo > cap) h += `<div class="nota">Com ${plural(f.n, 'pessoa', 'pessoas')} trabalhando ${f.dias} dias, dá para ter no máximo ${cap} por dia todos os dias.</div>`;
+      $('#fgConta').innerHTML = h;
+      $('#mnVal').innerHTML = `<b>${f.minimo}</b>`;
+      $('#mnMenos').disabled = f.minimo <= (f.critica ? 1 : 0); $('#mnMais').disabled = f.minimo >= f.n;
+    };
+    $$('[data-modo]').forEach(b => b.onclick = () => {
+      fo.modo = b.dataset.modo; $$('[data-modo]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+      const max = fo.modo === 'fixa' ? Math.min(2, 7 - f.dias) : 7 - f.dias;
+      fo.dias = fo.modo === 'rodizio' ? [] : fo.dias.slice(0, max);
+      $('#fgDiasBox').classList.toggle('hide', fo.modo === 'rodizio');
+      $('#fgDiasBox .jn-tit').textContent = `Escolha até ${max} ${max === 1 ? 'dia' : 'dias'}`;
+      $$('[data-fg]').forEach(x => { const on = fo.dias.includes(+x.dataset.fg); x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+      confere();
+    });
+    $$('[data-fg]').forEach(b => b.onclick = () => {
+      const d = +b.dataset.fg, max = fo.modo === 'fixa' ? Math.min(2, 7 - f.dias) : 7 - f.dias, k = fo.dias.indexOf(d);
+      if (k >= 0) fo.dias.splice(k, 1); else { if (fo.dias.length >= max) fo.dias.shift(); fo.dias.push(d); }
+      fo.dias.sort((a, b2) => a - b2);
+      $$('[data-fg]').forEach(x => { const on = fo.dias.includes(+x.dataset.fg); x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+      confere();
+    });
+    $('#mnMenos').onclick = () => { f.minimo = Math.max(f.critica ? 1 : 0, f.minimo - 1); f.minMudou = true; confere(); };
+    $('#mnMais').onclick = () => { f.minimo = Math.min(f.n, f.minimo + 1); f.minMudou = true; confere(); };
+    confere();
+    ok(() => {
+      if (fo.modo !== 'rodizio' && !fo.dias.length) return erro('Escolha os dias de folga ou deixe o app escolher.');
+      if (fo.modo === 'fixa' && f.minimo > 0) return erro(`Com folga fixa igual para todos, o dia fica sem ninguém de ${rotuloFuncao(f.nome).toLowerCase()}.`);
+      prox();
+    });
   }
   window.scrollTo(0, 0);
 }
+function contaJornada(j) {
+  const ok = !j.bloqueia.length;
+  return `<div class="jn-total ${ok ? (j.avisa.length ? 'atencao' : 'ok') : 'ruim'}"><b>${Escala.hm(j.dia / 60)} por dia · ${Escala.hm(j.semana)} por semana</b>
+    <span>${ok ? `Dentro do limite de ${j.lim}h por semana${j.lim < Escala.limiteSemanal(hojeIso()) ? ' que vale a partir de 15/12/2026' : ''}.` : esc(j.bloqueia[0])}</span></div>
+    ${j.bloqueia.slice(1).concat(j.avisa).map(t => `<div class="nota">${esc(t)}</div>`).join('')}`;
+}
+// monta o que vai para o servidor: unidade (com o mínimo por função) e as pessoas "Caixa 1", "Caixa 2"...
+function dadosDoQuiz() {
+  const u = wz.un, s = seg(wz.setor || 'outro'), fs = comPessoas().map(([f]) => { sugereFuncao(f); return f; });
+  const mins = fs.map(f => f.minimo).reduce((a, m) => a + m, 0);
+  const minimo = u.abertos.map(a => a ? Math.max(1, mins) : 0);
+  const criticas = fs.filter(f => f.minimo > 0).map(f => {
+    const base = s.criticas.find(c => c.nome === f.nome);
+    return {nome: f.nome, chave: semAcentoWz(rotuloFuncao(f.nome)).slice(0, 20), cargo: f.nome, minimo: u.abertos.map(a => a ? f.minimo : 0), explica: base?.explica || ''};
+  });
+  const semanaMax = Math.max(...fs.map(f => jornadaDe(f).semana));
+  const entradas = fs.map(f => minDe(f.entrada)), saidas = fs.map(f => { const e = minDe(f.entrada); let x = minDe(f.saida); if (x <= e) x += 1440; return x; });
+  const funcoes = fs.map(f => ({nome: f.nome, n: f.n, dias: f.dias, entrada: f.entrada, saida: f.saida, intervalo: f.intervalo, folga: {modo: f.folga.modo, dias: f.folga.dias}, minimo: f.minimo, critica: !!f.critica}));
+  const pessoas = fs.flatMap(f => Array.from({length: f.n}, (_, i) => ({nome: `${rotuloFuncao(f.nome)} ${i + 1}`, cargo: f.nome, dias_semana: f.dias,
+    entrada: f.entrada, saida: f.saida, intervalo_min: f.intervalo,
+    folga_fixa: f.folga.modo === 'fixa' ? f.folga.dias.slice(0, 2) : [], folga_pref: f.folga.modo === 'preferidos' ? f.folga.dias : []}))).slice(0, 200);
+  return {unidade: {...u, nome: wz.nomeUn || conta.empresa || 'Minha unidade', setor: wz.setor || 'outro', minimo, criticas, funcoes,
+    abre: horaDe(Math.min(...entradas)), fecha: horaDe(Math.min(Math.max(...saidas), 1439)), horas_dia: Math.round(semanaMax / 5 * 60) / 60}, pessoas};
+}
 async function wizGerar() {
-  const lista = nomesWz(), crit = wz.un.criticas[0];
-  const nomeUn = wz.nomeUn || conta.empresa || 'Minha unidade';
+  const {unidade, pessoas} = dadosDoQuiz();
   $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc pulando"><h1>Montando sua escala…</h1>
-    <p>Distribuindo as folgas de ${plural(lista.length, 'pessoa', 'pessoas')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
+    <p>Distribuindo as folgas de ${plural(pessoas.length, 'pessoa', 'pessoas')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
   const espera = new Promise(r => setTimeout(r, 1400));
   try {
-    const pessoas = lista.map(nome => ({nome, cargo: crit && wz.marcados.has(nome) ? crit.nome : ''}));
-    const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {
-      unidade: {...wz.un, nome: nomeUn, setor: wz.setor || 'outro'}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
+    const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {unidade, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
     conta = await api('/api/conta');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
-    recem = true; semData = segundaDe(hojeIso()); diaSel = null; ir(wz.soUnidade ? 'escala' : 'inicio');
+    semData = segundaDe(hojeIso()); diaSel = null; ir('resultado');
   } catch (err) {
     wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
   }
@@ -462,7 +631,7 @@ function desenhaSemana() {
     else {
       const grupo = cod => sem.map((x, f) => ({x: x[d], f})).filter(o => cod === 'A' ? COD[o.x] : o.x === cod);
       const T = grupo('T'), F = grupo('F'), A = grupo('A');
-      const btn = (o, cls) => `<button class="nome ${cls}" data-f="${o.f}">${esc(e.funcionarios[o.f]?.nome)}${cls === 'A' ? `<small>${esc(COD[o.x])}</small>` : e.funcionarios[o.f]?.cargo ? `<small>${esc(e.funcionarios[o.f].cargo)}</small>` : ''}</button>`;
+      const btn = (o, cls) => `<button class="nome ${cls}" data-f="${o.f}">${esc(e.funcionarios[o.f]?.nome)}${cls === 'A' ? `<small>${esc(COD[o.x])}</small>` : cargoVisivel(e.funcionarios[o.f]) ? `<small>${esc(cargoVisivel(e.funcionarios[o.f]))}</small>` : ''}</button>`;
       corpo = `<div class="dia-tit"><h2>${dataLonga(data)}</h2><span class="${T.length >= e.minimo[d] ? 'ok' : 'baixo'}">${T.length} trabalhando · mínimo ${e.minimo[d]}</span></div>
         ${fer ? `<div class="nota" style="margin:0 0 10px">Feriado: <b>${esc(fer)}</b>. Quem trabalha hoje recebe em dobro ou ganha outra folga.</div>` : ''}
         ${T.length < e.minimo[d] ? `<div class="nota" style="margin:0 0 10px">Falta gente: precisa de pelo menos ${e.minimo[d]} trabalhando.${ed ? ' Toque em quem folga para trocar.' : ''}</div>` : ''}
@@ -489,7 +658,7 @@ function desenhaSemana() {
 function htmlAnalise(a) {
   const ic = i => i.ok === true ? '<span class="ic ok">✓</span>' : i.ok === false ? '<span class="ic ruim">!</span>' : '<span class="ic info">i</span>';
   return `<div class="diag-topo ${a.problemas ? 'ruim' : 'ok'}"><img src="/img/mascote.svg" alt=""><div><b>${esc(a.resumo)}</b>
-    ${plural(a.n, 'pessoa', 'pessoas')} · ${String(a.horasSemana).replace('.', ',')}h por semana cada</div></div>
+    ${plural(a.n, 'pessoa', 'pessoas')} · ${Escala.hm(a.horasSemana)} por semana cada</div></div>
     <ul class="diag">${a.itens.map(i => `<li>${ic(i)}<div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>`;
 }
 function folhaAnalise() {
@@ -546,7 +715,7 @@ function folhaPessoaSemana(f) {
 function folhaFaltar() {
   if (!podeEditar()) return;
   if (!funcs.length) return toast('Coloque sua equipe primeiro.');
-  folha(`<h2>Quem vai faltar?</h2><div class="opcoes-grandes">${funcs.map(f => `<button data-quem="${f.id}">${esc(f.nome)}${f.cargo ? `<small>${esc(f.cargo)}</small>` : ''}</button>`).join('')}</div>`);
+  folha(`<h2>Quem vai faltar?</h2><div class="opcoes-grandes">${funcs.map(f => `<button data-quem="${f.id}">${esc(f.nome)}${cargoVisivel(f) ? `<small>${esc(cargoVisivel(f))}</small>` : ''}</button>`).join('')}</div>`);
   $$('[data-quem]').forEach(b => b.onclick = () => { const f = funcs.find(x => x.id === +b.dataset.quem); folhaTipo(f.id, f.nome, diaSel !== null && semData ? soma(semData, diaSel) : hojeIso()); });
 }
 function folhaTipo(fid, nome, data) {
@@ -622,7 +791,7 @@ function telaPessoas() {
   if (!atual) return ir('comecar');
   const fs = seg(atual.setor).funcoes;
   $('#pesSub').textContent = `${plural(funcs.length, 'pessoa', 'pessoas')} em ${atual.nome}. Toque em alguém para mudar o nome, a função ou tirar da equipe.`;
-  $('#listaP').innerHTML = funcs.length ? funcs.map(f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`).join('')
+  $('#listaP').innerHTML = funcs.length ? funcs.map(f => `<li data-fid="${f.id}"><div><b>${esc(f.nome)}</b><small>${[f.cargo && !cargoVisivel(f) ? f.cargo + ' · toque para pôr o nome' : f.cargo, f.folga_fixa.length ? 'folga fixa ' + f.folga_fixa.map(d => DIAS[d]).join(' e ') : ''].filter(Boolean).map(esc).join(' · ') || (fs.length ? 'Toque para escolher a função' : '')}</small></div><span class="seta">›</span></li>`).join('')
     : '<li style="cursor:default"><span class="dica">Ninguém ainda. Escreva o primeiro nome acima.</span></li>';
   $$('[data-fid]').forEach(li => li.onclick = () => folhaFunc(funcs.find(x => x.id === +li.dataset.fid)));
 }
@@ -666,6 +835,8 @@ function folhaFunc(f) {
   };
 }
 
+async function sair() { await api('/api/sair', {method: 'POST'}).catch(() => {}); gravar('conta', ''); location.href = '/app'; }
+
 // ================= mais =================
 function telaMais() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
@@ -702,7 +873,7 @@ function telaMais() {
     $$('[data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
   };
   if ($('#mOutraEmpresa')) $('#mOutraEmpresa').onclick = folhaOutraEmpresa;
-  $('#mSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); gravar('conta', ''); location.href = '/app'; };
+  $('#mSair').onclick = sair;
 }
 
 // ================= funcionamento =================

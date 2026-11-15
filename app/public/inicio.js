@@ -269,7 +269,7 @@ function cdDesenha() {
         conta = await api('/api/conta'); eu = await api('/api/eu'); pintaTopo();
         window.rastrear?.('CompleteRegistration');
         toast('Cadastro da empresa salvo.');
-        ir(equipes.length ? 'inicio' : 'comecar');
+        ir('inicio');
       } catch (err) {
         b.disabled = false;
         // volta para o passo do campo com problema
@@ -327,9 +327,26 @@ async function telaInicio() {
     ['indique', 'Indique para quem conhece', 'Mande para outros empresários', '<img class="mini-ico" src="/img/formatos/whatsapp.svg?v=20261115b" alt="">'],
     ...(dono ? [['empresa', 'Dados da empresa', 'CNPJ, endereço e feriados', '<span class="mini-tag cnpj">CNPJ</span>']] : []),
   ];
+  // banners: o principal chama para o quiz quando ainda não tem escala; os avisos mudam conforme o que falta
+  const dias = Math.ceil((new Date('2026-12-15T00:00:00-03:00') - Date.now()) / 864e5);
+  const fechado = k => ler('banner_' + k) === '1';
+  const avisos = [
+    dias > 0 && { k: 'lei', cor: 'amarelo', tit: `Faltam ${dias} ${dias === 1 ? 'dia' : 'dias'} para a escala 5x2 valer`, txt: 'A partir de 15/12/2026, duas folgas por semana e limite de 42 horas. Entenda em 3 minutos.', btn: 'Aula da nova lei', ir: 'aula' },
+    dono && p.unidades > 0 && !p.escala_enviada && { k: 'enviar', cor: 'verde', tit: 'Mande a escala para a equipe', txt: 'Imagem no grupo do WhatsApp, PDF ou um link onde cada um vê a própria folga.', btn: 'Baixar ou enviar', ir: 'tabela' },
+    dono && p.unidades > 0 && !p.contador && { k: 'contador', cor: 'azul', tit: 'Dê acesso grátis ao seu contador', txt: 'Ele vê a escala, baixa tudo e fecha o mês sem pedir nada para você.', btn: 'Convidar', ir: 'acessos' },
+    !(typeof naTelaInicial === 'function' && naTelaInicial()) && { k: 'instalar', cor: 'escuro', tit: 'Coloque o app na tela inicial', txt: 'Abre como um aplicativo, direto no celular, sem baixar nada na loja.', btn: 'Ver como', ir: 'instalar' },
+  ].filter(a => a && !fechado(a.k)).slice(0, 2);
+  const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
+      <div class="ban-quiz-txt"><span class="ban-etq">Próximo passo</span><h2 id="tQuiz">Monte a escala da sua equipe em 2 minutos</h2>
+        <p>Responda umas perguntas: que dias abre, o horário, quantas pessoas por dia e quem trabalha. A escala sai pronta, dentro da nova lei.</p>
+        <button class="btn ban-btn" data-ir="comecar">Começar agora <span aria-hidden="true">→</span></button></div>
+      <div class="ban-quiz-mock" aria-hidden="true">${DIAS.map((d, i) => `<i class="${i >= 5 ? 'f' : ''}"><small>${d}</small><em>${i >= 5 ? 'Folga' : 'Trabalha'}</em></i>`).join('')}</div>
+    </section>` : '';
+  const faixa = avisos.map(a => `<div class="ban-aviso ban-${a.cor}" data-k="${a.k}"><div><b>${a.tit}</b><span>${a.txt}</span></div>
+      <div class="ban-acoes"><button class="btn pq" data-ir="${a.ir}">${a.btn}</button><button class="ban-x" data-fechar="${a.k}" aria-label="Fechar aviso">×</button></div></div>`).join('');
   const pronto = recem && atual ? `<div class="ini-pronto"><div><b>Pronto! A escala de ${esc(atual.nome)} está montada.</b><span>4 semanas, 2 folgas por semana para cada um, dentro da nova lei.</span></div><button class="btn" data-ir="escala">Ver a escala</button></div>` : '';
   recem = false;
-  v.innerHTML = `${pronto}
+  v.innerHTML = `${pronto}${quiz}
     <header class="ini-topo">
       <div><p class="ini-oi">Olá, ${esc(nomeCurto(eu.nome))}</p><h1>${esc(conta.empresa || 'Sua empresa')}</h1>
         <p class="ini-data">${dataLonga(hoje)}${atual ? ` · ${esc(atual.nome)}` : ''}</p></div>
@@ -337,6 +354,8 @@ async function telaInicio() {
         <button class="btn" data-ir="escala">Abrir a escala da semana</button></div>`
         : atual ? '<div class="ini-hoje"><button class="btn" data-ir="escala">Abrir a escala da semana</button></div>' : ''}
     </header>
+    ${faixa ? `<div class="ban-avisos">${faixa}</div>` : ''}
+    ${p.unidades > 0 && podeEditar() ? cartaoPersonalizar(true) : ''}
     <div class="ini-grade">
       <section class="ini-prog cartao" aria-labelledby="tProg">
         <div class="ini-prog-topo"><h2 id="tProg">Seu progresso</h2><span><b>${feitos}</b> de ${itens.length}</span></div>
@@ -358,6 +377,7 @@ async function telaInicio() {
         <div class="atalhos">${atalhos.map(([r, t, d, mini]) => `<button class="atalho" data-ir="${r}"><span class="atalho-mini">${mini}</span><b>${t}</b><small>${esc(d)}</small></button>`).join('')}</div>
       </section>
     </div>`;
+  $$('[data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
   const car = $('#carrossel'), pontos = $$('#carPontos button');
   const larg = () => car.querySelector('.slide').offsetWidth + 14;
   const atualiza = () => { const i = Math.round(car.scrollLeft / larg()); pontos.forEach((p, j) => p.classList.toggle('on', j === i)); if (i >= slides.length - 1) gravar('slidesVistos', '1'); };
@@ -374,19 +394,187 @@ window.marcaEnviada = () => {
   enviadaMarcada = true; api('/api/inicio/enviada', { method: 'POST' }).catch(() => { enviadaMarcada = false; });
 };
 
-// ================= menu lateral (computador) =================
+// ================= menu lateral (computador) e gaveta (celular) =================
+// O mesmo #lateral é a barra fixa no computador e, abaixo de 1024px, a gaveta que desliza da esquerda.
 function pintaLateral() {
   const el = $('#lateral'); if (!el) return;
   const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
   const itens = mc ? [['contador', 'Suas empresas'], ['aula', 'Aula da nova lei'], ['mais', 'Mais opções']]
     : cont ? [['escala', 'Escala da semana'], ['fechamento', 'Fechamento do mês'], ['ocorrencias', 'Férias e faltas'], ['mais', 'Mais opções']]
-      : [['inicio', 'Início'], ['escala', 'Escala da semana'], ['pessoas', 'Equipe'], ['tabela', 'Baixar ou enviar'], ['ocorrencias', 'Férias e faltas'], ['fechamento', 'Fechar o mês'],
+      : [['inicio', 'Início'], ['escala', 'Escala da semana'], ['personalizar', 'Personalizar a escala'], ['pessoas', 'Equipe'], ['tabela', 'Baixar ou enviar'], ['ocorrencias', 'Férias e faltas'], ['fechamento', 'Fechar o mês'],
         ...(dono ? [['acessos', 'Contador'], ['empresa', 'Dados da empresa']] : []), ['aula', 'Aula da nova lei'], ['mais', 'Mais opções']];
-  el.innerHTML = `<div class="lat-emp"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b></div>
-    <nav>${itens.map(([r, t]) => `<button data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}</nav>
+  const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  el.innerHTML = `<div class="lat-emp"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
+      <div class="lat-quem so-gaveta"><i aria-hidden="true">${esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
+      <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
+    <nav aria-label="Seções">${itens.map(([r, t]) => `<button data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}<button type="button" class="lat-sair so-gaveta" data-sair>Sair</button></nav>
     <div class="lat-pe"><a href="/ajuda">Ajuda e a nova lei</a><span>${esc(eu.email)}</span></div>`;
 }
 function marcaLateral(v) {
-  const mapa = { funcionamento: 'mais', comecar: 'inicio', cadastro: 'inicio', conta: 'mais', instalar: 'mais', indique: 'mais' };
-  $$('#lateral [data-lat]').forEach(b => b.classList.toggle('on', b.dataset.lat === (mapa[v] || v)));
+  const mapa = { resultado: 'escala', funcionamento: 'mais', comecar: 'inicio', cadastro: 'inicio', conta: 'mais', instalar: 'mais', indique: 'mais' };
+  $$('#lateral [data-lat]').forEach(b => {
+    const on = b.dataset.lat === (mapa[v] || v);
+    b.classList.toggle('on', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+}
+
+const celular = matchMedia('(max-width: 1023.98px)');
+let gavetaVolta = null;
+const gavetaAberta = () => document.body.classList.contains('gaveta');
+function gavetaEstado() {
+  const g = $('#lateral'), aberta = gavetaAberta(), cel = celular.matches;
+  g.inert = cel && !aberta;
+  if (cel && aberta) { g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); }
+  else { g.removeAttribute('role'); g.removeAttribute('aria-modal'); }
+  $('#btnMenu').setAttribute('aria-expanded', String(aberta));
+  $('#btnMenu').setAttribute('aria-label', aberta ? 'Fechar o menu' : 'Abrir o menu');
+  $('#principal').inert = cel && aberta;
+}
+function abreGaveta() {
+  if (!celular.matches || document.body.classList.contains('modo-foco') || gavetaAberta()) return;
+  gavetaVolta = document.activeElement;
+  document.body.classList.add('gaveta'); gavetaEstado();
+  const g = $('#lateral'); g.scrollTop = 0;
+  (g.querySelector('nav [aria-current]') || g.querySelector('nav button'))?.focus({ preventScroll: true });
+}
+function fechaGaveta(devolveFoco = true) {
+  if (!gavetaAberta()) return;
+  document.body.classList.remove('gaveta');
+  const g = $('#lateral'); g.style.transform = ''; g.classList.remove('arrastando'); $('#gavFundo').style.opacity = '';
+  gavetaEstado();
+  if (devolveFoco) {
+    const volta = gavetaVolta && document.contains(gavetaVolta) && gavetaVolta.offsetParent && !g.contains(gavetaVolta) ? gavetaVolta : $('#btnMenu');
+    volta.focus({ preventScroll: true });
+  }
+}
+// liga a gaveta depois que app.js define $ e sair()
+document.addEventListener('DOMContentLoaded', () => {
+  $('#btnMenu').onclick = () => (gavetaAberta() ? fechaGaveta() : abreGaveta());
+  $('#gavFundo').onclick = () => fechaGaveta();
+  $('#lateral').addEventListener('click', e => {
+    if (e.target.closest('[data-fecha-gaveta]')) fechaGaveta();
+    else if (e.target.closest('[data-sair]')) sair();
+  });
+  celular.addEventListener('change', () => { if (!celular.matches) fechaGaveta(false); gavetaEstado(); });
+  document.addEventListener('keydown', e => {
+    if (!gavetaAberta()) return;
+    if (e.key === 'Escape') { e.preventDefault(); fechaGaveta(); return; }
+    if (e.key !== 'Tab') return;
+    // foco preso dentro da gaveta
+    const f = [...$('#lateral').querySelectorAll('button, a[href]')].filter(x => !x.disabled && x.offsetParent);
+    if (!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
+  });
+  // arrastar para a esquerda fecha (a gaveta acompanha o dedo)
+  (() => {
+    let x0 = 0, y0 = 0, dx = 0, t0 = 0, modo = null;
+    const g = $('#lateral'), fundo = $('#gavFundo');
+    const comeca = e => { if (!gavetaAberta()) return; const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; t0 = Date.now(); modo = null; };
+    const move = e => {
+      if (!gavetaAberta() || modo === 'v') return;
+      const t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
+      if (!modo) {
+        if (Math.abs(ddx) < 8 && Math.abs(ddy) < 8) return;
+        modo = Math.abs(ddx) > Math.abs(ddy) && ddx < 0 ? 'h' : 'v';
+        if (modo === 'v') return;
+        g.classList.add('arrastando');
+      }
+      dx = Math.min(0, ddx);
+      g.style.transform = `translateX(${dx}px)`;
+      fundo.style.opacity = String(Math.max(0, 1 + dx / g.offsetWidth));
+      e.preventDefault();
+    };
+    const fim = () => {
+      if (modo !== 'h') { modo = null; return; }
+      modo = null; g.classList.remove('arrastando');
+      if (dx < -g.offsetWidth * 0.3 || (dx < -30 && Date.now() - t0 < 250)) fechaGaveta();
+      else { g.style.transform = ''; fundo.style.opacity = ''; }
+    };
+    [g, fundo].forEach(el => {
+      el.addEventListener('touchstart', comeca, { passive: true });
+      el.addEventListener('touchmove', move, { passive: false });
+      el.addEventListener('touchend', fim);
+      el.addEventListener('touchcancel', fim);
+    });
+  })();
+  gavetaEstado();
+});
+
+// ================= resultado do primeiro acesso (etapa 1) e personalizar (etapa 2) =================
+// Etapa 1 (o que a compra entrega): o padrão da escala por função, só com números.
+// Etapa 2 (personalizar): nomes, trocas, faltas, férias, mês. Separada para poder virar plano mensal depois:
+// a liberação passa toda por podePersonalizar().
+function podePersonalizar(c) { return !!c; } // hoje liberado para todos (preço do plano ainda não definido)
+function cartaoPersonalizar(comResultado) {
+  return `<section class="perso-cartao" aria-labelledby="tPerso"><span class="perso-ic" aria-hidden="true">2</span><div>
+    <b id="tPerso">Personalizar a escala</b><p>Coloque os nomes, troque folgas, lance faltas, atestados e férias e veja o mês inteiro.</p>
+    <div class="lado-bt"><button class="btn pq azul" data-ir="personalizar">Personalizar</button>${comResultado ? '<button class="btn pq sec" data-ir="resultado">Ver o resultado</button>' : ''}</div></div></section>`;
+}
+const ddmm = d => `${d.slice(8)}/${d.slice(5, 7)}`;
+async function telaResultado() {
+  const v = $('#v-resultado');
+  if (!atual) return ir('inicio');
+  v.innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
+  const seg0 = segundaDe(hojeIso());
+  const r = await api(`/api/equipes/${atual.id}/semana?data=${seg0}`), e = r.escala;
+  if (!e) { v.innerHTML = '<div class="vazio"><h2>A escala ainda não saiu</h2><p>Abra a escala da semana para ver o que falta.</p><button class="btn" data-ir="escala">Abrir a escala</button></div>'; return; }
+  const sem = e.dados[r.semana] || e.dados[0], fs = e.funcionarios, ab = e.abertos;
+  let funcoes = (atual.funcoes || []).filter(f => f.n > 0);
+  if (!funcoes.length) { // unidade antiga, sem o quiz por função: agrupa pelo cargo
+    const g = {}; fs.forEach(f => { const k = f.cargo || 'Equipe'; g[k] = (g[k] || 0) + 1; });
+    funcoes = Object.entries(g).map(([nome, n]) => ({nome, n}));
+  }
+  const ds = Escala.domingoSemanasDe(atual.setor);
+  const cards = funcoes.map(f => {
+    const membros = fs.map((x, i) => (x.cargo || 'Equipe') === f.nome ? i : -1).filter(i => i >= 0);
+    const porDia = DIAS.map((d, k) => ab[k] ? membros.filter(i => sem[i]?.[k] === 'T').length : null);
+    const chips = [`<span>${plural(membros.length || f.n, 'pessoa', 'pessoas')}</span>`];
+    if (f.dias) chips.push(`<span>${f.dias} dias por semana</span>`);
+    if (f.entrada && f.saida) {
+      const j = jornadaDe({...f, intervalo: f.intervalo || 0});
+      chips.push(`<span class="v">${Escala.hm(j.dia / 60)} por dia · ${Escala.hm(j.semana)} por semana</span>`, `<span>${hora(f.entrada)} às ${hora(f.saida)}${f.intervalo ? `, ${Escala.hm(f.intervalo / 60)} de intervalo` : ''}</span>`);
+    }
+    const fo = f.folga || {modo: 'rodizio'};
+    chips.push(`<span>Folgas: ${fo.modo === 'fixa' ? 'fixas em ' + fo.dias.map(d => DIAS[d]).join(' e ') : fo.modo === 'preferidos' ? 'de preferência ' + fo.dias.map(d => DIAS[d]).join(', ') : 'em rodízio'}</span>`);
+    if (f.minimo) chips.push(`<span>Mínimo de ${f.minimo} por dia</span>`);
+    const folgas = membros.slice(0, 8).map(i => `<span><b>${esc(fs[i].nome)}</b>: ${DIAS.filter((_, k) => sem[i]?.[k] === 'F' && ab[k]).join(' e ') || '—'}</span>`).join('') + (membros.length > 8 ? `<span>e mais ${membros.length - 8}</span>` : '');
+    return `<article class="res-func"><h3>${esc(f.nome)}<small>${plural(membros.length || f.n, 'pessoa', 'pessoas')}</small></h3>
+      <div class="res-chips">${chips.join('')}</div>
+      <p class="dica">Trabalhando em cada dia, nesta semana</p>
+      <div class="res-dia">${DIAS.map((d, k) => porDia[k] == null ? `<span class="x">${d}<b>–</b></span>` : `<span>${d}<b>${porDia[k]}</b></span>`).join('')}</div>
+      <div class="res-folgas">${folgas}</div></article>`;
+  }).join('');
+  const domingo = ab[6] ? `<div class="cartao" style="margin-top:12px"><b>Domingo em rodízio</b><p style="margin-top:4px">${ds === 3 ? 'No comércio, cada um folga pelo menos 1 a cada 3 domingos (Lei 10.101).' : `Cada um folga pelo menos 1 a cada ${ds} domingos (Portaria MTP 671/2021).`}
+    Nas próximas ${e.dados.length} semanas: ${e.dados.map((w, s) => `${ddmm(Escala.somaDias(e.inicio, s * 7 + 6))}, ${plural(w.filter(x => x[6] === 'F').length, 'folga', 'folgam')}`).join(' · ')}.</p></div>` : '';
+  const ajustes = (e.ajustes || []).length ? `<div class="cartao" style="margin-top:12px"><b>Ajustes da lei do domingo</b><p class="dica" style="margin:4px 0 6px">Nessas semanas a folga escolhida deu lugar ao domingo, como manda a lei.</p>
+    <ul class="res-folgas">${e.ajustes.slice(0, 5).map(a => `<li>${esc(a.texto)}</li>`).join('')}${e.ajustes.length > 5 ? `<li>e mais ${e.ajustes.length - 5}</li>` : ''}</ul></div>` : '';
+  const a = Escala.analisar(e, opcoesAnalise(atual));
+  v.innerHTML = `<header class="res-topo"><span class="ban-etq">Etapa 1 · Resultado</span><h1>Sua escala 5x2 está pronta</h1>
+      <p>O padrão da escala por função, em números. Tudo dentro da nova lei.</p>
+      <div class="res-nums"><span>${plural(fs.length, 'pessoa', 'pessoas')}</span><span>${plural(funcoes.length, 'função', 'funções')}</span><span>2 folgas por semana</span>${ab[6] ? `<span>Domingo: 1 a cada ${ds}</span>` : ''}<span>Semana de ${ddmm(r.inicio)} a ${ddmm(Escala.somaDias(r.inicio, 6))}</span></div></header>
+    <div class="res-acoes"><button class="btn" data-ir="escala">Ver a semana</button><button class="btn sec" data-ir="tabela">Baixar ou enviar</button></div>
+    ${podeEditar() ? cartaoPersonalizar(false) : ''}
+    <h2 class="res-tit">O padrão por função</h2><div class="res-funcs">${cards}</div>
+    ${domingo}${ajustes}
+    <h2 class="res-tit">A escala e a lei</h2><div class="cartao">${htmlAnalise(a)}</div>`;
+}
+function telaPersonalizar() {
+  const v = $('#v-personalizar');
+  const itens = [
+    ['pessoas', 'Colocar os nomes da equipe', 'Troque "Caixa 1" pelo nome de cada um'],
+    ['escala', 'Trocar folgas na semana', 'Toque no nome e mude o dia de folga'],
+    ['ocorrencias', 'Faltas, atestados e férias', 'Lance e a escala se ajusta sozinha'],
+    ['tabela', 'Escala da semana ou do mês', 'Em PDF, Excel, imagem ou no WhatsApp'],
+    ['pessoas', 'Folga fixa de alguém', 'Para quem combinou um dia certo de folga'],
+    ['funcionamento', 'Horário e mínimo por dia', 'Mude o funcionamento da unidade'],
+  ];
+  const liberado = podePersonalizar(conta);
+  v.innerHTML = `<header class="res-topo"><span class="ban-etq">Etapa 2</span><h1>Personalizar a escala</h1>
+      <p>A escala por números já está pronta. Aqui ela fica com a cara da sua equipe.</p></header>
+    ${liberado ? `<ul class="perso-lista">${itens.map(([r, t, d]) => `<li><button data-ir="${r}"><span><b>${t}</b><small>${esc(d)}</small></span><span class="seta" aria-hidden="true">›</span></button></li>`).join('')}</ul>`
+      : '<div class="cartao"><b>Disponível no plano mensal</b><p>Fale com a gente para liberar.</p></div>'}
+    <p style="margin-top:16px"><button class="link" data-ir="resultado">‹ Ver o resultado por função</button></p>`;
 }

@@ -99,16 +99,23 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const setor = SETORES[b.setor] ? b.setor : 'outro';
     const abertos = Array.isArray(b.abertos) && b.abertos.length === 7 ? b.abertos.map(x => (x ? 1 : 0)) : SETORES[setor].abertos;
     const minimo = Array.isArray(b.minimo) && b.minimo.length === 7 ? b.minimo.map(x => Math.max(0, Math.min(200, Math.round(+x) || 0))) : SETORES[setor].minimo;
-    const horas_dia = Math.max(1, Math.min(12, Math.round((+String(b.horas_dia ?? 8).replace(',', '.') || 8) * 4) / 4));
+    const horas_dia = Math.max(1, Math.min(12, Math.round((+String(b.horas_dia ?? 8).replace(',', '.') || 8) * 60) / 60));
     const hora = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
     const abre = hora(b.abre) || SETORES[setor].abre, fecha = hora(b.fecha) || SETORES[setor].fecha;
     // função que não pode faltar: vem do segmento e a empresa ajusta o mínimo por dia
     const base = Array.isArray(b.criticas) ? b.criticas : SETORES[setor].criticas;
-    const criticas = base.slice(0, 3).map(c => ({ nome: limpa(c?.nome, 40), chave: limpa(c?.chave, 20).toLowerCase(),
+    const criticas = base.slice(0, 10).map(c => ({ nome: limpa(c?.nome, 40), chave: limpa(c?.chave, 20).toLowerCase(), ...(limpa(c?.cargo, 60) && { cargo: limpa(c.cargo, 60) }),
       minimo: Array.isArray(c?.minimo) && c.minimo.length === 7 ? c.minimo.map((x, d) => abertos[d] ? Math.max(0, Math.min(50, Math.round(+x) || 0)) : 0) : [0, 0, 0, 0, 0, 0, 0],
       explica: limpa(c?.explica, 300) })).filter(c => c.nome && c.chave);
-    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas };
+    // jornada e folgas de cada função, como o dono respondeu no primeiro acesso
+    const funcoes = (Array.isArray(b.funcoes) ? b.funcoes : []).slice(0, 20).map(f => ({
+      nome: limpa(f?.nome, 60), n: Math.max(0, Math.min(200, Math.round(+f?.n) || 0)), dias: Math.max(1, Math.min(5, Math.round(+f?.dias) || 5)),
+      entrada: hora(f?.entrada), saida: hora(f?.saida), intervalo: Math.max(0, Math.min(240, Math.round(+f?.intervalo) || 0)),
+      folga: { modo: ['rodizio', 'preferidos', 'fixa'].includes(f?.folga?.modo) ? f.folga.modo : 'rodizio', dias: fixosDias(f?.folga?.dias) },
+      minimo: Math.max(0, Math.min(50, Math.round(+f?.minimo) || 0)), critica: !!f?.critica })).filter(f => f.nome);
+    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes };
   }
+  const fixosDias = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 6);
   app.get('/api/equipes', L, erro(async (req, res) => {
     const { rows } = await q(`select e.*, (select count(*)::int from funcionarios f where f.equipe_id=e.id and f.ativo) total,
       (select max(criado_em) from escalas s where s.equipe_id=e.id) ultima from equipes e where usuario_id=$1 order by e.id`, [req.conta.id]);
@@ -185,7 +192,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   const proximaSegunda = () => { const h = hojeBR(), dow = (new Date(h + 'T12:00:00Z').getUTCDay() + 6) % 7; return somaDias(h, dow === 0 ? 0 : 7 - dow); };
   // gera e salva a escala da unidade (férias, atestados etc. já lançados entram no cálculo)
   async function gerarParaEquipe(req, equipe, inicio, semanas) {
-    const { rows: fs } = await q('select id, nome, cargo, folga_fixa from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
+    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
     if (!fs.length) { const e = new Error('Cadastre pelo menos uma pessoa antes de gerar a escala.'); e.status = 400; throw e; }
     const travado = await mesFechadoEntre(req.conta.id, inicio, somaDias(inicio, semanas * 7 - 1));
     if (travado) { const e = new Error(erroFechado(travado)); e.status = 409; throw e; }
@@ -193,12 +200,12 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const ausencias = Array.from({ length: semanas }, (_, s) => fs.map(f => Array.from({ length: 7 }, (_, d) =>
       mapa.get(f.id + '|' + somaDias(inicio, s * 7 + d)) || null)));
     const grupos = gruposDaUnidade(fs, equipe.criticas || []);
-    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
+    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa, pref: f.folga_pref || [], dias: f.dias_semana || 5 })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
       grupos, domingoSemanas: domingoSemanasDe(equipe.setor) });
-    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas)
-      values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
+    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes)
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *`,
     [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
-      JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas)]);
+      JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || [])]);
     auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
     return (await escalasComOcorrencias(rows))[0];
   }
@@ -603,16 +610,22 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       if (limpa(b.empresa.nome)) { await q('update usuarios set empresa=$1 where id=$2', [limpa(b.empresa.nome), req.conta.id]); req.conta.empresa = limpa(b.empresa.nome); }
     }
     const u = validaEquipe(b.unidade || {});
-    const pessoas = (Array.isArray(b.pessoas) ? b.pessoas : []).map(p => ({ nome: limpa(p?.nome, 60), cargo: limpa(p?.cargo, 60) })).filter(p => p.nome).slice(0, 200);
+    const hora = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
+    const pessoas = (Array.isArray(b.pessoas) ? b.pessoas : []).map(p => ({ nome: limpa(p?.nome, 60), cargo: limpa(p?.cargo, 60),
+      folga_fixa: fixos(p?.folga_fixa), folga_pref: fixosDias(p?.folga_pref), dias_semana: Math.max(1, Math.min(5, Math.round(+p?.dias_semana) || 5)),
+      entrada: hora(p?.entrada), saida: hora(p?.saida), intervalo_min: p?.intervalo_min == null ? null : Math.max(0, Math.min(240, Math.round(+p.intervalo_min) || 0)) }))
+      .filter(p => p.nome).slice(0, 200);
     if (!pessoas.length) return res.status(400).json({ erro: 'Informe pelo menos uma pessoa da equipe.' });
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
     if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
-    const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
-      [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia, u.abre, u.fecha, JSON.stringify(u.criticas)]);
+    const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *',
+      [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia, u.abre, u.fecha, JSON.stringify(u.criticas), JSON.stringify(u.funcoes)]);
     if (b.empresa || !(await configDe(req.conta.id)).segmento) await q(`insert into empresa_config (conta_id, segmento) values ($1,$2)
       on conflict (conta_id) do update set segmento=coalesce(empresa_config.segmento, excluded.segmento)`, [req.conta.id, u.setor]);
-    await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa) select $1, x.nome, x.cargo, '[]'::jsonb
-      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text)`, [eq.id, JSON.stringify(pessoas)]);
+    await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa, folga_pref, dias_semana, entrada, saida, intervalo_min)
+      select $1, x.nome, x.cargo, x.folga_fixa, x.folga_pref, x.dias_semana, x.entrada, x.saida, x.intervalo_min
+      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, folga_pref jsonb, dias_semana int, entrada text, saida text, intervalo_min int)`,
+    [eq.id, JSON.stringify(pessoas)]);
     auditar(req, `Cadastrou a unidade ${u.nome} com ${pessoas.length} pessoa(s)`);
     let escala = null;
     if (req.conta.liberado) {

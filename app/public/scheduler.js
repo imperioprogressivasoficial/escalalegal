@@ -54,6 +54,11 @@
   };
   const semAcento = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const casaFuncao = (cargo, chave) => !!chave && semAcento(cargo).includes(semAcento(chave));
+  // quem conta para a função: com "cargo" (vem do primeiro acesso por função) o cargo tem que ser igual;
+  // sem ele vale a chave (ex.: "farmac" casa com Farmacêutica)
+  const daFuncao = (f, c) => c.cargo ? semAcento(f.cargo).trim() === semAcento(c.cargo).trim() : casaFuncao(f.cargo, c.chave);
+  // 8.4 -> "8h24", 42 -> "42h"
+  const hm = h => { const m = Math.round((+h || 0) * 60); return `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`; };
   const domingoSemanasDe = setor => (SETORES[setor] || SETORES.outro).comercio ? 3 : 7;
   // horas que o local fica aberto por dia (ex.: '07:00' a '22:00' -> 15)
   function horasAberto(abre, fecha) {
@@ -118,15 +123,19 @@
   // data (AAAA-MM-DD) + n dias
   function somaDias(dataIso, n) { const d = new Date(dataIso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
 
-  // funcionarios: [{nome, fixo?: [idxDia,...] folgas fixas desejadas}]
+  // funcionarios: [{nome, fixo?: [idxDia,...] folga fixa (o dono decidiu), pref?: [idxDia,...] dias de folga preferidos,
+  //   dias?: dias de trabalho por semana (até 5: a nova lei garante 2 folgas)}]
+  // A regra do domingo vem antes de tudo: se a folga fixa ou a preferida impediria a folga no domingo, o domingo entra
+  // no lugar de um desses dias naquela semana (fica registrado em "ajustes").
   // abertos: [7] 1/0 ; minimo: [7] pessoas por dia ; semanas: n
   // ausencias (opcional): ausencias[s][f][d] = código da ocorrência (férias, atestado...) ou null
   // grupos (opcional): [{ nome, membros: [índices], minimo: [7] }] -> função que não pode faltar no dia
   // domingoSemanas: folga no domingo pelo menos 1 vez a cada N semanas (3 comércio, 7 demais)
   function gerarEscala({ funcionarios, abertos, minimo, semanas = 4, ausencias, grupos = [], domingoSemanas = 3 }) {
     const n = funcionarios.length;
-    const alertas = [];
-    const escala = []; // escala[s][f] = array 7 de 'T' | 'F'
+    const alertas = [], ajustes = [];
+    const escala = [];
+    const folgasDe = f => Math.max(2, Math.min(7, 7 - (Math.round(+funcionarios[f].dias) || 5))); // escala[s][f] = array 7 de 'T' | 'F'
     const domingosTrabalhados = funcionarios.map((_, i) => i % domingoSemanas); // escalona o rodízio
     const gruposDe = funcionarios.map((_, f) => grupos.map((g, gi) => g.membros.includes(f) ? gi : -1).filter(gi => gi >= 0));
 
@@ -142,7 +151,7 @@
       const fechados = [];
       for (let d = 0; d < 7; d++) if (!abertos[d]) fechados.push(d);
       // quem está ausente parte da semana tem menos dias para folgar (férias na semana toda = sem folga)
-      const folgasRestantes = semana.map(x => Math.min(2, x.filter(c => c === 'T').length));
+      const folgasRestantes = semana.map((x, f) => Math.min(folgasDe(f), x.filter(c => c === 'T').length));
       fechados.forEach(d => {
         for (let f = 0; f < n; f++) if (folgasRestantes[f] > 0 && semana[f][d] === 'T') { folgaEm(f, d); folgasRestantes[f]--; }
         presentes[d] = 0;
@@ -157,11 +166,19 @@
       for (const f of ordem) {
         let falta = folgasRestantes[f];
         if (falta <= 0) continue;
-        const fixos = (funcionarios[f].fixo || []).filter(d => abertos[d] && semana[f][d] === 'T');
+        const precisaDomingo = abertos[6] && domingosTrabalhados[f] >= domingoSemanas - 1 && semana[f][6] === 'T';
+        let fixos = (funcionarios[f].fixo || []).filter(d => abertos[d] && semana[f][d] === 'T');
+        // a lei do domingo passa na frente da folga fixa
+        if (precisaDomingo && !fixos.includes(6) && fixos.length >= falta) {
+          folgaEm(f, 6); falta--;
+          const sai = fixos.slice(falta);
+          fixos = fixos.slice(0, falta);
+          ajustes.push({ semana: s, funcionario: f, nome: funcionarios[f].nome, dia: 6, no_lugar_de: sai,
+            texto: `Semana ${s + 1}: ${funcionarios[f].nome} folga no domingo (lei) no lugar de ${sai.map(d => DIAS[d]).join(' e ')}.` });
+        }
         fixos.slice(0, falta).forEach(d => { folgaEm(f, d); falta--; });
         if (falta <= 0) continue;
-
-        const precisaDomingo = abertos[6] && domingosTrabalhados[f] >= domingoSemanas - 1;
+        const pref = (funcionarios[f].pref || []).filter(d => abertos[d]);
         // avalia pares consecutivos primeiro, depois dias soltos
         const candidatos = [];
         for (let d = 0; d < 7; d++) {
@@ -173,13 +190,20 @@
             candidatos.push({ dias: [d, d2], folga: Math.min(folga, sobra(f, d2)) + 0.5 });
           }
         }
-        const pontua = c => c.folga + (precisaDomingo && c.dias.includes(6) && c.folga >= 0 ? 100 : 0) + (c.dias.length === falta ? 0.3 : 0);
+        const pontua = c => c.folga + (precisaDomingo && c.dias.includes(6) && c.folga >= 0 ? 100 : 0) + (c.dias.length === falta ? 0.3 : 0)
+          + (c.folga >= 0 ? c.dias.filter(d => pref.includes(d)).length * 5 : 0) - (pref.length && c.dias.some(d => d !== 6 && !pref.includes(d)) ? 1 : 0);
+        const antes = semana[f].slice();
         candidatos.sort((a, b) => pontua(b) - pontua(a));
         for (const c of candidatos) {
           if (falta <= 0) break;
           if (c.dias.length > falta) continue;
           if (c.dias.some(d => semana[f][d] !== 'T')) continue;
           c.dias.forEach(d => { folgaEm(f, d); falta--; });
+        }
+        if (precisaDomingo && pref.length && !pref.includes(6) && semana[f][6] === 'F') {
+          const sai = pref.filter(d => antes[d] === 'T' && semana[f][d] === 'T');
+          if (sai.length) ajustes.push({ semana: s, funcionario: f, nome: funcionarios[f].nome, dia: 6, no_lugar_de: sai,
+            texto: `Semana ${s + 1}: ${funcionarios[f].nome} folga no domingo (lei) no lugar de ${sai.map(d => DIAS[d]).join(' e ')}.` });
         }
       }
 
@@ -196,15 +220,16 @@
 
     const total = minimo.reduce((a, m, d) => a + (abertos[d] ? m : 0), 0);
     const necessarios = Math.ceil(total / 5);
-    if (n < necessarios) alertas.unshift(`Equipe pequena: para essa cobertura você precisa de pelo menos ${necessarios} pessoas trabalhando 5x2.`);
-    return { escala, alertas, necessarios };
+    const capacidade = funcionarios.reduce((a, _, f) => a + 7 - folgasDe(f), 0);
+    if (n < necessarios || capacidade < total) alertas.unshift(`Equipe pequena: para essa cobertura você precisa de pelo menos ${necessarios} pessoas trabalhando 5x2.`);
+    return { escala, alertas, necessarios, ajustes };
   }
 
 
   // funções obrigatórias da unidade -> grupos para o motor (quem tem o cargo que casa com a chave)
   function gruposDaUnidade(funcionarios, criticas) {
-    return (criticas || []).map(c => ({ nome: c.nome, chave: c.chave, minimo: c.minimo || [0, 0, 0, 0, 0, 0, 0],
-      membros: funcionarios.map((f, i) => casaFuncao(f.cargo, c.chave) ? i : -1).filter(i => i >= 0) }));
+    return (criticas || []).map(c => ({ nome: c.nome, chave: c.chave, cargo: c.cargo, minimo: c.minimo || [0, 0, 0, 0, 0, 0, 0],
+      membros: funcionarios.map((f, i) => daFuncao(f, c) ? i : -1).filter(i => i >= 0) }));
   }
 
   // Diagnóstico da escala em linguagem simples: o que está certo e o que precisa de atenção.
@@ -240,7 +265,7 @@
     }
     // 4b. função que não pode faltar (farmacêutico, caixa, cozinha...)
     for (const c of opts.criticas || []) {
-      const membros = e.funcionarios.map((f, i) => casaFuncao(f.cargo, c.chave) ? i : -1).filter(i => i >= 0);
+      const membros = e.funcionarios.map((f, i) => daFuncao(f, c) ? i : -1).filter(i => i >= 0);
       if (!membros.length) { itens.push({ ok: false, titulo: `Ninguém marcado como ${c.nome}`, texto: `${c.explica || ''} Em Pessoas, edite e coloque a função ${c.nome} em quem faz esse trabalho.`.trim() }); continue; }
       const faltas = [];
       e.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) if (e.abertos[d] && (c.minimo?.[d] || 0) > 0) { const p = membros.filter(i => sem[i]?.[d] === 'T').length; if (p < c.minimo[d]) faltas.push(`${somaDias(e.inicio, s * 7 + d).slice(8)}/${somaDias(e.inicio, s * 7 + d).slice(5, 7)}: ${p} de ${c.minimo[d]}`); } });
@@ -252,16 +277,16 @@
     const lim = limiteSemanal(e.inicio), semanais = Math.round(horasDia * 5 * 10) / 10;
     const limFim = limiteSemanal(somaDias(e.inicio, e.semanas * 7 - 1));
     const limMin = Math.min(lim, limFim);
-    if (horasDia > 8) itens.push({ ok: false, titulo: `${String(horasDia).replace('.', ',')}h por dia passa de 8h`, texto: `Com 5 dias, são ${String(semanais).replace('.', ',')}h na semana. Acima de 8h por dia só com acordo ou convenção coletiva. O jeito simples é 8h por dia = 40h.` });
-    else if (semanais > limMin) itens.push({ ok: false, titulo: `${String(semanais).replace('.', ',')}h por semana passa do limite`, texto: `O limite no período é ${limMin}h por semana.` });
-    else itens.push({ ok: true, titulo: `${String(semanais).replace('.', ',')}h por semana`, texto: semanais <= 40
+    if (horasDia > 8) itens.push({ ok: false, titulo: `${hm(horasDia)} por dia passa de 8h`, texto: `Com 5 dias, são ${hm(semanais)} na semana. Acima de 8h por dia só com acordo ou convenção coletiva. O jeito simples é 8h por dia = 40h.` });
+    else if (semanais > limMin) itens.push({ ok: false, titulo: `${hm(semanais)} por semana passa do limite`, texto: `O limite no período é ${limMin}h por semana.` });
+    else itens.push({ ok: true, titulo: `${hm(semanais)} por semana`, texto: semanais <= 40
       ? 'Já dentro do limite final de 40h da nova lei. Não vai precisar mudar em 2027.'
       : `Dentro do limite de ${limMin}h deste período. A partir de 15/12/2027 o limite cai para 40h.` });
     // 5b. horário de funcionamento x jornada
     const ha = horasAberto(opts.abre, opts.fecha);
     if (ha && ha > horasDia + 1) {
       const turnos = Math.ceil(ha / (horasDia + 1));
-      itens.push({ ok: null, titulo: `Aberto ${String(ha).replace('.', ',')}h por dia: ${turnos} turnos`, texto: `Cada pessoa trabalha ${String(horasDia).replace('.', ',')}h mais o almoço, então ninguém cobre o dia todo. O mínimo de cada dia precisa somar as pessoas de todos os turnos, e entre um dia e outro cada um precisa de 11h de descanso (CLT, art. 66).` });
+      itens.push({ ok: null, titulo: `Aberto ${hm(ha)} por dia: ${turnos} turnos`, texto: `Cada pessoa trabalha ${hm(horasDia)} mais o almoço, então ninguém cobre o dia todo. O mínimo de cada dia precisa somar as pessoas de todos os turnos, e entre um dia e outro cada um precisa de 11h de descanso (CLT, art. 66).` });
     }
     // 6. feriados
     const fer = [];
@@ -272,6 +297,6 @@
       resumo: problemas ? `${pl(problemas, 'ponto', 'pontos')} para ajustar antes de publicar a escala.` : 'Escala dentro da regra: pode publicar para a equipe.' };
   }
 
-  const api = { DIAS, SETORES, OCORRENCIAS, COD_NOME, UFS, ESTADUAIS, gerarEscala, feriado, feriados, somaDias, limiteSemanal, analisar, casaFuncao, domingoSemanasDe, horasAberto, gruposDaUnidade };
+  const api = { DIAS, SETORES, OCORRENCIAS, COD_NOME, UFS, ESTADUAIS, gerarEscala, feriado, feriados, somaDias, limiteSemanal, analisar, casaFuncao, daFuncao, hm, domingoSemanasDe, horasAberto, gruposDaUnidade };
   if (typeof module !== 'undefined') module.exports = api; else root.Escala = api;
 })(this);

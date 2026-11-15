@@ -68,5 +68,26 @@ test('farmácia pelo primeiro acesso: farmacêutico garantido todo dia', { skip:
   // unidade sem crítica informada pega a do segmento
   const r2 = await chama('/api/onboarding', { method: 'POST', cookie: s, body: { unidade: { nome: 'Drogaria Bairro', setor: 'farmacia' }, pessoas: [{ nome: 'Zé', cargo: 'Farmacêutico' }] } });
   assert.equal(r2.json.equipe.criticas[0].nome, 'Farmacêutico(a)');
+  // quiz por números: a equipe vem contada por função ("Caixa 1", "Caixa 2"...), o cargo é a função
+  const mer = E.SETORES.mercado, contas = [['Caixa', 3], ['Repositor(a)', 2], ['Açougue', 1], ['Entregador', 1]];
+  const porFuncao = contas.flatMap(([f, n]) => Array.from({ length: n }, (_, i) => ({ nome: `${f.replace(/\(a\)/g, '')} ${i + 1}`, cargo: f,
+    dias_semana: f === 'Açougue' ? 4 : 5, entrada: '07:00', saida: '16:00', intervalo_min: 60, folga_pref: f === 'Repositor(a)' ? [0, 1] : [], folga_fixa: [] })));
+  const r3 = await chama('/api/onboarding', { method: 'POST', cookie: s, body: { unidade: { nome: 'Mercado', setor: 'mercado', abertos: mer.abertos, minimo: mer.minimo, abre: mer.abre, fecha: mer.fecha, horas_dia: 8,
+      criticas: [{ ...mer.criticas[0], cargo: 'Caixa' }],
+      funcoes: contas.map(([nome, n]) => ({ nome, n, dias: 5, entrada: '07:00', saida: '16:00', intervalo: 60, folga: { modo: 'rodizio', dias: [] }, minimo: nome === 'Caixa' ? 1 : 0 })) },
+    pessoas: porFuncao, inicio: '2027-03-01', semanas: 4 } });
+  assert.equal(r3.status, 200, JSON.stringify(r3.json));
+  const fsMer = (await pool.query('select nome, cargo from funcionarios where equipe_id=$1 order by nome', [r3.json.equipe.id])).rows;
+  assert.deepEqual(fsMer.map(f => f.nome).sort(), ['Açougue 1', 'Caixa 1', 'Caixa 2', 'Caixa 3', 'Entregador 1', 'Repositor 1', 'Repositor 2'].sort());
+  assert.equal(fsMer.length, 7);
+  assert.equal(r3.json.equipe.funcoes.length, 4); assert.equal(r3.json.equipe.criticas[0].cargo, 'Caixa');
+  const acou = (await pool.query("select dias_semana, entrada, saida, intervalo_min from funcionarios where equipe_id=$1 and cargo='Açougue'", [r3.json.equipe.id])).rows[0];
+  assert.deepEqual(acou, { dias_semana: 4, entrada: '07:00', saida: '16:00', intervalo_min: 60 });
+  const iA = r3.json.escala.funcionarios.findIndex(f => f.cargo === 'Açougue');
+  for (const sem of r3.json.escala.dados) assert.equal(sem[iA].filter(c => c === 'F').length, 3, 'açougue trabalha 4 dias');
+  assert.ok(Array.isArray(r3.json.escala.ajustes)); assert.ok(fsMer.some(f => f.nome === 'Repositor 2' && f.cargo === 'Repositor(a)'));
+  const caixas = r3.json.escala.funcionarios.map((f, i) => f.cargo === 'Caixa' ? i : -1).filter(i => i >= 0);
+  assert.equal(caixas.length, 3);
+  for (const sem of r3.json.escala.dados) for (let d = 0; d < 7; d++) assert.ok(caixas.some(i => sem[i][d] === 'T'), `caixa no dia ${d}`);
   await pool.query('delete from usuarios where email=$1', [email]);
 });
