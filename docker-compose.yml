@@ -27,6 +27,8 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       META_PIXEL_ID: ${META_PIXEL_ID:-}
       LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
+      PRECO: ${PRECO:-47}
+      COMISSAO_PERCENT: ${COMISSAO_PERCENT:-30}
     depends_on:
       db: { condition: service_healthy }
     healthcheck:

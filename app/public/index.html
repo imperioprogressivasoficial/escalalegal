@@ -271,7 +271,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .formatos-mini span{font-weight:700;font-size:.92rem;color:#c9d8f0;margin-right:4px}
 .formatos-mini i{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#fff;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
 .formatos-mini img{width:34px;height:34px}
-.formatos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.formatos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
 .formato{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px;transition:transform .3s,box-shadow .3s}
 .formato:hover{transform:translateY(-4px);box-shadow:0 22px 40px -24px rgba(12,27,51,.35)}
 .formato img{width:56px;height:56px;margin-bottom:14px}
@@ -282,6 +282,13 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .aula-chamada img{width:64px;flex:0 0 64px}
 .aula-chamada b{font-family:var(--display);font-size:1.25rem;color:var(--tinta);font-stretch:88%}
 .aula-chamada p{font-size:1rem!important;margin-top:4px!important}
+.indique-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center}
+.indique-grid p{font-size:1.15rem;margin-top:16px}
+.indique-passos{list-style:none;padding:0;display:grid;gap:12px}
+.indique-passos li{display:flex;gap:16px;align-items:center;background:#fff;border:1px solid var(--linha);border-radius:18px;padding:18px 20px;font-size:1.08rem;color:var(--tinta)}
+.indique-passos b{flex:0 0 44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--grad-verde);color:#fff;font:900 1.3rem var(--display)}
+.indique-passos i{display:inline-block;vertical-align:middle;margin-left:8px}
+@media(max-width:980px){.indique-grid{grid-template-columns:1fr;gap:28px}}
 @media(max-width:980px){.formatos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.formatos{gap:10px}.formato{padding:16px}.formato h3{font-size:1.1rem}.formato p{font-size:.9rem}.formatos-mini i{width:46px;height:46px}}
 @media(max-width:980px){
@@ -331,7 +338,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <a class="btn" href="#preco" data-comprar>Quero a Sua Escala Blindada <small>R$&nbsp;47</small></a>
         <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
       </div>
-      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><i title="WhatsApp"><img src="img/formatos/whatsapp.svg" alt="" width="40" height="40"></i><i title="PDF"><img src="img/formatos/pdf.svg" alt="" width="40" height="40"></i><i title="Excel"><img src="img/formatos/excel.svg" alt="" width="40" height="40"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg" alt="" width="40" height="40"></i><i title="Imagem JPG"><img src="img/formatos/jpg.svg" alt="" width="40" height="40"></i></div>
+      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><i title="WhatsApp"><img src="img/formatos/whatsapp.svg" alt="" width="40" height="40"></i><i title="PDF"><img src="img/formatos/pdf.svg" alt="" width="40" height="40"></i><i title="Excel"><img src="img/formatos/excel.svg" alt="" width="40" height="40"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg" alt="" width="40" height="40"></i><i title="Imagem JPG"><img src="img/formatos/jpg.svg" alt="" width="40" height="40"></i><i title="CSV"><img src="img/formatos/csv.svg" alt="" width="40" height="40"></i></div>
       <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único</span><span>7 dias de garantia</span></div>
     </div>
     <div class="vitrine" data-e style="--d:2">
@@ -434,9 +441,11 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <div class="formato" data-r><img src="img/formatos/excel.svg" alt="" width="56" height="56"><h3>Excel</h3><p>Planilha .xlsx com as folgas em amarelo.</p></div>
       <div class="formato" data-r><img src="img/formatos/sheets.svg" alt="" width="56" height="56"><h3>Google Planilhas</h3><p>Na sua planilha e se atualiza sozinha.</p></div>
       <div class="formato" data-r><img src="img/formatos/jpg.svg" alt="" width="56" height="56"><h3>Imagem</h3><p>Uma foto da tabela, leve, para mandar onde quiser.</p></div>
+      <div class="formato" data-r><img src="img/formatos/csv.svg" alt="" width="56" height="56"><h3>CSV</h3><p>Abre em qualquer planilha ou sistema de folha.</p></div>
       <div class="formato" data-r><img src="img/formatos/link.svg" alt="" width="56" height="56"><h3>Link da equipe</h3><p>Cada funcionário toca no nome e vê a própria folga.</p></div>
       <div class="formato" data-r><img src="img/formatos/texto.svg" alt="" width="56" height="56"><h3>Texto</h3><p>“Ana: folga quinta e sexta.” Para colar em qualquer lugar.</p></div>
       <div class="formato" data-r><img src="img/formatos/imprimir.svg" alt="" width="56" height="56"><h3>Imprimir</h3><p>Direto da tela, sem instalar nada.</p></div>
+      <div class="formato" data-r><img src="img/formatos/celular.svg" alt="" width="56" height="56"><h3>Tela inicial</h3><p>Coloque o app na tela do celular, sem baixar em loja.</p></div>
     </div>
   </div>
 </section>
@@ -503,10 +512,25 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <p class="oferta-nome">Sua Escala Blindada</p>
       <p class="valor"><span>R$</span>47</p>
       <p class="unico">à vista, acesso imediato</p>
-      <ul class="itens"><li>Escala pronta respondendo perguntas simples</li><li>Dentro da lei: 2 folgas, domingo, feriado e cobertura conferidos</li><li>WhatsApp, PDF, Excel, Google Planilhas e imagem</li><li>Aula da nova lei, explicada sem juridiquês</li><li>Acesso grátis para o seu contador</li><li>Várias lojas na mesma conta</li></ul>
+      <ul class="itens"><li>Escala pronta respondendo perguntas simples</li><li>Dentro da lei: 2 folgas, domingo, feriado e cobertura conferidos</li><li>WhatsApp, PDF, Excel, CSV, Google Planilhas e imagem</li><li>Aula da nova lei, explicada sem juridiquês</li><li>Acesso grátis para o seu contador</li><li>Use quantas vezes quiser: empresas, lojas e escalas sem mensalidade</li><li>Indique e ganhe comissão por cada venda</li></ul>
       <a class="btn" href="#preco" data-comprar>Quero meu acesso agora</a>
       <p class="oferta-pe">Compra segura. Acesso enviado para o seu e-mail.</p>
     </div>
+  </div>
+</section>
+
+<section class="sec gelo" id="indique">
+  <div class="wrap indique-grid">
+    <div>
+      <span class="etq">Indique e ganhe</span>
+      <h2>Indique para outro dono de negócio e ganhe por cada venda</h2>
+      <p>Todo cliente ganha um link só dele dentro do app. Mandou no grupo da associação, no WhatsApp ou no Instagram e alguém comprou: a comissão é sua, paga por Pix.</p>
+    </div>
+    <ol class="indique-passos">
+      <li data-r><b>1</b><span>Pegue o seu link em <strong>Mais › Indique e ganhe</strong></span></li>
+      <li data-r style="--d:1"><b>2</b><span>Mande para quem precisa da escala nova<i><img src="img/formatos/whatsapp.svg" alt="" width="26" height="26"></i></span></li>
+      <li data-r style="--d:2"><b>3</b><span>Comprou pelo seu link: <strong><span id="valorComissao">comissão</span></strong> para você, por Pix</span></li>
+    </ol>
   </div>
 </section>
 
@@ -518,9 +542,11 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <details data-r><summary>Vale para empresa pequena?</summary><p>Vale. A emenda permite que uma lei complementar crie regras de transição para MEI, micro e pequenas empresas. Enquanto ela não existir, vale a regra geral.</p></details>
       <details data-r><summary>Como recebo o acesso?</summary><p>Assim que o pagamento é confirmado, você recebe o link no e-mail da compra. É só criar a senha e começar. Funciona no navegador, sem instalar nada.</p></details>
       <details data-r><summary>Tem mensalidade?</summary><p>Não. São R$&nbsp;47 uma única vez.</p></details>
-      <details data-r><summary>Em que formatos recebo a escala?</summary><p>No celular ou no computador, você escolhe: manda direto no WhatsApp como imagem, baixa em PDF, em Excel ou como imagem, ou abre no seu Google Planilhas, que se atualiza sozinho. Cada funcionário também pode ver a própria folga por um link.</p></details>
+      <details data-r><summary>Em que formatos recebo a escala?</summary><p>No celular ou no computador, você escolhe: manda direto no WhatsApp como imagem, baixa em PDF, em Excel ou como imagem, ou abre no seu Google Planilhas, que se atualiza sozinho. Também sai em CSV, para qualquer planilha ou sistema de folha. Cada funcionário também pode ver a própria folga por um link.</p></details>
       <details data-r><summary>Preciso entender a lei?</summary><p>Não. Você só responde as perguntas e a escala já sai dentro da lei. Se quiser entender, dentro do app tem uma aula curta e sem juridiquês sobre o que mudou.</p></details>
-      <details data-r><summary>Serve para mais de uma loja?</summary><p>Sim. Cada loja, filial ou setor vira uma unidade dentro da mesma conta.</p></details>
+      <details data-r><summary>Serve para mais de uma loja ou empresa?</summary><p>Sim. Cada loja, filial ou setor vira uma unidade. E dá para cadastrar outras empresas (outro CNPJ, ou a empresa de um cliente) na mesma conta. Use quantas vezes quiser.</p></details>
+      <details data-r><summary>Tem aplicativo para baixar?</summary><p>Não precisa. Funciona pelo navegador, e o próprio app ensina a colocar o ícone na tela inicial do celular. Abre como um aplicativo, sem passar por loja.</p></details>
+      <details data-r><summary>Como funciona o Indique e ganhe?</summary><p>Dentro do app, você pega o seu link e manda para quem também precisa da escala. Cada compra feita pelo seu link vira comissão para você, paga por Pix depois dos 7 dias de garantia.</p></details>
       <details data-r><summary>O sistema calcula ponto ou folha de pagamento?</summary><p>Não. Ele organiza quem trabalha e quem folga em cada dia. Horários, banco de horas e folha seguem com o seu contador.</p></details>
       <details data-r><summary>E se não servir para mim?</summary><p>Você tem 7 dias para pedir o reembolso.</p></details>
     </div>
@@ -569,9 +595,21 @@ document.documentElement.classList.add('js');
 const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
 requestAnimationFrame(() => setTimeout(() => document.body.classList.remove('carrega'), 60));
 
+// indicação: quem chegou pelo link de um cliente (?ind=CODIGO) leva o código até o pagamento
+const IND = (() => {
+  const daUrl = (new URLSearchParams(location.search).get('ind') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+  try {
+    if (daUrl) localStorage.setItem('ind', JSON.stringify({c: daUrl, ate: Date.now() + 30 * 864e5}));
+    const g = JSON.parse(localStorage.getItem('ind') || 'null');
+    return g && g.ate > Date.now() ? g.c : daUrl;
+  } catch { return daUrl; }
+})();
 // checkout: no VPS o link vem de /api/config
 let CHECKOUT = '';
-fetch('/api/config').then(r => r.json()).then(c => { CHECKOUT = c.checkout || ''; if (CHECKOUT) $('#previa').hidden = true; }).catch(() => {});
+fetch('/api/config').then(r => r.json()).then(c => {
+  CHECKOUT = c.checkout || ''; if (CHECKOUT) $('#previa').hidden = true;
+  if (c.comissao) $('#valorComissao').textContent = 'R$ ' + c.comissao.toFixed(2).replace('.', ',');
+}).catch(() => {});
 
 // compra
 const dlg = $('#dlgCompra');
@@ -586,10 +624,11 @@ $('#formCompra').addEventListener('submit', async e => {
   if (zap.length < 10) return $('#dlgErro').textContent = 'Informe o WhatsApp com DDD.';
   const btn = $('#btnPagar'); btn.disabled = true; btn.textContent = 'Abrindo o pagamento...';
   const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')));
-  try { await fetch('/api/leads', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome, email, whatsapp: zap, setor: 'checkout', utm})}); } catch {}
+  try { await fetch('/api/leads', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome, email, whatsapp: zap, setor: 'checkout', utm, ref: IND})}); } catch {}
   if (window.fbq) fbq('track', 'InitiateCheckout', {value: 47, currency: 'BRL'});
   if (CHECKOUT) {
     const u = new URL(CHECKOUT); u.searchParams.set('email', email); u.searchParams.set('name', nome); u.searchParams.set('phone', zap);
+    if (IND) { u.searchParams.set('src', 'ind_' + IND); u.searchParams.set('sck', 'ind_' + IND); u.searchParams.set('utm_campaign', 'ind_' + IND); }
     location.href = u.toString();
   } else {
     $('#dlgErro').textContent = 'Prévia: o checkout ainda não foi ligado. No site publicado, este botão abre o pagamento.';

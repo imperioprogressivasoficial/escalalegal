@@ -11,7 +11,10 @@ const { criaFila, modelo } = require('./email.js');
 const {
   DATABASE_URL, SESSION_SECRET, ADMIN_USER = 'admin', ADMIN_PASS, WEBHOOK_TOKEN, N8N_WEBHOOK_URL, META_PIXEL_ID,
   CHECKOUT_URL = '', LIBERAR_TUDO, PORT = 3000, DOMAIN, SUPORTE_WHATSAPP = '', TRUST_PROXY = '1', NODE_ENV,
+  PRECO = '47', COMISSAO_PERCENT = '30',
 } = process.env;
+// indicação: quem indica ganha COMISSAO_PERCENT % do PRECO por compra aprovada (paga pelo dono via Pix, depois da garantia)
+const VALOR_COMISSAO = Math.round((+String(PRECO).replace(',', '.') || 47) * (+COMISSAO_PERCENT || 0)) / 100;
 const PRODUCAO = NODE_ENV === 'production';
 const APP_URL = (process.env.APP_URL || (DOMAIN ? `https://${DOMAIN}` : `http://localhost:${PORT}`)).replace(/\/$/, '');
 const SEGREDO = SESSION_SECRET || crypto.randomBytes(32).toString('hex');
@@ -157,7 +160,28 @@ async function enviaRedefinir(u) {
 }
 
 // Compra aprovada: libera conta existente ou cria a conta (sem senha) e manda o link por e-mail.
-async function liberarCompra({ email, nome, transacao, origem }) {
+// código de indicação: vem do link (?ind=CODIGO) pelo checkout (src/sck/utm) ou pelo formulário da página de vendas
+const codigoInd = v => { const m = /(?:^|[^a-z0-9])ind[_-]?([a-z0-9]{4,16})\b/i.exec(String(v || '')); return m ? m[1].toLowerCase() : null; };
+function refDoPayload(obj, prof = 0) {
+  if (!obj || typeof obj !== 'object' || prof > 5) return null;
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string' && /^(src|sck|utm_campaign|utm_content|utm_source|ref|ind)$/i.test(k)) { const c = codigoInd(v); if (c) return c; }
+    if (v && typeof v === 'object') { const c = refDoPayload(v, prof + 1); if (c) return c; }
+  }
+  return null;
+}
+async function registraIndicacao(email, comprador, codigo) {
+  if (!VALOR_COMISSAO) return;
+  if (!codigo) { const { rows } = await q("select ref from leads where lower(email)=$1 and ref is not null order by id desc limit 1", [email]); codigo = rows[0]?.ref; }
+  if (!codigo && comprador.indicado_por) { const { rows } = await q('select ref_codigo from usuarios where id=$1', [comprador.indicado_por]); codigo = rows[0]?.ref_codigo; }
+  if (!codigo) return;
+  const { rows: af } = await q('select id from usuarios where ref_codigo=$1', [codigo]);
+  if (!af[0] || af[0].id === comprador.id) return;
+  await q('update usuarios set indicado_por=coalesce(indicado_por,$1) where id=$2', [af[0].id, comprador.id]);
+  await q(`insert into comissoes (afiliado_id, comprador_email, valor) values ($1,$2,$3)
+    on conflict (comprador_email) do update set status='devida', criado_em=now() where comissoes.status='cancelada'`, [af[0].id, email, VALOR_COMISSAO]);
+}
+async function liberarCompra({ email, nome, transacao, origem, ref }) {
   await q(`insert into compras (email, origem, nome, transacao, status) values ($1,$2,$3,$4,'aprovada')
     on conflict (email) do update set status='aprovada', atualizado_em=now(),
       transacao=coalesce(nullif(excluded.transacao,''), compras.transacao), nome=coalesce(nullif(excluded.nome,''), compras.nome)`,
@@ -171,6 +195,7 @@ async function liberarCompra({ email, nome, transacao, origem }) {
   }
   const jaTinha = u.acesso_liberado && !novo;
   if (!u.acesso_liberado) await q('update usuarios set acesso_liberado=true, liberado_em=now() where id=$1', [u.id]);
+  if (origem !== 'manual') await registraIndicacao(email, u, ref).catch(e => console.error('indicação:', e.message));
   if (!jaTinha) {
     if (!u.senha_hash) link = await enviaBoasVindas(u);
     else await enviaLiberado(u);
@@ -180,7 +205,7 @@ async function liberarCompra({ email, nome, transacao, origem }) {
 }
 
 // ---------- conta ----------
-app.get('/api/config', (_req, res) => res.json({ checkout: CHECKOUT_URL, setores: SETORES, suporte: SUPORTE_WHATSAPP.replace(/\D/g, '') }));
+app.get('/api/config', (_req, res) => res.json({ checkout: CHECKOUT_URL, setores: SETORES, suporte: SUPORTE_WHATSAPP.replace(/\D/g, ''), comissao: VALOR_COMISSAO }));
 
 app.post('/api/cadastro', limite(8), erro(async (req, res) => {
   const b = req.body || {};
@@ -203,6 +228,8 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
     const { rows } = await q(`insert into usuarios (nome, empresa, email, whatsapp, senha_hash, acesso_liberado, liberado_em, origem, ultimo_acesso)
       values ($1,$2,$3,$4,$5,$6, case when $6 then now() end, $7, now()) returning id, sessao_v`,
     [nome, empresa || null, email, whatsapp, await hashSenha(senha), !!compra[0], contador ? 'contador' : 'cadastro']);
+    const ind = codigoInd('ind_' + limpa(b.ref, 20));
+    if (ind) await q('update usuarios set indicado_por=(select id from usuarios where ref_codigo=$1 and id<>$2) where id=$2', [ind, rows[0].id]).catch(() => {});
     criaSessao(res, rows[0]);
     enviar(N8N_WEBHOOK_URL, { evento: contador ? 'cadastro_contador' : 'cadastro', nome, empresa, email, whatsapp, pago: !!compra[0] });
     res.json({ ok: true });
@@ -289,7 +316,7 @@ app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
 }));
 
 // ---------- gestão: equipes, funcionários, escalas, ocorrências, acessos, relatórios ----------
-require('./gestao.js')({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte });
+require('./gestao.js')({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte, VALOR_COMISSAO });
 
 // ---------- pagamento: webhook do checkout ----------
 // URL para colar na plataforma (Kiwify, Hotmart, Eduzz, Cakto, Ticto, Clickmax, n8n...):
@@ -317,11 +344,12 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
     }
     await q("update compras set status='reembolsada', atualizado_em=now() where email=$1", [p.email]);
     const { rowCount } = await q('update usuarios set acesso_liberado=false, liberado_em=null where email=$1', [p.email]);
+    await q("update comissoes set status='cancelada' where comprador_email=$1 and status='devida'", [p.email]);
     await registra('bloquear');
     enviar(N8N_WEBHOOK_URL, { evento: 'compra_reembolsada', email: p.email });
     return res.json({ ok: true, acao: 'bloquear', conta_bloqueada: rowCount > 0 });
   }
-  const r = await liberarCompra({ email: p.email, nome: p.nome, transacao: p.transacao, origem: p.plataforma });
+  const r = await liberarCompra({ email: p.email, nome: p.nome, transacao: p.transacao, origem: p.plataforma, ref: refDoPayload(req.body) || codigoInd(req.query.ref) });
   await registra('liberar');
   const { link, ...resto } = r;
   res.json({ ok: true, acao: 'liberar', ...resto });
@@ -334,8 +362,8 @@ app.post('/api/leads', limite(10), erro(async (req, res) => {
   if (!nome || whatsapp.length < 10) return res.status(400).json({ erro: 'Informe nome e WhatsApp com DDD.' });
   const utm = b.utm && typeof b.utm === 'object' && !Array.isArray(b.utm)
     ? Object.fromEntries(Object.entries(b.utm).slice(0, 10).map(([k, v]) => [limpa(k, 40), limpa(v, 200)])) : {};
-  const { rows } = await q('insert into leads (nome, empresa, whatsapp, email, setor, funcionarios, utm, ip) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id',
-    [nome, limpa(b.empresa), whatsapp, limpa(b.email, 160), limpa(b.setor, 40), Math.max(0, Math.min(100000, +b.funcionarios || 0)), utm, req.ip]);
+  const { rows } = await q('insert into leads (nome, empresa, whatsapp, email, setor, funcionarios, utm, ip, ref) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id',
+    [nome, limpa(b.empresa), whatsapp, limpa(b.email, 160).toLowerCase(), limpa(b.setor, 40), Math.max(0, Math.min(100000, +b.funcionarios || 0)), utm, req.ip, codigoInd('ind_' + limpa(b.ref, 20))]);
   enviar(N8N_WEBHOOK_URL, { evento: 'lead', id: rows[0].id, nome, whatsapp, email: limpa(b.email, 160), empresa: limpa(b.empresa) });
   res.json({ ok: true });
 }));
@@ -353,7 +381,7 @@ app.get('/api/admin/clientes', admin, erro(async (_req, res) => {
     u.origem, u.ultimo_acesso, u.senha_hash is not null tem_senha,
     (select count(*)::int from equipes e where e.usuario_id=u.id) equipes,
     (select count(*)::int from escalas s join equipes e on e.id=s.equipe_id where e.usuario_id=u.id) escalas
-    from usuarios u order by u.criado_em desc limit 5000`);
+    from usuarios u where u.origem is distinct from 'empresa_extra' order by u.criado_em desc limit 5000`);
   res.json(rows);
 }));
 app.patch('/api/admin/clientes/:id', admin, erro(async (req, res) => {
@@ -364,6 +392,22 @@ app.patch('/api/admin/clientes/:id', admin, erro(async (req, res) => {
   else await q('update usuarios set acesso_liberado=false, liberado_em=null where id=$1', [rows[0].id]);
   res.json({ ok: true });
 }));
+// indicações: quanto cada afiliado tem a receber (só conta como liberado para pagar depois dos 7 dias de garantia)
+app.get('/api/admin/indicacoes', admin, erro(async (_req, res) => {
+  const { rows } = await q(`select u.id, u.nome, u.email, u.whatsapp, u.pix, u.ref_codigo,
+      count(*) filter (where c.status<>'cancelada')::int vendas,
+      coalesce(sum(c.valor) filter (where c.status='devida' and c.criado_em < now() - interval '7 days'), 0) liberado,
+      coalesce(sum(c.valor) filter (where c.status='devida' and c.criado_em >= now() - interval '7 days'), 0) na_garantia,
+      coalesce(sum(c.valor) filter (where c.status='paga'), 0) pago
+    from comissoes c join usuarios u on u.id=c.afiliado_id group by u.id order by liberado desc, vendas desc`);
+  res.json({ valor_por_venda: VALOR_COMISSAO, afiliados: rows });
+}));
+app.post('/api/admin/indicacoes/:id/pagar', admin, erro(async (req, res) => {
+  const { rows } = await q(`update comissoes set status='paga', pago_em=now() where afiliado_id=$1 and status='devida'
+    and criado_em < now() - interval '7 days' returning valor`, [+req.params.id || 0]);
+  res.json({ ok: true, pagas: rows.length, total: rows.reduce((t, r) => t + +r.valor, 0) });
+}));
+
 // liberar alguém que pagou por fora (Pix direto, cortesia)
 app.post('/api/admin/acessos', admin, erro(async (req, res) => {
   const email = limpa(req.body?.email, 160).toLowerCase();

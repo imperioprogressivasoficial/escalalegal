@@ -13,7 +13,7 @@ const diasEntre = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 const hojeBR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // horário de Brasília
 const PAPEL_NOME = { dono: 'Dono', gestor: 'Gestor', contador: 'Contador' };
 
-module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte }) {
+module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte, VALOR_COMISSAO = 0 }) {
   // ---------- conta e permissões ----------
   const naConta = erro(async (req, res, next) => {
     const cid = +req.get('x-conta') || req.u.id;
@@ -24,7 +24,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const { rows } = await q(`select m.papel, u.acesso_liberado, u.empresa from membros m join usuarios u on u.id=m.conta_id
       where m.conta_id=$1 and m.usuario_id=$2`, [cid, req.u.id]);
     if (!rows[0]) return res.status(403).json({ erro: 'Você não tem acesso a esta empresa.', trocar_conta: true });
-    req.conta = { id: cid, papel: rows[0].papel, liberado: rows[0].acesso_liberado || LIBERAR_TUDO === '1', empresa: rows[0].empresa };
+    const liberado = rows[0].papel === 'dono' ? req.u.acesso_liberado : rows[0].acesso_liberado; // empresa extra: vale o acesso de quem criou
+    req.conta = { id: cid, papel: rows[0].papel, liberado: liberado || LIBERAR_TUDO === '1', empresa: rows[0].empresa };
     next();
   });
   const edita = (req, res, next) => req.conta.papel === 'contador'
@@ -114,7 +115,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   app.post('/api/equipes', LE, erro(async (req, res) => {
     const e = validaEquipe(req.body || {});
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
-    if (n[0].c >= 50) return res.status(400).json({ erro: 'Limite de 50 unidades por conta.' });
+    if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
     const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
       [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas)]);
     auditar(req, `Criou a unidade ${e.nome}`);
@@ -559,7 +560,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const pessoas = (Array.isArray(b.pessoas) ? b.pessoas : []).map(p => ({ nome: limpa(p?.nome, 60), cargo: limpa(p?.cargo, 60) })).filter(p => p.nome).slice(0, 200);
     if (!pessoas.length) return res.status(400).json({ erro: 'Informe pelo menos uma pessoa da equipe.' });
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
-    if (n[0].c >= 50) return res.status(400).json({ erro: 'Limite de 50 unidades por conta.' });
+    if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
     const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
       [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia, u.abre, u.fecha, JSON.stringify(u.criticas)]);
     if (b.empresa || !(await configDe(req.conta.id)).segmento) await q(`insert into empresa_config (conta_id, segmento) values ($1,$2)
@@ -573,6 +574,41 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       escala = await gerarParaEquipe(req, eq, inicio, Math.max(1, Math.min(8, +b.semanas || 4)));
     }
     res.json({ ok: true, equipe: eq, escala, liberado: req.conta.liberado, checkout: CHECKOUT_URL });
+  }));
+
+  // ---------- várias empresas na mesma conta ----------
+  // cria uma empresa nova (ex.: outro CNPJ, ou a empresa de um cliente). Quem criou é o dono dela.
+  app.post('/api/empresas', logado, limite(20), erro(async (req, res) => {
+    const nome = limpa(req.body?.nome, 80);
+    if (!nome) return res.status(400).json({ erro: 'Escreva o nome da empresa.' });
+    const { rows: n } = await q("select count(*)::int c from membros where usuario_id=$1 and papel='dono'", [req.u.id]);
+    if (n[0].c >= 100) return res.status(400).json({ erro: 'Limite de 100 empresas por conta.' });
+    const email = `empresa-${crypto.randomBytes(8).toString('hex')}@empresa.invalid`;
+    const { rows } = await q(`insert into usuarios (nome, empresa, email, acesso_liberado, origem) values ($1,$2,$3,false,'empresa_extra') returning id`,
+      [req.u.nome, nome, email]);
+    await q("insert into membros (conta_id, usuario_id, papel) values ($1,$2,'dono')", [rows[0].id, req.u.id]);
+    await q('insert into auditoria (conta_id, usuario_id, acao) values ($1,$2,$3)', [rows[0].id, req.u.id, `Criou a empresa ${nome}`]).catch(() => {});
+    res.json({ id: rows[0].id, empresa: nome });
+  }));
+
+  // ---------- indique e ganhe ----------
+  const novoCodigo = () => crypto.randomBytes(5).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 7).padEnd(6, 'x');
+  app.get('/api/indicacao', logado, erro(async (req, res) => {
+    let codigo = req.u.ref_codigo;
+    for (let i = 0; !codigo && i < 5; i++) {
+      const c = novoCodigo();
+      const r = await q('update usuarios set ref_codigo=$1 where id=$2 and ref_codigo is null and not exists (select 1 from usuarios where ref_codigo=$1) returning ref_codigo', [c, req.u.id]);
+      codigo = r.rows[0]?.ref_codigo || (await q('select ref_codigo from usuarios where id=$1', [req.u.id])).rows[0].ref_codigo;
+    }
+    const { rows } = await q(`select count(*) filter (where status<>'cancelada')::int vendas,
+        coalesce(sum(valor) filter (where status='devida'), 0) a_receber, coalesce(sum(valor) filter (where status='paga'), 0) recebido
+      from comissoes where afiliado_id=$1`, [req.u.id]);
+    const { rows: pix } = await q('select pix from usuarios where id=$1', [req.u.id]);
+    res.json({ codigo, link: `${APP_URL}/?ind=${codigo}`, valor_por_venda: VALOR_COMISSAO, ...rows[0], pix: pix[0]?.pix || '' });
+  }));
+  app.put('/api/indicacao/pix', logado, erro(async (req, res) => {
+    await q('update usuarios set pix=$1 where id=$2', [limpa(req.body?.pix, 120) || null, req.u.id]);
+    res.json({ ok: true });
   }));
 
   // ---------- espaço do contador: todas as empresas que ele atende ----------

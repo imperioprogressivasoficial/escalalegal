@@ -22,6 +22,12 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `deploy/hostinger/docker-compose.yml`: compose usado no Docker Manager da Hostinger (VPS 1969277, Traefik em modo host, dados em `/opt/escalalegal-dados`). Publicar = recriar o projeto `escalalegal` (vps_docker_create com o conteúdo deste arquivo) com `REF` = commit novo. O Docker Manager não faz build: o container baixa o código do GitHub no commit REF ao iniciar.
 - `docker-compose.yml`: app + Postgres + backup diário (+ Caddy opcional). Deploy no VPS do Bruno em `/opt/escalalegal`.
 
+- `app/public/exportar.js`: a tabela pronta (`#tabela`) e as saídas: WhatsApp (imagem), PDF, Excel .xlsx, CSV, Google Planilhas (`=IMPORTDATA` do link `/api/publico/planilha/:token`), JPG, texto, link da equipe, imprimir. Tudo gerado no aparelho, sem biblioteca.
+- `app/public/aula.js`: aula da nova lei (`#aula`), 8 lições com exemplo e teste rápido.
+- `app/public/extras.js`: colocar na tela inicial (PWA: `manifest.webmanifest`, `sw.js`, `#instalar`), Indique e ganhe (`#indique`) e cadastrar outra empresa.
+- Logos dos formatos em `app/public/img/formatos/` (desenhos próprios). WhatsApp sempre com o símbolo.
+- `marketing/video/`: vídeo em motion (Reels) e o projeto para gerar de novo.
+
 ## Regras de negócio
 - Gerar escala exige `acesso_liberado` (pago). Compra aprovada no webhook (`POST /api/webhook/pagamento?token=WEBHOOK_TOKEN`) cria a conta sem senha e envia por e-mail o link `/app?acesso=TOKEN` para criar a senha (token guardado só como hash, uso único). Reembolso/chargeback bloqueia. Todo evento fica em `pagamentos_eventos`.
 - Cadastro com e-mail de conta comprada e sem senha não cria conta: reenvia o link (evita sequestro da compra).
@@ -32,6 +38,8 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - A escala se adapta ao segmento (`SETORES` em `scheduler.js`: mercado, farmácia, loja, restaurante, padaria, salão, clínica, academia, posto, escritório, portaria, outro). Cada um traz dias, horário, mínimo, funções e `criticas` (função que não pode faltar no dia, ex.: farmacêutico — Lei 13.021/2014). O motor recebe `grupos` (quem tem o cargo da crítica) e garante o mínimo. Domingo: comércio 1 a cada 3 semanas (Lei 10.101), demais 1 a cada 7 (Portaria MTP 671/2021, art. 58). 12x36 não é gerada: só aviso.
 - Dono sem unidade cai no primeiro acesso guiado (`#comecar`): empresa (porte MEI/ME/EPP, UF, cidade, feriados da cidade) → unidade (dias, mínimo, horas/dia) → pessoas → gera a escala e mostra a análise (`Escala.analisar`, em `scheduler.js`).
 - Limite semanal pela data (`limiteSemanal`): 44h até 15/12/2026, 42h até 15/12/2027, 40h depois. Feriados: nacionais + estaduais (`ESTADUAIS`) + municipais informados pela empresa.
+- Várias empresas na mesma conta: empresa extra = usuário sem login (`origem='empresa_extra'`, e-mail `@empresa.invalid`) e quem criou entra como `membros.papel='dono'`; vale o acesso pago de quem criou. Não aparece no /admin.
+- Indique e ganhe: cada cliente tem `usuarios.ref_codigo` e o link `/?ind=CODIGO`. A página de vendas guarda o código 30 dias, manda no lead (`leads.ref`) e no checkout (`src`/`sck`/`utm_campaign=ind_CODIGO`). Compra aprovada gera uma linha em `comissoes` (valor = PRECO × COMISSAO_PERCENT). Reembolso antes de pagar cancela. O dono paga por Pix e marca como pago no /admin (só depois dos 7 dias de garantia). Comprar pelo próprio link não conta.
 - Contador pode se cadastrar sozinho (`tipo: 'contador'`) e vê as empresas que o liberaram no Espaço do contador.
 
 ## Estilo

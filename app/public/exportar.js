@@ -88,15 +88,16 @@ const SAIDAS = {
   copiar: ['TEXTO', 'Copiar em texto', 'Para colar onde quiser'],
   pdf: ['PDF', 'PDF', 'Para imprimir ou o contador'],
   xlsx: ['XLSX', 'Excel', 'Planilha com as cores'],
+  csv: ['CSV', 'CSV', 'Abre em qualquer planilha'],
   sheets: ['SHEETS', 'Google Planilhas', 'Na sua planilha, sempre atualizada'],
   jpg: ['JPG', 'Imagem', 'Foto da tabela'],
   imprimir: ['IMPRIMIR', 'Imprimir', 'Para colar no mural'],
 };
 function botoesExportar() {
-  const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
+  const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', csv: 'csv', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
   const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
   return `<p class="saida-tit">Mandar para a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
-    <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
+    <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', 'csv', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
 }
 function folhaExportar() {
   folha(`<h2>Sua escala está pronta</h2><p style="margin-top:4px" class="dica">4 semanas a partir de ${dm(semData)}, já com a parte da lei. Escolha como quer:</p>
@@ -133,11 +134,12 @@ function ligaExportar(semsProntas) {
       const nome = `escala-${slug(atual.nome)}-${sems[0].inicio}`;
       if (tipo === 'pdf') baixar(await pdfDaEscala(sems), nome + '.pdf');
       else if (tipo === 'xlsx') baixar(xlsxDaEscala(sems), nome + '.xlsx');
+      else if (tipo === 'csv') baixar(csvDaEscala(sems), nome + '.csv');
       else if (tipo === 'jpg') baixar(await jpgDaEscala(sems), nome + '.jpg');
       else if (tipo === 'copiar') await copiar(textoDaEscala(sems), 'Copiado. Cole no WhatsApp ou onde quiser.');
       else if (tipo === 'imprimir') { if ($('#folha').open) fechaFolha(); imprimirSems(sems); }
       else if (tipo === 'zap') await enviaZap(sems, nome);
-      if (['pdf', 'xlsx', 'jpg'].includes(tipo)) toast('Baixado. Olhe na pasta de downloads.');
+      if (['pdf', 'xlsx', 'csv', 'jpg'].includes(tipo)) toast('Baixado. Olhe na pasta de downloads.');
     } catch (err) { toast(err.message); }
     b.disabled = false; if (sm) sm.textContent = antes;
   });
@@ -361,4 +363,15 @@ function zipar(arquivos, tipo) {
   const tamC = central.reduce((s, b) => s + b.length, 0), e = new DataView(new ArrayBuffer(22));
   e.setUint32(0, 0x06054b50, true); e.setUint16(8, arquivos.length, true); e.setUint16(10, arquivos.length, true); e.setUint32(12, tamC, true); e.setUint32(16, off, true);
   return new Blob([...partes, ...central, new Uint8Array(e.buffer)], {type: tipo});
+}
+
+// ---------- CSV: separado por ponto e vírgula, com BOM, para o Excel brasileiro abrir certo ----------
+function csvDaEscala(sems) {
+  const c = v => `"${String(v ?? '').replace(/"/g, '""')}"`, L = [];
+  for (const w of sems) {
+    L.push(['Semana', 'Pessoa', ...DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}${Escala.feriado(soma(w.inicio, i), conta.ctx) ? ' (feriado)' : ''}`)]);
+    w.linhas.forEach((l, f) => L.push([`${dm(w.inicio)} a ${dm(fimSemana(w))}`, w.funcionarios[f].nome, ...l.map((x, d) => rotuloCel(x, w.abertos[d]))]));
+    L.push([]);
+  }
+  return new Blob(['\ufeff' + L.map(l => l.map(c).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
 }

@@ -187,3 +187,23 @@ alter table equipes add column if not exists fecha text;
 -- função que não pode faltar no dia (ex.: farmacêutico): [{ nome, chave, minimo: [7] }]
 alter table equipes add column if not exists criticas jsonb not null default '[]'::jsonb;
 alter table empresa_config add column if not exists segmento text;
+
+-- v7: várias empresas na mesma conta e programa de indicação
+-- empresa extra = um "usuário" sem login (origem 'empresa_extra'); quem a criou entra nela como dono via membros
+alter table membros drop constraint if exists membros_papel_check;
+alter table membros add constraint membros_papel_check check (papel in ('gestor', 'contador', 'dono'));
+alter table usuarios add column if not exists ref_codigo text unique;
+alter table usuarios add column if not exists indicado_por int references usuarios(id) on delete set null;
+alter table usuarios add column if not exists pix text;
+alter table leads add column if not exists ref text;
+-- uma comissão por compra indicada: devida -> paga (ou cancelada se houver reembolso antes de pagar)
+create table if not exists comissoes (
+  id serial primary key,
+  afiliado_id int not null references usuarios(id) on delete cascade,
+  comprador_email text not null unique,
+  valor numeric(10,2) not null,
+  status text not null default 'devida' check (status in ('devida', 'paga', 'cancelada')),
+  criado_em timestamptz not null default now(),
+  pago_em timestamptz
+);
+create index if not exists comissoes_afiliado_idx on comissoes (afiliado_id, status);

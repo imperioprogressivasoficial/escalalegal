@@ -163,9 +163,9 @@ async function rota() {
   if (!conta) return;
   let [v, extra] = (location.hash.slice(1) || '').split('/');
   const mc = ehModoContador();
-  if (mc && !['contador', 'conta', 'mais', 'aula'].includes(v)) v = 'contador';
+  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique'].includes(v)) v = 'contador';
   if (!v) v = 'escala';
-  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos', 'aula'].includes(v)) v = 'comecar';
+  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos', 'aula', 'instalar', 'indique'].includes(v)) v = 'comecar';
   if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono')
     || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : 'escala';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
@@ -179,6 +179,8 @@ async function rota() {
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
     else if (v === 'aula') { aulaI = 0; telaAula(); }
+    else if (v === 'instalar') telaInstalar();
+    else if (v === 'indique') await telaIndique();
     else if (v === 'mais') telaMais();
     else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'ocorrencias') await telaOcorrencias();
@@ -376,6 +378,7 @@ async function telaEscala() {
   semana = r;
   let aviso = '';
   if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar". <button class="link" data-ir="aula">Entenda a lei em 3 minutos ›</button></div>`;
+  if (!recem && r.escala) aviso += avisoInstalar();
   if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
   $('#escAviso').innerHTML = aviso;
   if (!r.escala) {
@@ -543,7 +546,7 @@ async function linkEquipe(id) {
     const msg = `Escala da equipe: ${link}\nAbra, toque no seu nome e veja suas folgas.`;
     if (navigator.share) { try { await navigator.share({text: msg}); return; } catch {} }
     folha(`<h2>Mandar para a equipe</h2><p style="margin-top:6px">Cada um abre o link, toca no próprio nome e vê as folgas. Não precisa instalar nada.</p>
-      <div class="opcoes-grandes"><a class="btn cheio" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Mandar no WhatsApp</a>
+      <div class="opcoes-grandes"><a class="btn cheio btn-zap" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg" alt="" width="26" height="26">Mandar no WhatsApp</a>
       <button id="lkCopiar">Copiar o link</button><button id="lkTexto">Copiar a escala em texto</button><button id="lkImprimir">Imprimir para o mural</button></div>`);
     $('#lkCopiar').onclick = () => copiar(msg, 'Link copiado. Cole no grupo da equipe.');
     $('#lkTexto').onclick = () => copiar(textoEscala(), 'Texto copiado. Cole no grupo da equipe.');
@@ -641,9 +644,13 @@ function telaMais() {
     if (dono) h += item('acessos', 'Dar acesso ao contador', 'Ele vê tudo sem você mandar planilha');
     h += '</ul><p class="menu-tit">Empresa</p><ul class="menu">';
     if (ed) h += item('comecar/unidade', 'Outra loja ou unidade', 'Cada uma tem sua equipe e sua escala');
+    h += `<li><button id="mOutraEmpresa"><span>Cadastrar outra empresa<small>Outro CNPJ ou a empresa de um cliente</small></span><span class="seta">›</span></button></li>`;
     if (dono) h += item('empresa', 'Dados da empresa', 'Nome, CNPJ, cidade e feriados');
     h += '</ul>';
   }
+  h += `<p class="menu-tit">Ganhe e facilite</p><ul class="menu">
+    <li><button data-ir="indique" class="menu-ind"><span>Indique e ganhe<small>Comissão por cada venda pelo seu link</small></span><span class="seta">›</span></button></li>
+    ${naTelaInicial() ? '' : `<li><button data-ir="instalar"><span>Colocar na tela inicial<small>Abre como aplicativo no celular</small></span><span class="seta">›</span></button></li>`}</ul>`;
   h += '<p class="menu-tit">Você</p><ul class="menu">';
   if (eu.contas.length > 1) h += `<li><button id="mTrocar"><span>Trocar de empresa<small>${esc(mc ? 'Meu escritório' : conta.empresa || '')}${conta.papel !== 'dono' ? ` · você é ${PAPEL[conta.papel].toLowerCase()}` : ''}</small></span><span class="seta">›</span></button></li>`;
   h += `<li><a href="/ajuda"><span>Ajuda e a nova lei<small>O que mudou e como funciona</small></span><span class="seta">›</span></a></li>`;
@@ -655,6 +662,7 @@ function telaMais() {
     folha(`<h2>Trocar de empresa</h2><div class="opcoes-grandes">${eu.contas.map(c => `<button data-conta="${c.id}">${esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa')}<small>${PAPEL[c.papel]}</small></button>`).join('')}</div>`);
     $$('[data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
   };
+  if ($('#mOutraEmpresa')) $('#mOutraEmpresa').onclick = folhaOutraEmpresa;
   $('#mSair').onclick = async () => { await api('/api/sair', {method: 'POST'}); gravar('conta', ''); location.href = '/app'; };
 }
 

@@ -12,6 +12,9 @@ input{padding:9px;border:1px solid #c9d0db;border-radius:8px;font:inherit}.barra
 <form class="box barra" id="fLib"><b>Liberar acesso na mão</b> (Pix direto, cortesia)<input id="lEmail" type="email" placeholder="e-mail do cliente" required style="width:240px"><input id="lNome" placeholder="nome (opcional)"><button class="p">Liberar e enviar acesso</button></form>
 <div class="barra"><input id="b" placeholder="Buscar nome, empresa ou e-mail" style="width:300px"></div>
 <div class="rol"><table><thead><tr><th>Cadastro</th><th>Nome</th><th>Empresa</th><th>E-mail</th><th>WhatsApp</th><th>Senha</th><th>Equipes</th><th>Escalas</th><th>Último acesso</th><th>Acesso</th><th></th></tr></thead><tbody id="t"></tbody></table></div>
+<h2>Indique e ganhe: comissões</h2>
+<p class="mut" id="indInfo"></p>
+<div class="rol"><table><thead><tr><th>Afiliado</th><th>E-mail</th><th>WhatsApp</th><th>Chave Pix</th><th>Vendas</th><th>Liberado para pagar</th><th>Na garantia (7 dias)</th><th>Já pago</th><th></th></tr></thead><tbody id="ind"></tbody></table></div>
 <h2>Últimos eventos de pagamento</h2>
 <p class="mut" id="wh"></p>
 <div class="rol"><table><thead><tr><th>Quando</th><th>E-mail</th><th>Ação</th><th>Evento</th><th>Plataforma</th></tr></thead><tbody id="ev"></tbody></table></div>
@@ -34,5 +37,9 @@ if(bt.dataset.a==='link'){const j=await api(`/api/admin/clientes/${id}/link`,{me
 if(bt.dataset.a==='mail'){await api(`/api/admin/clientes/${id}/link`,{method:'POST',body:{email:true}});toast('E-mail colocado na fila de envio.')}
 }catch(err){toast(err.message)}finally{bt.disabled=false}};
 fLib.onsubmit=async ev=>{ev.preventDefault();try{const j=await api('/api/admin/acessos',{method:'POST',body:{email:lEmail.value,nome:lNome.value}});toast(j.ja_estava_liberado?'Esse cliente já tinha acesso.':'Acesso liberado e enviado por e-mail.');lEmail.value=lNome.value='';await c()}catch(err){toast(err.message)}};
-b.oninput=r;c();
+const rs=v=>'R$ '+(+v||0).toFixed(2).replace('.',',');
+async function indic(){const j=await api('/api/admin/indicacoes');indInfo.textContent=`Cada venda pelo link de um cliente vale ${rs(j.valor_por_venda)} de comissão (mude em COMISSAO_PERCENT e PRECO no .env). Pague por Pix e clique em "Marcar como pago".`;
+ind.innerHTML=j.afiliados.map(x=>`<tr><td>${e(x.nome)}</td><td>${e(x.email)}</td><td>${x.whatsapp?`<a target=_blank href="https://wa.me/55${e(x.whatsapp)}">${e(x.whatsapp)}</a>`:''}</td><td>${x.pix?`<code>${e(x.pix)}</code>`:'<span class="no">sem Pix</span>'}</td><td>${x.vendas}</td><td class="${+x.liberado?'ok':''}"><b>${rs(x.liberado)}</b></td><td>${rs(x.na_garantia)}</td><td>${rs(x.pago)}</td><td>${+x.liberado?`<button data-pg="${x.id}">Marcar ${rs(x.liberado)} como pago</button>`:''}</td></tr>`).join('')||'<tr><td colspan=9 class="mut">Nenhuma venda por indicação ainda.</td></tr>'}
+ind.onclick=async ev=>{const bt=ev.target.closest('[data-pg]');if(!bt||!confirm('Confirma que você já pagou por Pix?'))return;bt.disabled=true;try{const j=await api(`/api/admin/indicacoes/${bt.dataset.pg}/pagar`,{method:'POST'});toast(`${rs(j.total)} marcado como pago.`);indic()}catch(err){toast(err.message);bt.disabled=false}};
+b.oninput=r;c();indic();
 </script></body></html>

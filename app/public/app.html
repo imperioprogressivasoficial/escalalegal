@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#071d41">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/img/icone-192.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sua Escala">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Sua Escala Blindada</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -222,6 +228,27 @@ table.tabela-escala{width:100%;border-collapse:separate;border-spacing:4px;min-w
 .menu-aula{background:linear-gradient(135deg,#0b2d6b,#1351b4)!important;color:#fff!important;border:0!important}
 .menu-aula small,.menu-aula .seta{color:#c9d8f0!important}
 .tile .logo{flex:0 0 42px;width:42px;height:42px}
+
+/* tela inicial e indicação */
+.inst-topo{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+.inst-topo img{border-radius:20px;box-shadow:0 10px 24px -10px rgba(7,29,65,.5)}
+.inst-topo h1{font-size:1.5rem}
+.passos-inst{list-style:none;padding:0;display:grid;gap:10px;margin:12px 0}
+.passos-inst li{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--linha);border-radius:14px;padding:14px}
+.passos-inst li>b{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--azul);color:#fff}
+.aviso-inst{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.aviso-inst img{border-radius:12px}.aviso-inst span{flex:1;min-width:180px}
+.btn-zap{background:#25d366;color:#fff;gap:10px}
+.ind-valor{display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,#0b2d6b,#1351b4);color:#c9d8f0;border-radius:18px;padding:20px;font-weight:600}
+.ind-valor b{font:900 2.6rem/1.1 var(--display);color:#fff;font-stretch:86%}
+.ind-link{display:grid;grid-template-columns:1fr auto;gap:8px}
+.ind-link input{font-size:.92rem}
+.ind-numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.ind-numeros div{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:12px;text-align:center}
+.ind-numeros b{display:block;font:800 1.25rem var(--display);color:var(--tinta)}
+.ind-numeros span{font-size:.78rem;color:var(--mut)}
+.menu-ind{background:linear-gradient(135deg,#168821,#23b53a)!important;color:#fff!important;border:0!important}
+.menu-ind small,.menu-ind .seta{color:#e3f5e1!important}
 
 /* quiz */
 .quiz{max-width:560px;margin:0 auto}
@@ -543,6 +570,10 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
       </form>
     </section>
 
+    <!-- tela inicial e indicação -->
+    <section class="vista hide" id="v-instalar"></section>
+    <section class="vista hide" id="v-indique"></section>
+
     <!-- aula da lei -->
     <section class="vista hide" id="v-aula"></section>
 
@@ -577,9 +608,10 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
   </form>
 </dialog>
 
-<script src="/scheduler.js?v=12"></script>
-<script src="/exportar.js?v=12"></script>
-<script src="/aula.js?v=12"></script>
-<script src="/app.js?v=12"></script>
+<script src="/scheduler.js?v=13"></script>
+<script src="/exportar.js?v=13"></script>
+<script src="/aula.js?v=13"></script>
+<script src="/extras.js?v=13"></script>
+<script src="/app.js?v=13"></script>
 </body>
 </html>
