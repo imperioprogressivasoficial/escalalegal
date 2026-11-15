@@ -29,7 +29,7 @@ test('site público pronto para busca, anúncios e LGPD', { skip: pular }, async
     assert.equal(r.status, 200, u); assert.ok(r.txt.includes('<link rel="canonical"'), u); assert.ok(!r.txt.includes('{{'), u);
   }
   const obr = await get('/obrigado');
-  assert.ok(obr.txt.includes('noindex') && !obr.txt.includes('rel="canonical"') && obr.txt.includes("rastrear('Purchase'"));
+  assert.ok(obr.txt.includes('noindex') && !obr.txt.includes('rel="canonical"') && !obr.txt.includes("rastrear('Purchase'"));
 
   const robots = await get('/robots.txt');
   assert.match(robots.txt, /Disallow: \/app/); assert.match(robots.txt, /Sitemap: .*\/sitemap\.xml/);

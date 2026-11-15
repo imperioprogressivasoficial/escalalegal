@@ -36,6 +36,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 
 ## Regras de negócio
 - Só cria conta de empresa quem comprou: `/api/cadastro` recusa dono sem compra aprovada (Kiwify, webhook) a não ser com `LIBERAR_TUDO=1`. Contador continua com cadastro livre. Checkout: Kiwify `https://pay.kiwify.com.br/Xs4K7Kx` (produto 6f254d50-…); a página de vendas não tem pop-up: botões descem até `#preco` e o botão do preço vai direto ao checkout com UTMs e indicação.
+- Meta: Pixel "Pixel - Escala" 2620336901795251 (BM Império Progressivas Backup, conta CA - Império Feira de Santana) no site (`META_PIXEL_ID`) e no checkout da Kiwify. A compra (Purchase) é contada só pelo checkout da Kiwify e pela API de Conversões configurada lá; o site não dispara Purchase e o servidor fica sem `META_CAPI_TOKEN` para não duplicar.
 - Domínio: `suaescala5x2.com` (DOMAIN); `www` e o antigo `escala.n8nimperio.tech` redirecionam (webhook continua aceito no antigo).
 - Gerar escala exige `acesso_liberado` (pago). Compra aprovada no webhook (`POST /api/webhook/pagamento?token=WEBHOOK_TOKEN`) cria a conta sem senha e envia por e-mail o link `/app?acesso=TOKEN` para criar a senha (token guardado só como hash, uso único). Reembolso/chargeback bloqueia. Todo evento fica em `pagamentos_eventos`.
 - Cadastro com e-mail de conta comprada e sem senha não cria conta: reenvia o link (evita sequestro da compra).
