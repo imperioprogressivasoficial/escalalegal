@@ -45,6 +45,7 @@ module.exports = function site({ app, APP_URL, BLOG_URL = '', PRODUCAO, seg, q, 
   const linhaEmpresa = [esc(empresa.nome), empresa.cnpj && `CNPJ ${esc(empresa.cnpj)}`, empresa.cidade && esc(empresa.cidade)].filter(Boolean).join(' · ');
 
   // ---------- páginas com o cabeçalho completo ----------
+  const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=2';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
   const PUB = path.join(__dirname, 'public');
   const PAGINAS = { '/': 'index.html', '/ajuda': 'ajuda.html', '/privacidade': 'privacidade.html', '/termos': 'termos.html', '/obrigado': 'obrigado.html' };
   const cache = new Map();
@@ -73,6 +74,8 @@ module.exports = function site({ app, APP_URL, BLOG_URL = '', PRODUCAO, seg, q, 
       .replaceAll('{{EMPRESA_LINHA}}', linhaEmpresa).replaceAll('{{EMPRESA_NOME}}', esc(empresa.nome))
       .replaceAll('{{EMPRESA_CNPJ}}', empresa.cnpj ? `, CNPJ ${esc(empresa.cnpj)}` : '').replaceAll('{{CONTATO}}', contato)
       .replaceAll('{{PRECO}}', PRECO.toFixed(2).replace('.', ',')).replaceAll('{{ANO}}', String(new Date().getFullYear())).replaceAll('{{SITE}}', APP_URL);
+    // atendimento (widget "Fale com a gente") na página de vendas, ajuda e obrigado: carrega depois da página
+    if (['/', '/ajuda', '/obrigado'].includes(rota)) h = h.replace('</body>', `${ATENDIMENTO}\n</body>`);
     cache.set(arq, h);
     return h;
   }

@@ -294,5 +294,7 @@ create table if not exists suporte_chamados (
 );
 create unique index if not exists suporte_chamados_conversa_idx on suporte_chamados (conversa_id);
 create index if not exists suporte_chamados_status_idx on suporte_chamados (status, atualizado_em desc);
+-- chamado do site (visitante sem conta): usuario_id vazio, origem 'site'
+alter table suporte_chamados alter column usuario_id drop not null;
 alter table suporte_chamados drop constraint if exists suporte_chamados_status_check;
 alter table suporte_chamados add constraint suporte_chamados_status_check check (status in ('aberto', 'fechado'));

@@ -1,11 +1,29 @@
-// Sua Escala 5x2 — ajuda dentro do app: dúvidas frequentes, assistente e suporte no WhatsApp.
-// Autossuficiente: carrega /suporte/faq.js, cria o botão "Ajuda" e o painel. Não depende do app.js,
-// mas usa a empresa aberta (x-conta) quando o app está carregado.
-// Abrir por código: window.abrirSuporte() ou window.abrirSuporte({ categoria: 'escala' }). Também abre pelo endereço #ajuda (ou #ajuda/escala).
+// Sua Escala 5x2 — ajuda e atendimento: dúvidas frequentes, assistente de IA e WhatsApp.
+// Dois modos, mesmo visual:
+//  - app (padrão): botão "Ajuda", base /suporte/faq.js, conversa em /api/suporte/* (logado, usa o x-conta da empresa aberta).
+//    Abre por window.abrirSuporte({ categoria }) e pelos endereços #ajuda, #ajuda/<categoria>, #ajuda/assistente.
+//  - site (data-modo="site" no <script>): botão "Fale com a gente" para visitantes (vendas, ajuda, obrigado, blog),
+//    base /suporte/faq-vendas.js, conversa em /api/atendimento/* (sem login). Abre também por #fale-conosco.
+//    Eventos: rastrear('Contact') ao abrir e rastrear('Lead') no WhatsApp (o rastreio.js só envia depois do aceite de cookies).
 (function () {
   'use strict';
   if (window.abrirSuporte) return;
   const d = document;
+  const SITE = (d.currentScript && d.currentScript.dataset.modo === 'site') || window.SUPORTE_MODO === 'site';
+  const M = SITE ? {
+    chave: 'sp-site-', faq: '/suporte/faq-vendas.js?v=1', global: 'SuporteFAQVendas', fab: 'Fale com a gente', fabAria: 'Fale com a gente: dúvidas e atendimento',
+    tit: 'Fale com a gente', sub: 'Dúvidas sobre a Sua Escala 5x2', titChat: 'Atendimento', busca: 'Busque: preço, garantia, Pix, contador…',
+    conversar: 'Conversar com o atendimento', ola: 'Olá! Tire aqui suas dúvidas sobre a Sua Escala 5x2: como funciona, preço, garantia e a nova lei.',
+    zapTexto: 'Uma pessoa da nossa equipe responde pelo WhatsApp. A mensagem já vai pronta com a sua dúvida.', zapBotao: 'Falar com uma pessoa no WhatsApp',
+    mensagem: '/api/atendimento/mensagem', chamado: '/api/atendimento/chamado', max: 800,
+  } : {
+    chave: 'sp-', faq: '/suporte/faq.js?v=1', global: 'SuporteFAQ', fab: 'Ajuda', fabAria: 'Ajuda: dúvidas frequentes e suporte',
+    tit: 'Ajuda', sub: 'Dúvidas frequentes da Sua Escala 5x2', titChat: 'Assistente', busca: 'Busque: trocar folga, férias, contador…',
+    conversar: 'Conversar com o assistente', ola: 'Olá! Sou o assistente da Sua Escala 5x2. Escreva a sua dúvida sobre o app ou a nova lei.',
+    zapTexto: 'Uma pessoa do suporte continua o atendimento pelo WhatsApp. A mensagem já vai pronta com o seu nome, a empresa e a dúvida.', zapBotao: 'Falar com o suporte no WhatsApp',
+    mensagem: '/api/suporte/mensagem', chamado: '/api/suporte/chamado', max: 1500,
+  };
+  const rastrear = ev => { try { if (typeof window.rastrear === 'function') window.rastrear(ev); } catch {} };
   const tira = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const lerSessao = k => { try { return sessionStorage.getItem(k); } catch { return null; } };
@@ -69,6 +87,9 @@
 .sp-pe textarea{flex:1;resize:none;border:1.5px solid #dfe3ea;border-radius:12px;padding:11px 12px;font:inherit;max-height:120px;min-height:44px;box-sizing:border-box}
 .sp-pe textarea:focus{border-color:#1351b4;outline:0}
 .sp-link{background:none;border:0;padding:6px 0;color:#1351b4;font:700 .88rem/1.2 'Public Sans',system-ui,sans-serif;cursor:pointer;text-decoration:underline}
+.sp-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
+.sp-cta{margin-top:4px}
+.sp-nao .sp-link{display:block;margin:10px auto 0}
 .sp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-width:640px){
   .sp-fab{padding:0;width:52px;height:52px;justify-content:center;right:14px;bottom:calc(14px + var(--sp-baixo,0px) + env(safe-area-inset-bottom))}
@@ -85,21 +106,22 @@
   // ---------- estado ----------
   let FAQ = null, carregando = null, painel = null, anterior = null;
   let tela = 'faq', abertaCat = null, abertaQ = null, busca = '';
-  let conversaId = lerSessao('sp-conversa') || novoId();
-  let msgs = []; try { msgs = JSON.parse(lerSessao('sp-msgs') || '[]'); } catch { msgs = []; }
-  let ocupado = false, mostrarZap = false, resumoAtual = '';
-  const salvaConversa = () => { gravarSessao('sp-conversa', conversaId); gravarSessao('sp-msgs', JSON.stringify(msgs.slice(-30))); };
+  let conversaId = lerSessao(M.chave + 'conversa') || novoId();
+  let msgs = []; try { msgs = JSON.parse(lerSessao(M.chave + 'msgs') || '[]'); } catch { msgs = []; }
+  let ocupado = false, mostrarZap = false, resumoAtual = '', contou = false;
+  const salvaConversa = () => { gravarSessao(M.chave + 'conversa', conversaId); gravarSessao(M.chave + 'msgs', JSON.stringify(msgs.slice(-30))); };
 
   function carregaFaq() {
     if (FAQ) return Promise.resolve(FAQ);
-    if (window.SuporteFAQ) return Promise.resolve(FAQ = window.SuporteFAQ);
+    if (window[M.global]) return Promise.resolve(FAQ = window[M.global]);
     return carregando || (carregando = new Promise((ok, falha) => {
-      const s = d.createElement('script'); s.src = '/suporte/faq.js?v=1'; s.async = true;
-      s.onload = () => ok(FAQ = window.SuporteFAQ); s.onerror = () => { carregando = null; falha(new Error('Não foi possível carregar a ajuda.')); };
+      const s = d.createElement('script'); s.src = M.faq; s.async = true;
+      s.onload = () => ok(FAQ = window[M.global]); s.onerror = () => { carregando = null; falha(new Error('Não foi possível carregar a ajuda.')); };
       d.head.appendChild(s);
     }));
   }
   const contaAtual = () => {
+    if (SITE) return '';
     try { if (typeof conta !== 'undefined' && conta && conta.id) return conta.id; } catch {}
     try { return localStorage.getItem('conta') || ''; } catch { return ''; }
   };
@@ -119,6 +141,16 @@
     else location.href = '/app#' + rota;
   }
 
+  // site: endereço no domínio principal (do blog vai para o site), mantendo utm, ind e os ids de clique da página
+  const PARAMS = /^(utm_\w+|ind|src|sck|fbclid|gclid|wbraid|gbraid|ttclid)$/;
+  function linkSite(caminho) {
+    const h = location.hostname, base = /^blog\./.test(h) ? `${location.protocol}//${h.slice(5)}${location.port ? ':' + location.port : ''}` : location.origin;
+    const u = new URL(caminho, base);
+    new URLSearchParams(location.search).forEach((v, k) => { if (PARAMS.test(k) && !u.searchParams.has(k)) u.searchParams.set(k, v); });
+    return u.href;
+  }
+  const isca = () => painel?.p.querySelector('.sp-hp')?.value || '';
+
   // ---------- montar o botão e o painel ----------
   function monta() {
     if (d.getElementById('sp-estilo')) return;
@@ -126,22 +158,31 @@
     const fab = d.createElement('button');
     fab.type = 'button'; fab.className = 'sp-fab'; fab.id = 'spFab';
     fab.setAttribute('aria-haspopup', 'dialog'); fab.setAttribute('aria-controls', 'spPainel');
-    fab.innerHTML = '<b aria-hidden="true">?</b><span>Ajuda</span>';
-    fab.setAttribute('aria-label', 'Ajuda: dúvidas frequentes e suporte');
+    fab.innerHTML = `<b aria-hidden="true">?</b><span>${M.fab}</span>`;
+    fab.setAttribute('aria-label', M.fabAria);
     fab.onclick = () => abrir();
     d.body.appendChild(fab);
-    // o aviso de cookies fica embaixo: o botão sobe junto
-    let vigiado = null;
+    // o aviso de cookies e a barra fixa de compra (#fixo, página de vendas no celular) ficam embaixo: o botão sobe junto
+    const vigiados = new Set();
     const ro = window.ResizeObserver ? new ResizeObserver(() => ajustaBaixo()) : null;
+    const mo = new MutationObserver(() => ajustaBaixo());
+    let pedido = 0;
     const ajustaBaixo = () => {
-      const a = d.getElementById('avisoCookies');
-      if (a !== vigiado && ro) { if (vigiado) ro.unobserve(vigiado); if (a) ro.observe(a); vigiado = a; }
-      const r = a && getComputedStyle(a).display !== 'none' ? a.getBoundingClientRect() : null;
-      d.documentElement.style.setProperty('--sp-baixo', r && r.height && r.right > innerWidth - 90 ? Math.max(0, innerHeight - r.top) + 'px' : '0px'); // só sobe se o aviso passa por baixo do botão
+      let alto = 0;
+      for (const el of [d.getElementById('avisoCookies'), d.getElementById('fixo')]) {
+        if (!el) continue;
+        if (!vigiados.has(el)) { vigiados.add(el); ro?.observe(el); mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] }); el.addEventListener('transitionend', () => ajustaBaixo()); }
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        const r = el.getBoundingClientRect();
+        if (r.height && r.right > innerWidth - 90 && r.top < innerHeight) alto = Math.max(alto, innerHeight - r.top); // só conta o que passa por baixo do botão
+      }
+      d.documentElement.style.setProperty('--sp-baixo', alto ? alto + 'px' : '0px');
     };
     ajustaBaixo();
     new MutationObserver(ajustaBaixo).observe(d.body, { childList: true });
     addEventListener('resize', ajustaBaixo);
+    addEventListener('scroll', () => { cancelAnimationFrame(pedido); pedido = requestAnimationFrame(ajustaBaixo); }, { passive: true });
   }
 
   function criaPainel() {
@@ -150,9 +191,9 @@
     p.className = 'sp-p'; p.id = 'spPainel';
     p.setAttribute('role', 'dialog'); p.setAttribute('aria-modal', 'true'); p.setAttribute('aria-labelledby', 'spTit');
     p.innerHTML = `<div class="sp-topo"><button type="button" class="sp-ico" id="spVoltar" aria-label="Voltar às dúvidas frequentes" hidden>‹</button>
-      <h2 id="spTit">Ajuda<small id="spSub">Dúvidas frequentes da Sua Escala 5x2</small></h2>
+      <h2 id="spTit">${M.tit}<small id="spSub">${M.sub}</small></h2>
       <button type="button" class="sp-ico txt" id="spNova" hidden>Nova conversa</button>
-      <button type="button" class="sp-ico" id="spFechar" aria-label="Fechar a ajuda">×</button></div>
+      <button type="button" class="sp-ico" id="spFechar" aria-label="Fechar">×</button></div>
       <div class="sp-corpo" id="spCorpo"></div><div id="spPe"></div><div class="sp-sr" aria-live="polite" id="spVivo"></div>`;
     d.body.append(fundo, p);
     p.querySelector('#spFechar').onclick = () => fechar();
@@ -176,6 +217,7 @@
     anterior = d.activeElement;
     if (op.categoria) { abertaCat = op.categoria; tela = 'faq'; busca = ''; }
     if (op.conversa) tela = 'chat';
+    if (SITE && !contou) { contou = true; rastrear('Contact'); }
     d.documentElement.classList.add('sp-aberto');
     painel.fundo.hidden = painel.p.hidden = false;
     requestAnimationFrame(() => d.body.classList.add('sp-aberto'));
@@ -196,15 +238,17 @@
   function htmlPergunta(q) {
     const aberta = abertaQ === q.id;
     return `<div class="sp-q"><button type="button" data-q="${esc(q.id)}" aria-expanded="${aberta}" aria-controls="spr-${esc(q.id)}"><span>${esc(q.p)}</span><span class="sp-seta" aria-hidden="true">›</span></button>
-      ${aberta ? `<div class="sp-r" id="spr-${esc(q.id)}"><p>${esc(q.r)}</p><div class="sp-acoes"><button type="button" class="sp-btn" data-ir="${esc(q.ir)}">Ir para a tela: ${esc(q.botao)}</button></div></div>` : ''}</div>`;
+      ${aberta ? `<div class="sp-r" id="spr-${esc(q.id)}"><p>${esc(q.r)}</p><div class="sp-acoes">${SITE
+        ? `<a class="sp-btn" href="${esc(linkSite(q.ir))}" data-link>${esc(q.botao)}</a>`
+        : `<button type="button" class="sp-btn" data-ir="${esc(q.ir)}">Ir para a tela: ${esc(q.botao)}</button>`}</div></div>` : ''}</div>`;
   }
   function desenhaFaq() {
     const corpo = painel.p.querySelector('#spCorpo');
     const achados = busca.trim() ? FAQ.buscar(busca) : null;
-    let h = `<label class="sp-sr" for="spBusca">Buscar nas dúvidas frequentes</label><input id="spBusca" class="sp-busca" type="search" placeholder="Busque: trocar folga, férias, contador…" value="${esc(busca)}" autocomplete="off" enterkeyhint="search">`;
+    let h = `<label class="sp-sr" for="spBusca">Buscar nas dúvidas frequentes</label><input id="spBusca" class="sp-busca" type="search" placeholder="${M.busca}" value="${esc(busca)}" autocomplete="off" enterkeyhint="search">`;
     if (achados) {
       h += `<p class="sp-tit">${achados.length ? 'Resultados' : 'Nada encontrado'}</p>`;
-      h += achados.length ? `<div class="sp-cat"><div class="sp-lista" style="border:0">${achados.map(htmlPergunta).join('')}</div></div>` : `<p class="sp-vazio">Não achamos essa dúvida na lista. O assistente pode ajudar.</p>`;
+      h += achados.length ? `<div class="sp-cat"><div class="sp-lista" style="border:0">${achados.map(htmlPergunta).join('')}</div></div>` : `<p class="sp-vazio">Não achamos essa dúvida na lista. ${SITE ? 'O atendimento' : 'O assistente'} pode ajudar.</p>`;
     } else {
       h += '<p class="sp-tit">Dúvidas frequentes</p>' + FAQ.CATEGORIAS.map(c => {
         const ab = abertaCat === c.id;
@@ -212,13 +256,15 @@
           ${ab ? `<div class="sp-lista" id="spc-${esc(c.id)}">${c.perguntas.map(htmlPergunta).join('')}</div>` : ''}</div>`;
       }).join('');
     }
-    h += `<div class="sp-nao"><p>Não encontrou o que procura?</p><button type="button" class="sp-btn cheio" id="spConversar">Conversar com o assistente</button></div>`;
+    h += `<div class="sp-nao"><p>Não encontrou o que procura?</p><button type="button" class="sp-btn cheio" id="spConversar">${M.conversar}</button>${SITE ? `<button type="button" class="sp-link" id="spZapDireto">${M.zapBotao}</button>` : ''}</div>`;
     corpo.innerHTML = h;
     const inp = corpo.querySelector('#spBusca');
     inp.oninput = () => { busca = inp.value; abertaQ = null; const pos = inp.selectionStart; desenhaFaq(); const n = painel.p.querySelector('#spBusca'); n.focus(); n.setSelectionRange(pos, pos); };
     corpo.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { abertaCat = abertaCat === b.dataset.cat ? null : b.dataset.cat; abertaQ = null; desenhaFaq(); painel.p.querySelector(`[data-cat="${CSS.escape(b.dataset.cat)}"]`).focus(); });
     corpo.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { abertaQ = abertaQ === b.dataset.q ? null : b.dataset.q; desenhaFaq(); painel.p.querySelector(`[data-q="${CSS.escape(b.dataset.q)}"]`).focus(); });
     corpo.querySelectorAll('[data-ir]').forEach(b => b.onclick = e => { e.stopPropagation(); irPara(b.dataset.ir); });
+    corpo.querySelectorAll('[data-link]').forEach(a => a.addEventListener('click', () => fechar()));
+    corpo.querySelector('#spZapDireto')?.addEventListener('click', () => abreZap());
     corpo.querySelector('#spConversar').onclick = () => {
       tela = 'chat';
       if (!msgs.length && busca.trim()) painel.rascunho = busca.trim();
@@ -229,14 +275,16 @@
   // ---------- conversa com o assistente ----------
   function desenhaChat() {
     const corpo = painel.p.querySelector('#spCorpo');
-    const inicio = `<div class="sp-m ass">Olá! Sou o assistente da Sua Escala 5x2. Escreva a sua dúvida sobre o app ou a nova lei.</div>`;
+    const inicio = `<div class="sp-m ass">${esc(M.ola)}</div>`;
+    const cta = SITE && msgs.some(m => m.de === 'assistente') && !ocupado ? `<a class="sp-btn cheio sp-cta" href="${esc(linkSite('/#preco'))}" data-link>Quero a Sua Escala 5x2 · R$ 97</a>` : '';
     corpo.innerHTML = `<div class="sp-chat" id="spChat" role="log" aria-label="Conversa com o assistente">${inicio}${msgs.map(m => `<div class="sp-m ${m.de === 'cliente' ? 'cli' : m.aviso ? 'aviso' : 'ass'}">${esc(m.texto)}</div>`).join('')}
       ${ocupado ? '<div class="sp-dig" aria-hidden="true"><i></i><i></i><i></i></div>' : ''}
-      ${mostrarZap ? `<div class="sp-zap"><p>Uma pessoa do suporte continua o atendimento pelo WhatsApp. A mensagem já vai pronta com o seu nome, a empresa e a dúvida.</p><button type="button" class="sp-btn verde cheio" id="spZap">Falar com o suporte no WhatsApp</button></div>` : ''}
+      ${cta}
+      ${mostrarZap ? `<div class="sp-zap"><p>${esc(M.zapTexto)}</p><button type="button" class="sp-btn verde cheio" id="spZap">${esc(M.zapBotao)}</button></div>` : ''}
       ${!mostrarZap && !ocupado && msgs.length ? '<button type="button" class="sp-link" id="spPessoa">Prefiro falar com uma pessoa</button>' : ''}</div>`;
     const pe = painel.p.querySelector('#spPe');
     if (!pe.firstChild) {
-      pe.innerHTML = `<form class="sp-pe" id="spForm"><label class="sp-sr" for="spTexto">Sua mensagem</label><textarea id="spTexto" rows="1" maxlength="1500" placeholder="Escreva a sua dúvida" enterkeyhint="send"></textarea><button class="sp-btn" id="spEnviar">Enviar</button></form>`;
+      pe.innerHTML = `<form class="sp-pe" id="spForm"><label class="sp-sr" for="spTexto">Sua mensagem</label><textarea id="spTexto" rows="1" maxlength="${M.max}" placeholder="Escreva a sua dúvida" enterkeyhint="send"></textarea>${SITE ? '<input class="sp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">' : ''}<button class="sp-btn" id="spEnviar">Enviar</button></form>`;
       const ta = pe.querySelector('textarea');
       if (painel.rascunho) { ta.value = painel.rascunho; painel.rascunho = ''; }
       ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; };
@@ -245,6 +293,7 @@
     }
     pe.querySelector('#spEnviar').disabled = ocupado;
     corpo.querySelector('#spZap')?.addEventListener('click', abreZap);
+    corpo.querySelectorAll('[data-link]').forEach(a => a.addEventListener('click', () => fechar()));
     corpo.querySelector('#spPessoa')?.addEventListener('click', () => { mostrarZap = true; desenha(); painel.p.querySelector('#spZap')?.focus(); });
     corpo.scrollTop = corpo.scrollHeight;
   }
@@ -257,12 +306,13 @@
     const historico = msgs.filter(m => !m.aviso).slice(-12).map(m => ({ de: m.de, texto: m.texto }));
     msgs.push({ de: 'cliente', texto }); ocupado = true; salvaConversa(); desenha(); vivo('O assistente está escrevendo.');
     try {
-      const r = await api('/api/suporte/mensagem', { conversa_id: conversaId, mensagem: texto, historico, tela: telaAtual() });
+      const r = await api(M.mensagem, SITE ? { conversa_id: conversaId, mensagem: texto, historico, pagina: location.pathname, website: isca() }
+        : { conversa_id: conversaId, mensagem: texto, historico, tela: telaAtual() });
       msgs.push({ de: 'assistente', texto: r.resposta });
       if (r.escalar) { mostrarZap = true; resumoAtual = r.resumo || texto; }
       vivo(r.resposta);
     } catch (e) {
-      const txt = e.status === 401 ? 'Entre na sua conta para conversar com o assistente. Se não consegue entrar, fale com o suporte no WhatsApp.' : e.message;
+      const txt = !SITE && e.status === 401 ? 'Entre na sua conta para conversar com o assistente. Se não consegue entrar, fale com o suporte no WhatsApp.' : e.message;
       msgs.push({ de: 'assistente', texto: txt, aviso: true }); mostrarZap = true; vivo(txt);
     }
     ocupado = false; salvaConversa(); desenha();
@@ -273,25 +323,27 @@
     const b = painel.p.querySelector('#spZap'); if (b) { b.disabled = true; b.textContent = 'Abrindo o WhatsApp…'; }
     // abre a janela já no clique (bloqueio de pop-up) e coloca o endereço quando o servidor responder
     const jan = window.open('', '_blank');
+    if (SITE) rastrear('Lead');
     let link = '';
     try {
       const historico = msgs.filter(m => !m.aviso).map(m => ({ de: m.de, texto: m.texto }));
-      link = (await api('/api/suporte/chamado', { conversa_id: conversaId, historico, resumo: resumoAtual, tela: telaAtual() })).link;
+      link = (await api(M.chamado, SITE ? { conversa_id: conversaId, historico, resumo: resumoAtual, pagina: location.pathname, website: isca() }
+        : { conversa_id: conversaId, historico, resumo: resumoAtual, tela: telaAtual() })).link;
     } catch {
       try { link = (await api('/api/suporte/contato')).link; } catch {}
     }
     if (link && jan) { try { jan.opener = null; } catch {} jan.location.href = link; }
     else if (link) location.href = link;
     else if (jan) jan.close();
-    if (b) { b.disabled = false; b.textContent = 'Falar com o suporte no WhatsApp'; }
+    if (b) { b.disabled = false; b.textContent = M.zapBotao; }
   }
 
   function desenha() {
     const p = painel.p, chat = tela === 'chat';
     p.querySelector('#spVoltar').hidden = !chat;
     p.querySelector('#spNova').hidden = !chat || !msgs.length;
-    p.querySelector('#spTit').firstChild.textContent = chat ? 'Assistente' : 'Ajuda';
-    p.querySelector('#spSub').textContent = chat ? 'Responde na hora. Se precisar, chama uma pessoa.' : 'Dúvidas frequentes da Sua Escala 5x2';
+    p.querySelector('#spTit').firstChild.textContent = chat ? M.titChat : M.tit;
+    p.querySelector('#spSub').textContent = chat ? 'Responde na hora. Se precisar, chama uma pessoa.' : M.sub;
     if (!chat) p.querySelector('#spPe').innerHTML = '';
     chat ? desenhaChat() : desenhaFaq();
   }
@@ -300,7 +352,7 @@
   // o app troca rota desconhecida por #inicio no mesmo evento: lê o endereço do próprio evento (newURL)
   function peloEndereco(e) {
     const hash = e && e.newURL ? new URL(e.newURL).hash : location.hash;
-    const m = /^#ajuda(?:\/([\w-]+))?$/.exec(hash);
+    const m = SITE ? /^#(?:fale-conosco|atendimento)(?:\/([\w-]+))?$/.exec(hash) : /^#ajuda(?:\/([\w-]+))?$/.exec(hash);
     if (!m) return;
     abrir(m[1] === 'assistente' ? { conversa: true } : m[1] ? { categoria: m[1] } : {});
   }

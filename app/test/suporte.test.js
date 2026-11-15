@@ -33,6 +33,7 @@ process.env.SESSION_SECRET ||= 'segredo-teste';
 process.env.SUPORTE_MAX_HORA = '9';
 process.env.SUPORTE_N8N_TOKEN = 'token-do-n8n';
 process.env.SUPORTE_WHATSAPP = '5571993357290';
+process.env.ATENDIMENTO_MAX_HORA = '5';
 
 test('assistente, limite, chamados e /admin', { skip: pular }, async t => {
   // n8n de mentira: guarda o que recebeu e responde conforme a mensagem
@@ -45,6 +46,7 @@ test('assistente, limite, chamados e /admin', { skip: pular }, async t => {
       if (/quebrado/.test(b.mensagem)) { res.writeHead(500); return res.end('erro'); }
       const escalar = /sumiu|ajuda humana/.test(b.mensagem);
       res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (b.modo === 'vendas') return res.end(JSON.stringify({ resposta: 'Custa R$ 97, com 7 dias de garantia.', resolvido: !escalar, escalar, resumo: escalar ? 'Visitante quer condição especial' : '' }));
       res.end(JSON.stringify(/lista/.test(b.mensagem)
         ? [{ output: { resposta: 'Formato em lista.', resolvido: true, escalar: false, resumo: '' } }]
         : { resposta: escalar ? 'Vou chamar o suporte.' : 'Na Escala, toque no nome da pessoa.', resolvido: !escalar, escalar, resumo: escalar ? 'Escala sumiu da tela' : '' }));
@@ -163,4 +165,51 @@ test('assistente, limite, chamados e /admin', { skip: pular }, async t => {
   await chama('/api/suporte/chamado', { method: 'POST', cookie, body: { conversa_id: 'conversa-dois-456', historico } });
   assert.equal((await q('select status from suporte_chamados where id=$1', [id]))[0].status, 'aberto');
   assert.equal((await chama('/api/admin/suporte/999999999', { method: 'PATCH', headers: adm, body: { status: 'fechado' } })).status, 404);
+
+  // ---------- atendimento no site (visitante sem login) ----------
+  const site = { origin: base };
+  // a base de vendas é pública
+  r = await chama('/suporte/faq-vendas.js');
+  assert.equal(r.status, 200); assert.match(r.texto, /SuporteFAQVendas/);
+  // sem Origin/Referer do nosso domínio: recusa (antes de contar no limite)
+  assert.equal((await chama('/api/atendimento/mensagem', { method: 'POST', body: { conversa_id: 'visita-sem-origem', mensagem: 'oi' } })).status, 403);
+  assert.equal((await chama('/api/atendimento/mensagem', { method: 'POST', headers: { origin: 'https://site-copiado.com' }, body: { conversa_id: 'visita-copia-1', mensagem: 'oi' } })).status, 403);
+  assert.equal((await chama('/api/atendimento/chamado', { method: 'POST', headers: { origin: 'https://site-copiado.com' }, body: { conversa_id: 'visita-copia-1' } })).status, 403);
+  // pergunta comum: vai ao n8n com modo "vendas", sem cookie nem dados pessoais
+  let n = recebidos.length;
+  r = await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-um-123', mensagem: 'Quanto custa?', pagina: '/blog/escala-5x2', website: '' } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json, { resposta: 'Custa R$ 97, com 7 dias de garantia.', resolvido: true, escalar: false, resumo: '' });
+  assert.equal(recebidos.length, n + 1);
+  assert.deepEqual(recebidos.at(-1).body, { modo: 'vendas', conversa_id: 'site-visita-um-123', mensagem: 'Quanto custa?', contexto: { pagina: '/blog/escala-5x2' } });
+  assert.equal(recebidos.at(-1).headers['x-suporte-token'], 'token-do-n8n');
+  // mensagem longa é cortada
+  await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-um-123', mensagem: 'a'.repeat(5000) } });
+  assert.equal(recebidos.at(-1).body.mensagem.length, 800);
+  // campo isca preenchido (robô): responde sem chamar o n8n
+  n = recebidos.length;
+  r = await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-robo-1', mensagem: 'compre agora', website: 'http://spam.com' } });
+  assert.equal(r.status, 200); assert.equal(r.json.escalar, true); assert.equal(recebidos.length, n);
+  assert.equal((await q("select 1 from suporte_chamados where conversa_id='site-visita-robo-1'")).length, 0);
+  // escalada da IA vira chamado com origem 'site', sem usuário
+  r = await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-dois-456', mensagem: 'Quero ajuda humana para 30 lojas', pagina: '/' } });
+  assert.equal(r.json.escalar, true); assert.ok(r.json.chamado);
+  const idSite = r.json.chamado;
+  let cs = await q("select usuario_id, origem, status, resumo, tela, conversa from suporte_chamados where conversa_id='site-visita-dois-456'");
+  assert.deepEqual([cs[0].usuario_id, cs[0].origem, cs[0].status, cs[0].resumo, cs[0].tela, cs[0].conversa.length], [null, 'site', 'aberto', 'Visitante quer condição especial', '/', 2]);
+  // botão do WhatsApp: mesmo chamado e mensagem "Vim pelo site"
+  r = await chama('/api/atendimento/chamado', { method: 'POST', headers: site, body: { conversa_id: 'visita-dois-456', historico: [{ de: 'cliente', texto: 'Quero ajuda humana para 30 lojas' }], resumo: 'Visitante quer condição especial', pagina: '/' } });
+  assert.equal(r.json.chamado, idSite);
+  assert.equal((await q("select count(*)::int n from suporte_chamados where conversa_id='site-visita-dois-456'"))[0].n, 1);
+  assert.equal(decodeURIComponent(new URL(r.json.link).searchParams.get('text')), 'Vim pelo site, tenho uma dúvida: Visitante quer condição especial');
+  assert.match(r.json.link, /^https:\/\/wa\.me\/5571993357290\?/);
+  // aparece no /admin como visitante (sem conta)
+  r = await chama('/api/admin/suporte?status=aberto', { headers: adm });
+  const doSite = r.json.chamados.find(c => c.origem === 'site' && c.resumo === 'Visitante quer condição especial');
+  assert.ok(doSite); assert.equal(doSite.email, null);
+  // limite por IP (ATENDIMENTO_MAX_HORA=5): já foram 4 que contam (isca e escalada incluídas); a 6ª é recusada
+  assert.equal((await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-tres-1', mensagem: 'Tem Pix?' } })).status, 200);
+  n = recebidos.length;
+  r = await chama('/api/atendimento/mensagem', { method: 'POST', headers: site, body: { conversa_id: 'visita-tres-1', mensagem: 'De novo' } });
+  assert.equal(r.status, 429); assert.equal(recebidos.length, n);
 });

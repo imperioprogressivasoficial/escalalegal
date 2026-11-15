@@ -12,6 +12,8 @@ const ld = o => `<script type="application/ld+json">${JSON.stringify(o).replace(
 const slugDe = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const dataBr = d => `${+d.slice(8)} de ${MESES[+d.slice(5, 7) - 1]} de ${d.slice(0, 4)}`;
+// atendimento (widget "Fale com a gente"): carrega depois da página, para não pesar no carregamento
+const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=2';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
 const palavras = h => String(h).replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
 
 // Títulos do gerador que acompanham a palavra-chave do anúncio (?utm_term= ou ?kw=). Só textos fixos: nada do endereço vai para a página.
@@ -99,6 +101,7 @@ ${corpo}
 </div></footer>
 <script>${JS_LINKS}</script>
 ${scripts}<script src="/rastreio.js" defer></script>
+${ATENDIMENTO}
 </body>
 </html>`;
   }
@@ -272,7 +275,7 @@ ${inicio ? `<section class="wrap recentes"><div class="cab"><h2>Artigos sobre a 
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${itens.map(([u, d, p]) => `  <url><loc>${BLOG_URL}${u}</loc><lastmod>${d}</lastmod><priority>${p}</priority></url>`).join('\n')}\n</urlset>\n`);
   });
   // o que o blog usa do app (imagens, motor da escala, rastreio, API) segue normal; o resto das páginas do app fica no domínio principal
-  const DO_APP = /^\/(api\/|img\/|rastreio\.js$|pixel\.js$|scheduler\.js$)/;
+  const DO_APP = /^\/(api\/|img\/|rastreio\.js$|pixel\.js$|scheduler\.js$|suporte\.js$|suporte\/faq-vendas\.js$)/;
   r.use((req, res, next) => {
     if (DO_APP.test(req.path) || !['GET', 'HEAD'].includes(req.method)) return next();
     if (req.path.startsWith('/blog/')) return naoAchou(res);
