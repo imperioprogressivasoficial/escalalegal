@@ -64,8 +64,9 @@ services:
       start_period: 180s
     labels:
       - traefik.enable=true
-      # DOMAIN = endereço principal; DOMAIN_ANTIGO continua abrindo e leva para o principal
-      - traefik.http.routers.escalalegal.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`) || Host(`${DOMAIN_ANTIGO:-${DOMAIN}}`)
+      # Um domínio só por roteador: se um nome não existir no DNS, o certificado dele falha sem derrubar o outro.
+      # Ao trocar de domínio, crie um segundo roteador igual para o endereço antigo (o app manda para o DOMAIN).
+      - traefik.http.routers.escalalegal.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.escalalegal.entrypoints=websecure
       - traefik.http.routers.escalalegal.tls=true
       - traefik.http.routers.escalalegal.tls.certresolver=letsencrypt
