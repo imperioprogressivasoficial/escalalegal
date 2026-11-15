@@ -352,7 +352,7 @@ async function wizGerar() {
 function telaPagar(checkout) {
   $('#v-comecar').innerHTML = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Tudo pronto!</h1>
     <p>Sua equipe está salva. Falta só liberar o acesso para a escala aparecer.</p>
-    ${checkout ? `<a class="btn cheio" href="${esc(checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : '<p class="dica">Fale com o suporte para liberar.</p>'}
+    ${checkout ? `<a class="btn cheio" href="${esc(checkout)}" target="_blank" rel="noopener">Liberar por R$ 97</a>` : '<p class="dica">Fale com o suporte para liberar.</p>'}
     <p class="dica">Pagamento único. Depois de pagar, volte aqui.</p></div>`;
 }
 
@@ -388,7 +388,7 @@ async function telaEscala() {
   if (!r.escala) {
     const m = {
       sem_pessoas: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Coloque sua equipe</h2><p>Escreva quem trabalha com você e a escala aparece na hora.</p>${podeEditar() ? '<button class="btn" data-ir="pessoas">Colocar a equipe</button>' : ''}</div>`,
-      nao_pago: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Falta liberar o acesso</h2><p>Sua equipe está salva. Libere e a escala aparece na hora.</p>${r.checkout && conta.papel === 'dono' ? `<a class="btn cheio" href="${esc(r.checkout)}" target="_blank" rel="noopener">Liberar por R$ 47</a>` : '<p class="dica">O dono da empresa precisa liberar o acesso.</p>'}</div>`,
+      nao_pago: `<div class="vazio"><img src="/img/mascote.svg" alt=""><h2>Falta liberar o acesso</h2><p>Sua equipe está salva. Libere e a escala aparece na hora.</p>${r.checkout && conta.papel === 'dono' ? `<a class="btn cheio" href="${esc(r.checkout)}" target="_blank" rel="noopener">Liberar por R$ 97</a>` : '<p class="dica">O dono da empresa precisa liberar o acesso.</p>'}</div>`,
       passado: '<div class="vazio"><h2>Sem escala nesta semana</h2><p>Essa semana já passou e não tinha escala no sistema.</p></div>',
       sem_escala: `<div class="vazio"><h2>Sem escala nesta semana</h2><p>${podeEditar() ? 'Não deu para montar esta semana. Se o mês já foi fechado, reabra em Mais › Fechar o mês.' : 'A empresa ainda não montou a escala desta semana.'}</p></div>`,
     };

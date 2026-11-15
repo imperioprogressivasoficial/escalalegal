@@ -27,7 +27,7 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       META_PIXEL_ID: ${META_PIXEL_ID:-}
       LIBERAR_TUDO: ${LIBERAR_TUDO:-0}
-      PRECO: ${PRECO:-47}
+      PRECO: ${PRECO:-97}
       COMISSAO_PERCENT: ${COMISSAO_PERCENT:-30}
       GA_ID: ${GA_ID:-}
       GTM_ID: ${GTM_ID:-}

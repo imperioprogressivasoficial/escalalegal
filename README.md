@@ -1,6 +1,6 @@
 # Sua Escala Blindada — gerador de escala 5x2
 
-- `/`: página de vendas (R$ 47).
+- `/`: página de vendas (R$ 97).
 - `/app`: o app. A empresa monta equipes e funcionários, gera a escala 5x2, ajusta com um clique, imprime e copia para o WhatsApp.
 - `/obrigado`: página pós-compra (configure no checkout como "página de obrigado").
 - `/admin`: painel com clientes, liberação manual, link de acesso para mandar no WhatsApp e histórico de pagamentos.

@@ -11,7 +11,7 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
   const GA = /^G-[A-Z0-9]+$/i.test(E.GA_ID || '') ? E.GA_ID : '';
   const GTM = /^GTM-[A-Z0-9]+$/i.test(E.GTM_ID || '') ? E.GTM_ID : '';
   const CAPI = PIXEL && E.META_CAPI_TOKEN ? E.META_CAPI_TOKEN : '';
-  const PRECO = +String(E.PRECO || '47').replace(',', '.') || 47;
+  const PRECO = +String(E.PRECO || '97').replace(',', '.') || 97;
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const zap = String(E.SUPORTE_WHATSAPP || '').replace(/\D/g, '');
 

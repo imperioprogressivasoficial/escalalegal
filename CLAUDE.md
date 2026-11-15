@@ -1,6 +1,6 @@
 # Sua Escala Blindada
 
-SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por R$ 47, pagamento único, com tráfego pago.
+SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por R$ 97, pagamento único, com tráfego pago.
 
 ## Estrutura
 - `app/server.js`: API Express + Postgres (`pg`). Sessão por cookie assinado (HMAC, com `sessao_v` para derrubar sessões ao trocar senha), senha com scrypt assíncrono. Sem ORM.
