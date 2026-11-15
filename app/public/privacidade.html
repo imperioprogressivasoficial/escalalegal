@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidade — Sua Escala Blindada</title>
+<meta name="description" content="Quais dados a Sua Escala Blindada usa, para quê, com quem compartilha, por quanto tempo guarda e como você exerce seus direitos pela LGPD.">
+
+<meta name="theme-color" content="#071d41">
+<!--HEAD-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,700..800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--azul:#1351b4;--azul-esc:#071d41;--azul-claro:#e8f0fb;--verde:#168821;--verde-claro:#e3f5e1;--amarelo:#ffcd07;--amarelo-claro:#fff5c2;--vermelho:#c4161c;--vermelho-claro:#fde0e0;--linha:#dfe3ea;--tinta:#0c1b33;--texto:#3d4a5c;--mut:#566173;color-scheme:light}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{font:400 16px/1.6 "Public Sans",system-ui,sans-serif;color:var(--texto);background:#f3f5f8}
+h1,h2,h3{font-family:"Archivo",Arial,sans-serif;font-stretch:88%;color:var(--tinta);line-height:1.15}
+a{color:var(--azul)}
+.barra{position:sticky;top:0;z-index:5;background:var(--azul-esc);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px}
+.marca{font:800 1.15rem/1 "Archivo",Arial,sans-serif;font-stretch:85%;color:#fff;text-decoration:none}.marca span{color:#7be08a}
+.barra a.btn{background:var(--verde);color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:8px 14px;font-size:.92rem}
+.hero{background:linear-gradient(160deg,var(--azul-esc),#0b2d6b 60%,var(--azul));color:#d6e0f0;padding:36px 16px 46px}
+.hero .w{max-width:880px;margin:0 auto}
+.hero h1{color:#fff;font-size:clamp(1.9rem,5vw,2.8rem);margin-bottom:10px}
+.w{max-width:880px;margin:0 auto;padding:0 16px}
+main.w{margin-top:-24px;padding-bottom:50px}
+.indice{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.indice ol{padding-left:20px;display:grid;gap:4px;margin-top:6px}
+section{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:22px clamp(16px,4vw,28px);margin-bottom:16px}
+section h2{font-size:1.55rem;margin-bottom:10px}
+section h3{font-size:1.1rem;margin:18px 0 6px}
+section p+p,section ul,section ol{margin-top:10px}
+section ul,section ol{padding-left:20px;display:grid;gap:6px}
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px}
+.resumo div{background:var(--azul-claro);border-radius:10px;padding:14px}
+.resumo b{display:block;font:800 1.6rem/1.1 "Archivo",Arial,sans-serif;font-stretch:85%;color:var(--azul)}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.94rem}
+th,td{border-bottom:1px solid var(--linha);padding:9px 8px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-size:.82rem}
+.ok{color:var(--verde);font-weight:700}.nao{color:var(--vermelho);font-weight:700}.talvez{color:#8a5a00;font-weight:700}
+.rol{overflow-x:auto}
+.aviso{background:var(--amarelo-claro);border:1px solid #f0d97a;border-radius:10px;padding:12px 14px;color:#5a4500;margin-top:12px}
+details{border-bottom:1px solid var(--linha);padding:12px 0}
+details summary{font-weight:700;color:var(--tinta);cursor:pointer}
+details p{margin-top:8px}
+.fontes{font-size:.85rem;color:var(--mut)}
+.fontes li{word-break:break-word}
+.cta{text-align:center;background:var(--verde-claro);border-color:#bfe3bb}
+.cta a{display:inline-block;margin-top:10px;background:var(--verde);color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:12px 20px}
+.rod{padding:24px 0 40px;font-size:.88rem;color:var(--mut)}.rod p+p{margin-top:6px}.rod a{color:var(--mut)}
+.pular{position:absolute;left:-999px;top:8px;background:#fff;color:var(--azul);padding:8px 12px;border-radius:8px;z-index:9}.pular:focus{left:8px}</style>
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="barra"><a class="marca" href="/">SuaEscala<span>Blindada</span></a><a class="btn" href="/app">Abrir o app</a></header>
+<div class="hero"><div class="w">
+  <h1>Política de privacidade</h1>
+  <p>Em linguagem simples: o que a Sua Escala Blindada faz com os seus dados e os da sua equipe, de acordo com a Lei Geral de Proteção de Dados (Lei 13.709/2018). Atualizada em novembro de 2026.</p>
+</div></div>
+<main class="w" id="conteudo">
+
+<section><h2>1. Quem somos</h2>
+<p>A Sua Escala Blindada é um sistema on-line que monta a escala de trabalho das empresas. Quem responde pelos dados da sua conta é {{EMPRESA_NOME}}{{EMPRESA_CNPJ}}. Contato para qualquer assunto de privacidade: {{CONTATO}}.</p></section>
+
+<section><h2>2. Quais dados usamos</h2>
+<h3>Seus dados (de quem compra ou usa o app)</h3>
+<ul><li>Nome, e-mail, WhatsApp e senha (a senha é guardada embaralhada; nem nós conseguimos ver).</li>
+<li>Dados da empresa que você informa: nome, razão social, CNPJ, porte, estado, cidade e feriados da cidade.</li>
+<li>Dados da compra que a plataforma de pagamento nos envia: e-mail, nome, código da transação e situação (aprovada, reembolsada). <b>Não recebemos nem guardamos dados de cartão.</b></li>
+<li>Registro de uso: data do último acesso e o histórico de alterações na escala (quem mudou o quê).</li>
+<li>Se você usar o Indique e ganhe: o seu código de indicação, as vendas feitas pelo seu link e a chave Pix que você informar.</li></ul>
+<h3>Dados da sua equipe (que você cadastra)</h3>
+<ul><li>Nome, função e, se você quiser, matrícula, data de admissão e WhatsApp.</li>
+<li>Folgas, férias, faltas, atestados, afastamentos e banco de horas. Do atestado guardamos só o tipo e as datas. <b>Não peça nem coloque o CID ou o motivo médico.</b></li></ul>
+<p>Para os dados da sua equipe, <b>a sua empresa é a controladora</b> (decide o que cadastrar e para quê) e a Sua Escala Blindada é a operadora: só usa esses dados para montar e mostrar a escala.</p></section>
+
+<section><h2>3. Para que usamos</h2>
+<ul><li>Criar a sua conta, liberar o acesso depois do pagamento e mandar o link de acesso por e-mail (execução do contrato).</li>
+<li>Montar a escala, o fechamento do mês e as planilhas que você baixa (execução do contrato).</li>
+<li>Atender você no suporte e avisar sobre mudanças importantes na lei ou no serviço (legítimo interesse).</li>
+<li>Pagar comissões do Indique e ganhe (execução do contrato).</li>
+<li>Medir visitas e anúncios, só se você aceitar os cookies (consentimento).</li>
+<li>Cumprir obrigações legais, como guardar registros de acesso (Marco Civil da Internet).</li></ul></section>
+
+<section><h2>4. Com quem compartilhamos</h2>
+<p>Não vendemos dados. Compartilhamos só o necessário com quem ajuda o serviço a funcionar:</p>
+<ul><li><b>Plataforma de pagamento</b>, que processa a compra e o reembolso.</li>
+<li><b>Hospedagem</b> (servidor e banco de dados no Brasil ou no exterior, com proteção adequada).</li>
+<li><b>Envio de e-mail</b>, para entregar o link de acesso e os avisos.</li>
+<li><b>Meta (Facebook e Instagram) e Google</b>, para medir anúncios e visitas, só com o seu consentimento nos cookies. Na compra, mandamos para a Meta o e-mail e o telefone de forma embaralhada (hash), para saber qual anúncio trouxe a venda.</li>
+<li><b>Pessoas que você autoriza</b>: o seu contador e os gerentes que você convidar, e os funcionários que recebem o link da escala.</li>
+<li>Autoridades, quando a lei ou um juiz exigir.</li></ul></section>
+
+<section id="cookies"><h2>5. Cookies</h2>
+<ul><li><b>Necessários</b>: mantêm você conectado e guardam suas preferências no aparelho (como a última empresa aberta). Sem eles o app não funciona.</li>
+<li><b>Medição e anúncios</b> (Meta Pixel, Google Analytics e Google Tag Manager): só são carregados se você tocar em <b>Aceitar</b> no aviso. Servem para saber quantas pessoas visitam o site e quais anúncios funcionam.</li></ul>
+<p>Mudou de ideia? <a href="#" onclick="preferenciasCookies&&preferenciasCookies();return false">Toque aqui para escolher de novo</a>.</p></section>
+
+<section><h2>6. Por quanto tempo guardamos</h2>
+<ul><li>Dados da conta, da empresa e das escalas: enquanto a conta existir. Se você pedir para apagar, apagamos em até 30 dias, menos o que a lei manda guardar.</li>
+<li>Registros de acesso: 6 meses (Marco Civil da Internet).</li>
+<li>Dados de compra e comissão: pelo prazo exigido pelas leis fiscais.</li>
+<li>Cópias de segurança: 14 dias, depois são apagadas.</li></ul></section>
+
+<section><h2>7. Seus direitos</h2>
+<p>Pela LGPD você pode, a qualquer momento: saber se usamos seus dados, ver e corrigir, pedir uma cópia, pedir para apagar, saber com quem compartilhamos e retirar o consentimento dos cookies. Peça por {{CONTATO}}. Respondemos em até 15 dias. Você também pode reclamar na Autoridade Nacional de Proteção de Dados (ANPD).</p>
+<p>Se você é funcionário de uma empresa que usa a Sua Escala Blindada, fale primeiro com a sua empresa, que é a controladora dos seus dados. Se precisar, nós ajudamos.</p></section>
+
+<section><h2>8. Segurança</h2>
+<p>Usamos conexão protegida (HTTPS), senha guardada embaralhada, sessão que cai quando a senha é trocada, cada empresa vê só os próprios dados e cópia de segurança todo dia. Nenhum sistema é 100% invulnerável: se acontecer um incidente que possa trazer risco, avisamos você e a ANPD.</p></section>
+
+<section><h2>9. Mudanças nesta política</h2>
+<p>Se mudarmos algo importante, avisamos no app ou por e-mail antes de valer.</p></section>
+
+</main>
+<footer class="rod"><div class="w"><p><a href="/">Início</a> · <a href="/ajuda">Ajuda e a nova lei</a> · <a href="/privacidade">Privacidade</a> · <a href="/termos">Termos e reembolso</a> · <a href="#" onclick="preferenciasCookies&&preferenciasCookies();return false">Cookies</a></p>
+<p>{{EMPRESA_LINHA}} · Contato: {{CONTATO}} · © {{ANO}}</p></div></footer>
+<script src="/rastreio.js" defer></script>
+</body>
+</html>

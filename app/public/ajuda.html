@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ajuda e a nova lei — Sua Escala Blindada</title>
 <meta name="description" content="O que muda com o fim da escala 6x1 (EC 141/2026), como montar a escala 5x2, domingos, feriados, MEI e perguntas frequentes.">
+<meta name="theme-color" content="#071d41">
+<!--HEAD-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,700..800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--azul:#1351b4;--azul-esc:#071d41;--azul-claro:#e8f0fb;--verde:#168821;--verde-claro:#e3f5e1;--amarelo:#ffcd07;--amarelo-claro:#fff5c2;--vermelho:#c4161c;--vermelho-claro:#fde0e0;--linha:#dfe3ea;--tinta:#0c1b33;--texto:#3d4a5c;--mut:#6b778a;color-scheme:light}
+:root{--azul:#1351b4;--azul-esc:#071d41;--azul-claro:#e8f0fb;--verde:#168821;--verde-claro:#e3f5e1;--amarelo:#ffcd07;--amarelo-claro:#fff5c2;--vermelho:#c4161c;--vermelho-claro:#fde0e0;--linha:#dfe3ea;--tinta:#0c1b33;--texto:#3d4a5c;--mut:#566173;color-scheme:light}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth;scroll-padding-top:70px}
 body{font:400 16px/1.6 "Public Sans",system-ui,sans-serif;color:var(--texto);background:#f3f5f8}
@@ -55,7 +57,7 @@ details p{margin-top:8px}
   <p style="font-size:.88rem;margin-top:10px;opacity:.85">Atualizado em novembro de 2026.</p>
 </div></div>
 
-<main class="w">
+<main class="w" id="conteudo">
   <nav class="indice"><b>Nesta página</b>
     <ol>
       <li><a href="#lei">O que mudou na lei</a></li>
@@ -92,7 +94,7 @@ details p{margin-top:8px}
   <section id="pratica">
     <h2>2. Na prática: jornadas que valem e que não valem</h2>
     <p>Com 2 folgas por semana sobram 5 dias de trabalho. Veja como fica:</p>
-    <div class="rol"><table>
+    <div class="rol" tabindex="0" role="region" aria-label="Tabela"><table>
       <thead><tr><th>Jornada</th><th>Horas na semana</th><th>Até 15/12/2026</th><th>De 16/12/2026 a 15/12/2027</th><th>A partir de 16/12/2027</th></tr></thead>
       <tbody>
         <tr><td>5 dias de 8h (5x2)</td><td>40h</td><td class="ok">Vale</td><td class="ok">Vale</td><td class="ok">Vale</td></tr>
@@ -224,5 +226,7 @@ details p{margin-top:8px}
     </ul>
   </section>
 </main>
+<footer class="w" style="padding:8px 16px 40px;font-size:.88rem;color:var(--mut)"><p><a href="/">Início</a> · <a href="/privacidade">Privacidade</a> · <a href="/termos">Termos e reembolso</a> · <a href="#" onclick="preferenciasCookies&&preferenciasCookies();return false">Cookies</a></p><p style="margin-top:6px">{{EMPRESA_LINHA}} · Contato: {{CONTATO}} · © {{ANO}}</p></footer>
+<script src="/rastreio.js" defer></script>
 </body>
 </html>

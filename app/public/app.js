@@ -69,7 +69,11 @@ $('#formEntrada').onsubmit = async e => {
   e.preventDefault(); $('#erroEntrada').textContent = ''; $('#btnEntrar').disabled = true;
   try {
     if (modo === 'login') await api('/api/login', {method: 'POST', body: {email: $('#cEmail').value, senha: $('#cSenha').value}});
-    else await api('/api/cadastro', {method: 'POST', body: {tipo: tipoCadastro, nome: $('#cNome').value, empresa: $('#cEmpresa').value, whatsapp: $('#cZap').value, email: $('#cEmail').value, senha: $('#cSenha').value}});
+    else {
+      let ref = ''; try { ref = JSON.parse(localStorage.getItem('ind') || 'null')?.c || ''; } catch {}
+      await api('/api/cadastro', {method: 'POST', body: {tipo: tipoCadastro, nome: $('#cNome').value, empresa: $('#cEmpresa').value, whatsapp: $('#cZap').value, email: $('#cEmail').value, senha: $('#cSenha').value, ref}});
+      window.rastrear?.('CompleteRegistration');
+    }
     await iniciar();
   } catch (err) { $('#erroEntrada').textContent = err.message; }
   $('#btnEntrar').disabled = false;

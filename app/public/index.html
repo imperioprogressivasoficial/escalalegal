@@ -6,6 +6,7 @@
 <title>Sua Escala Blindada — gerador de escala 5x2</title>
 <meta name="description" content="A escala 6x1 acaba em 16 de dezembro de 2026. Responda umas perguntas e a Sua Escala Blindada entrega a escala 5x2 da sua empresa dentro da lei, em PDF, Excel, Google Planilhas ou no WhatsApp. R$ 47, pagamento único.">
 <meta name="theme-color" content="#061533">
+<!--HEAD-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..900&family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +15,7 @@
   /* Layout: hero escuro em degradê azul com o app em destaque; seções alternam branco, azul-gelo e azul-noite.
      Cores do serviço público brasileiro: azul, verde e amarelo. */
   --noite:#061533; --marinho:#0b2d6b; --azul:#1351b4; --azul-vivo:#2670e8; --verde:#168821; --verde-vivo:#23b53a; --amarelo:#ffcd07;
-  --gelo:#f2f6fc; --linha:#dde4ef; --tinta:#0c1b33; --texto:#46546a; --mut:#6b778a;
+  --gelo:#f2f6fc; --linha:#dde4ef; --tinta:#0c1b33; --texto:#46546a; --mut:#566173;
   --grad-hero:radial-gradient(900px 520px at 85% 10%,rgba(38,112,232,.55),transparent 60%),radial-gradient(700px 480px at 5% 95%,rgba(35,181,58,.28),transparent 60%),linear-gradient(160deg,#061533 0%,#0a2557 55%,#0f3f8f 100%);
   --grad-verde:linear-gradient(135deg,#23b53a 0%,#168821 100%);
   --grad-marca:linear-gradient(90deg,#23b53a,#ffcd07 50%,#2670e8);
@@ -28,6 +29,8 @@ body{overflow-x:clip}
 body{font:400 1.0625rem/1.6 var(--corpo);color:var(--texto);background:#fff;overflow-x:hidden}
 img{max-width:100%;height:auto;display:block}
 .wrap{width:min(1180px,100% - 40px);margin-inline:auto}
+.rodape a{color:inherit}
+.pular{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:var(--azul);font-weight:700;padding:10px 14px;border-radius:10px}.pular:focus{left:8px}
 h1,h2,h3{font-family:var(--display);color:var(--tinta);font-weight:800;font-stretch:86%;letter-spacing:-.02em;line-height:1.04;text-wrap:balance}
 h2{font-size:clamp(2.1rem,4vw,3.25rem)}
 p{text-wrap:pretty}
@@ -316,6 +319,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 </style>
 </head>
 <body class="carrega">
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
 <div class="faixa"></div>
 <div class="aviso" id="avisoTopo">Emenda Constitucional 141/2026: a escala 5x2 passa a valer em <b>16 de dezembro de 2026</b>.</div>
 <div class="previa" id="previa" hidden></div>
@@ -327,7 +331,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
   </div>
 </header>
 
-<section class="heroi">
+<section class="heroi" id="conteudo">
   <div class="brilho-h bh1"></div><div class="brilho-h bh2"></div>
   <div class="wrap heroi-grid">
     <div>
@@ -569,8 +573,9 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <footer class="rodape">
   <div class="wrap">
     <a class="marca" href="#"><img src="img/mascote.svg" alt="">SuaEscala<span>Blindada</span></a>
-    <p style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px"><a href="/ajuda" style="color:inherit">Ajuda e a nova lei</a><a href="/app" style="color:inherit">Entrar</a><a href="/app?contador" style="color:inherit">Sou contador</a></p>
+    <p style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px"><a href="/ajuda" style="color:inherit">Ajuda e a nova lei</a><a href="/app" style="color:inherit">Entrar</a><a href="/app?contador" style="color:inherit">Sou contador</a><a href="/privacidade" style="color:inherit">Privacidade</a><a href="/termos" style="color:inherit">Termos e reembolso</a><a href="#" onclick="preferenciasCookies&&preferenciasCookies();return false" style="color:inherit">Cookies</a></p>
     <p>Ferramenta privada de organização de escalas, sem vínculo com o governo. Não substitui a orientação do seu contador ou advogado. Datas conforme a Emenda Constitucional 141/2026.</p>
+    <p style="margin-top:8px">{{EMPRESA_LINHA}} · Contato: {{CONTATO}} · © {{ANO}}</p>
   </div>
 </footer>
 
@@ -625,7 +630,7 @@ $('#formCompra').addEventListener('submit', async e => {
   const btn = $('#btnPagar'); btn.disabled = true; btn.textContent = 'Abrindo o pagamento...';
   const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')));
   try { await fetch('/api/leads', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome, email, whatsapp: zap, setor: 'checkout', utm, ref: IND})}); } catch {}
-  if (window.fbq) fbq('track', 'InitiateCheckout', {value: 47, currency: 'BRL'});
+  if (window.rastrear) { rastrear('Lead'); rastrear('InitiateCheckout', {value: 47, currency: 'BRL'}); }
   if (CHECKOUT) {
     const u = new URL(CHECKOUT); u.searchParams.set('email', email); u.searchParams.set('name', nome); u.searchParams.set('phone', zap);
     if (IND) { u.searchParams.set('src', 'ind_' + IND); u.searchParams.set('sck', 'ind_' + IND); u.searchParams.set('utm_campaign', 'ind_' + IND); }
@@ -676,6 +681,6 @@ if (!calmo && 'IntersectionObserver' in window) {
   $$('[data-r]').forEach(el => { if (el.getBoundingClientRect().top > innerHeight * .92) { el.classList.add('fora'); io.observe(el); } });
 }
 </script>
-<script src="/pixel.js"></script>
+<script src="/rastreio.js"></script>
 </body>
 </html>

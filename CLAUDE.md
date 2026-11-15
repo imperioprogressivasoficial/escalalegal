@@ -26,6 +26,8 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - `app/public/aula.js`: aula da nova lei (`#aula`), 8 lições com exemplo e teste rápido.
 - `app/public/extras.js`: colocar na tela inicial (PWA: `manifest.webmanifest`, `sw.js`, `#instalar`), Indique e ganhe (`#indique`) e cadastrar outra empresa.
 - Logos dos formatos em `app/public/img/formatos/` (desenhos próprios). WhatsApp sempre com o símbolo.
+- `app/site.js`: site público. Injeta no `<!--HEAD-->` de index/ajuda/privacidade/termos/obrigado: canonical, Open Graph (`img/og.png`), Twitter, verificação Google/Meta e JSON-LD (SoftwareApplication, Organization, FAQPage tirado dos `<details>`). Troca `{{EMPRESA_*}}`, `{{CONTATO}}`, `{{PRECO}}`, `{{ANO}}`. Serve `robots.txt`, `sitemap.xml`, `llms.txt`, `/rastreio.js` (Meta Pixel, GA4, GTM só depois do "Aceitar" no aviso de cookies; modo de consentimento do Google começa negado; `window.rastrear(evento)`), a compra pela API de Conversões da Meta (`META_CAPI_TOKEN`) e a página 404.
+- `app/public/privacidade.html` e `termos.html` (reembolso em `#reembolso`, regras do Indique e ganhe em `#indique`).
 - `marketing/video/`: vídeo em motion (Reels) e o projeto para gerar de novo.
 
 ## Regras de negócio

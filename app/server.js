@@ -52,6 +52,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '300kb' }));
+// site público (metas, robots, sitemap, llms, rastreio, 404) antes dos arquivos estáticos
+const site = require('./site.js')({ app, APP_URL, PRODUCAO });
 app.use('/img', express.static(path.join(__dirname, 'public', 'img'), { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: PRODUCAO ? '10m' : 0 }));
 
@@ -199,6 +201,7 @@ async function liberarCompra({ email, nome, transacao, origem, ref }) {
   if (!jaTinha) {
     if (!u.senha_hash) link = await enviaBoasVindas(u);
     else await enviaLiberado(u);
+    if (origem !== 'manual') site.compraMeta({ email, nome: u.nome || nome, whatsapp: u.whatsapp, transacao }).catch(e => console.error('Meta:', e.message));
     enviar(N8N_WEBHOOK_URL, { evento: 'compra_aprovada', nome: u.nome, email, whatsapp: u.whatsapp || null, conta_nova: novo, link_acesso: link || `${APP_URL}/app` });
   }
   return { usuario_id: u.id, conta_nova: novo, ja_estava_liberado: jaTinha, link };
@@ -433,15 +436,10 @@ app.get('/api/admin/resumo', admin, erro(async (_req, res) => {
   res.json({ eventos: eventos.rows, emails: { ...emails.rows[0], smtp: fila.configurado }, webhook: `${APP_URL}/api/webhook/pagamento?token=SEU_WEBHOOK_TOKEN` });
 }));
 
-app.get('/pixel.js', (_req, res) => {
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=3600');
-  if (!/^\d+$/.test(META_PIXEL_ID || '')) return res.send('');
-  res.send(`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`);
-});
 app.get('/api/health', erro(async (_req, res) => { await q('select 1'); res.json({ ok: true }); }));
 app.get('/e/:token', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'escala.html')));
 app.get(['/app', '/app/*'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
-app.use('/api', (_req, res) => res.status(404).json({ erro: 'Rota não encontrada.' }));
+app.use(site.naoEncontrado);
 app.use((err, req, res, _next) => { // JSON inválido, corpo grande demais etc.
   if (err.type === 'entity.parse.failed') return res.status(400).json({ erro: 'Corpo da requisição inválido.' });
   if (err.type === 'entity.too.large') return res.status(413).json({ erro: 'Dados grandes demais.' });
