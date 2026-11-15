@@ -47,7 +47,6 @@ test('fluxo completo: compra → e-mail → senha → escala → reembolso', { s
   // cria a senha pelo link
   r = await chama('/api/senha/token?t=' + token);
   assert.equal(r.json.email, email); assert.equal(r.json.tem_senha, false);
-  assert.equal((await chama('/api/senha/definir', { method: 'POST', body: { token, senha: 'senha123' } })).status, 400); // falta empresa
   r = await chama('/api/senha/definir', { method: 'POST', body: { token, senha: 'senha123', empresa: 'Loja Teste', whatsapp: '(71) 99999-0000' } });
   assert.equal(r.status, 200);
   const sessao = r.cookie;
@@ -70,7 +69,10 @@ test('fluxo completo: compra → e-mail → senha → escala → reembolso', { s
   assert.equal((await chama(`/api/escalas/${esc.id}`, { method: 'PATCH', cookie: sessao, body: { semana: '__proto__', funcionario: 0, dia: 2 } })).status, 400);
 
   // outra empresa não enxerga nada da primeira
-  const s2 = (await chama('/api/cadastro', { method: 'POST', body: { nome: 'Outro', empresa: 'Outra', email: outro, senha: 'senha123' } })).cookie;
+  // conta de empresa sem compra não nasce: só o contador se cadastra sozinho
+  r = await chama('/api/cadastro', { method: 'POST', body: { nome: 'Outro', empresa: 'Outra', email: outro, senha: 'senha123' } });
+  assert.equal(r.status, 403); assert.match(r.json.erro, /depois da compra/);
+  const s2 = (await chama('/api/cadastro', { method: 'POST', body: { tipo: 'contador', nome: 'Outro', email: outro, senha: 'senha123' } })).cookie;
   assert.equal((await chama(`/api/equipes/${eq.id}/funcionarios`, { cookie: s2 })).status, 404);
   assert.equal((await chama(`/api/equipes/${eq.id}/escalas`, { method: 'POST', cookie: s2, body: {} })).status, 402); // sem pagamento
   assert.equal((await chama(`/api/escalas/${esc.id}`, { method: 'PATCH', cookie: s2, body: { semana: 0, funcionario: 0, dia: 1 } })).status, 404);

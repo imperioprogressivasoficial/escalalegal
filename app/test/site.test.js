@@ -114,7 +114,7 @@ test('anticlone e proteção contra ataque', { skip: pular }, async t => {
 
   // senha errada repetida: trava o e-mail por 15 minutos, mesmo com a senha certa
   const email = `trava${Date.now()}@t.com`;
-  assert.equal((await req('/api/cadastro', { method: 'POST', body: { nome: 'Tavares', empresa: 'Trava', email, senha: 'senha123' } })).status, 200);
+  assert.equal((await req('/api/cadastro', { method: 'POST', body: { tipo: 'contador', nome: 'Tavares', email, senha: 'senha123' } })).status, 200);
   for (let i = 0; i < 8; i++) assert.equal((await req('/api/login', { method: 'POST', body: { email, senha: 'errada' + i } })).status, 401);
   assert.equal((await req('/api/login', { method: 'POST', body: { email, senha: 'senha123' } })).status, 429);
   // e-mail que não existe responde igual

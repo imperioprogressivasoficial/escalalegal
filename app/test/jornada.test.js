@@ -89,8 +89,11 @@ test('jornada completa do cliente e do contador', { skip: pular }, async t => {
   assert.equal((await chama('/api/empresa', { method: 'PUT', cookie: s, body: { cnpj: '123' } })).status, 400);
 
   // 3. quem ainda não pagou: monta tudo, mas a escala só sai depois do pagamento
-  await chama('/api/cadastro', { method: 'POST', body: { nome: 'Sem Pagar', empresa: 'Loja Y', email: naoPagou, senha: 'senha123' } });
-  const sn = (await chama('/api/login', { method: 'POST', body: { email: naoPagou, senha: 'senha123' } })).cookie;
+  // (sem compra a conta da empresa nem nasce; aqui é quem comprou e pediu reembolso)
+  assert.equal((await chama('/api/cadastro', { method: 'POST', body: { nome: 'Sem Pagar', empresa: 'Loja Y', email: naoPagou, senha: 'senha123' } })).status, 403);
+  await chama(`/api/webhook/pagamento?token=${process.env.WEBHOOK_TOKEN}`, { method: 'POST', body: { email: naoPagou, nome: 'Sem Pagar' } });
+  const sn = (await chama('/api/senha/definir', { method: 'POST', body: { token: await linkDe(naoPagou), senha: 'senha123', empresa: 'Loja Y' } })).cookie;
+  await chama(`/api/webhook/pagamento?token=${process.env.WEBHOOK_TOKEN}`, { method: 'POST', body: { email: naoPagou, status: 'refunded' } });
   r = await chama('/api/onboarding', { method: 'POST', cookie: sn, body: { empresa: { porte: 'mei' }, unidade: { nome: 'Loja' }, pessoas: [{ nome: 'Zé' }] } });
   assert.equal(r.status, 200); assert.equal(r.json.liberado, false); assert.equal(r.json.escala, null);
 

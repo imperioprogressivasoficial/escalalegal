@@ -19,7 +19,9 @@ test('indicação vira comissão, reembolso cancela; empresa extra usa o acesso 
   const id = Date.now();
 
   // quem indica: cliente com conta
-  const a = (await chama('/api/cadastro', { method: 'POST', body: { nome: 'Ana', empresa: 'Loja Ana', email: `ana${id}@t.com`, senha: 'senha123' } })).cookie;
+  await webhook({ email: `ana${id}@t.com`, nome: 'Ana' });
+  const { rows: [mAna] } = await pool.query('select texto from emails where para=$1 order by id desc limit 1', [`ana${id}@t.com`]);
+  const a = (await chama('/api/senha/definir', { method: 'POST', body: { token: /acesso=([\w-]+)/.exec(mAna.texto)[1], senha: 'senha123', empresa: 'Loja Ana' } })).cookie;
   const ind = (await chama('/api/indicacao', { cookie: a })).json;
   assert.match(ind.codigo, /^[a-z0-9]{6,7}$/); assert.ok(ind.link.endsWith('/?ind=' + ind.codigo)); assert.ok(ind.valor_por_venda > 0);
   assert.equal((await chama('/api/indicacao', { cookie: a })).json.codigo, ind.codigo, 'o código não muda');

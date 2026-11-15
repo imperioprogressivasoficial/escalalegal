@@ -7,6 +7,7 @@ const { promisify } = require('util');
 const { gerarEscala, SETORES } = require('./public/scheduler.js');
 const { interpretaPagamento } = require('./pagamento.js');
 const { criaFila, modelo } = require('./email.js');
+const Cadastro = require('./public/cadastro.js');
 
 const {
   DATABASE_URL, SESSION_SECRET, ADMIN_USER = 'admin', ADMIN_PASS, WEBHOOK_TOKEN, N8N_WEBHOOK_URL, META_PIXEL_ID,
@@ -194,20 +195,21 @@ async function registraIndicacao(email, comprador, codigo) {
   await q(`insert into comissoes (afiliado_id, comprador_email, valor) values ($1,$2,$3)
     on conflict (comprador_email) do update set status='devida', criado_em=now() where comissoes.status='cancelada'`, [af[0].id, email, VALOR_COMISSAO]);
 }
-async function liberarCompra({ email, nome, transacao, origem, ref }) {
-  await q(`insert into compras (email, origem, nome, transacao, status) values ($1,$2,$3,$4,'aprovada')
-    on conflict (email) do update set status='aprovada', atualizado_em=now(),
+async function liberarCompra({ email, nome, whatsapp, transacao, origem, ref }) {
+  await q(`insert into compras (email, origem, nome, transacao, whatsapp, status) values ($1,$2,$3,$4,$5,'aprovada')
+    on conflict (email) do update set status='aprovada', atualizado_em=now(), whatsapp=coalesce(nullif(excluded.whatsapp,''), compras.whatsapp),
       transacao=coalesce(nullif(excluded.transacao,''), compras.transacao), nome=coalesce(nullif(excluded.nome,''), compras.nome)`,
-  [email, origem, nome || null, transacao || null]);
+  [email, origem, nome || null, transacao || null, whatsapp || null]);
   const { rows } = await q('select * from usuarios where email=$1', [email]);
   let u = rows[0], novo = false, link = null;
   if (!u) {
-    const r = await q(`insert into usuarios (nome, email, acesso_liberado, liberado_em, origem) values ($1,$2,true,now(),$3)
-      on conflict (email) do nothing returning *`, [nome || email.split('@')[0], email, origem]);
+    const r = await q(`insert into usuarios (nome, email, whatsapp, acesso_liberado, liberado_em, origem) values ($1,$2,$3,true,now(),$4)
+      on conflict (email) do nothing returning *`, [nome || email.split('@')[0], email, whatsapp || null, origem]);
     if (r.rows[0]) { u = r.rows[0]; novo = true; } else u = (await q('select * from usuarios where email=$1', [email])).rows[0];
   }
   const jaTinha = u.acesso_liberado && !novo;
   if (!u.acesso_liberado) await q('update usuarios set acesso_liberado=true, liberado_em=now() where id=$1', [u.id]);
+  if (whatsapp && !u.whatsapp) await q('update usuarios set whatsapp=$1 where id=$2', [whatsapp, u.id]);
   if (origem !== 'manual') await registraIndicacao(email, u, ref).catch(e => console.error('indicação:', e.message));
   if (!jaTinha) {
     if (!u.senha_hash) link = await enviaBoasVindas(u);
@@ -238,6 +240,10 @@ app.post('/api/cadastro', limite(8), erro(async (req, res) => {
     return res.status(409).json({ erro: 'Este e-mail já tem conta. Use "Entrar".' });
   }
   const { rows: compra } = await q("select 1 from compras where email=$1 and status='aprovada'", [email]);
+  // conta de empresa só nasce de uma compra aprovada (o webhook cria a conta e manda o link de criar a senha).
+  // Contador continua se cadastrando sozinho: é grátis e só vê as empresas que liberarem o acesso para ele.
+  if (!contador && !compra[0] && LIBERAR_TUDO !== '1')
+    return res.status(403).json({ erro: 'A conta da empresa é criada depois da compra. Assim que o pagamento é aprovado, o acesso chega no seu e-mail. Já comprou? Use "Esqueci minha senha" com o e-mail da compra.', comprar: '/' });
   try {
     const { rows } = await q(`insert into usuarios (nome, empresa, email, whatsapp, senha_hash, acesso_liberado, liberado_em, origem, ultimo_acesso)
       values ($1,$2,$3,$4,$5,$6, case when $6 then now() end, $7, now()) returning id, sessao_v`,
@@ -328,8 +334,7 @@ app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
   if (senha.length < 6 || senha.length > 200) return res.status(400).json({ erro: 'A senha precisa ter pelo menos 6 caracteres.' });
   const nome = limpa(b.nome) || t.nome, empresa = limpa(b.empresa) || t.empresa;
   const whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, '') || t.whatsapp;
-  const { rows: conv } = await q('select 1 from membros where usuario_id=$1 limit 1', [t.id]);
-  if (!empresa && !conv[0]) return res.status(400).json({ erro: 'Informe o nome da empresa.' });
+  // o nome da empresa e o resto do cadastro vêm logo depois, no cadastro completo da empresa (dentro do app)
   const { rowCount } = await q('update acesso_tokens set usado_em=now() where token_hash=$1 and usado_em is null', [t.token_hash]);
   if (!rowCount) return res.status(404).json({ erro: 'Este link já foi usado.' });
   const { rows } = await q(`update usuarios set senha_hash=$1, nome=$2, empresa=$3, whatsapp=$4, sessao_v=sessao_v+1, ultimo_acesso=now()
@@ -337,6 +342,25 @@ app.post('/api/senha/definir', limite(10), erro(async (req, res) => {
   await q('update acesso_tokens set usado_em=now() where usuario_id=$1 and usado_em is null', [t.id]);
   criaSessao(res, rows[0]);
   res.json({ ok: true });
+}));
+
+// CEP -> estado (sempre, pelas faixas dos Correios) e cidade/endereço (ViaCEP, quando responde)
+const ceps = new Map();
+app.get('/api/cep/:cep', logado, limite(40), erro(async (req, res) => {
+  const cep = String(req.params.cep || '').replace(/\D/g, '');
+  const uf = Cadastro.ufDoCep(cep);
+  if (!uf) return res.status(400).json({ erro: 'CEP não encontrado. Confira os 8 números.' });
+  if (ceps.has(cep)) return res.json(ceps.get(cep));
+  let r = { cep, uf, cidade: null, endereco: null };
+  try {
+    const v = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: AbortSignal.timeout(3500) }).then(x => x.ok ? x.json() : null);
+    if (v && !v.erro && v.uf) {
+      r = { cep, uf: v.uf, cidade: v.localidade || null, endereco: [v.logradouro, v.bairro].filter(Boolean).join(', ') || null };
+      if (ceps.size > 5000) ceps.clear();
+      ceps.set(cep, r);
+    }
+  } catch { /* sem internet ou ViaCEP fora: fica só o estado, a pessoa escreve a cidade */ }
+  res.json(r);
 }));
 
 // ---------- gestão: equipes, funcionários, escalas, ocorrências, acessos, relatórios ----------
@@ -373,7 +397,7 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
     enviar(N8N_WEBHOOK_URL, { evento: 'compra_reembolsada', email: p.email });
     return res.json({ ok: true, acao: 'bloquear', conta_bloqueada: rowCount > 0 });
   }
-  const r = await liberarCompra({ email: p.email, nome: p.nome, transacao: p.transacao, origem: p.plataforma, ref: refDoPayload(req.body) || codigoInd(req.query.ref) });
+  const r = await liberarCompra({ email: p.email, nome: p.nome, whatsapp: p.whatsapp, transacao: p.transacao, origem: p.plataforma, ref: refDoPayload(req.body) || codigoInd(req.query.ref) });
   await registra('liberar');
   const { link, ...resto } = r;
   res.json({ ok: true, acao: 'liberar', ...resto });
@@ -407,9 +431,12 @@ app.get('/admin', admin, (_req, res) => res.sendFile(path.join(__dirname, 'views
 app.get('/api/admin/clientes', admin, erro(async (_req, res) => {
   const { rows } = await q(`select u.id, u.criado_em, u.nome, u.empresa, u.email, u.whatsapp, u.acesso_liberado, u.liberado_em,
     u.origem, u.ultimo_acesso, u.senha_hash is not null tem_senha,
+    c.razao_social, c.cnpj, c.porte, c.segmento, c.cidade, c.uf, c.telefone, c.responsavel, c.responsavel_cargo,
+    c.funcionarios_qtd, c.unidades_qtd, c.como_conheceu, c.como_conheceu_outro, c.cadastro_em,
     (select count(*)::int from equipes e where e.usuario_id=u.id) equipes,
     (select count(*)::int from escalas s join equipes e on e.id=s.equipe_id where e.usuario_id=u.id) escalas
-    from usuarios u where u.origem is distinct from 'empresa_extra' order by u.criado_em desc limit 5000`);
+    from usuarios u left join empresa_config c on c.conta_id=u.id
+    where u.origem is distinct from 'empresa_extra' order by u.criado_em desc limit 5000`);
   res.json(rows);
 }));
 app.patch('/api/admin/clientes/:id', admin, erro(async (req, res) => {

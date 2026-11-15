@@ -106,7 +106,8 @@ test('gestão: contador, gestor, ocorrências, fechamento', { skip: pular }, asy
   assert.equal((await chama('/api/membros', { cookie: sGest, conta: contaId })).status, 403); // acessos só o dono
 
   // quem não é da empresa não entra nem trocando o cabeçalho
-  await chama('/api/cadastro', { method: 'POST', body: { nome: 'Outro', empresa: 'Outra', email: emails.outro, senha: 'senha123' } });
+  await chama(`/api/webhook/pagamento?token=${process.env.WEBHOOK_TOKEN}`, { method: 'POST', body: { email: emails.outro, nome: 'Outro' } });
+  await chama('/api/senha/definir', { method: 'POST', body: { token: await linkDe(emails.outro), senha: 'senha123', empresa: 'Outra' } });
   const sOutro = (await chama('/api/login', { method: 'POST', body: { email: emails.outro, senha: 'senha123' } })).cookie;
   assert.equal((await chama('/api/equipes', { cookie: sOutro, conta: contaId })).status, 403);
   assert.equal((await chama('/api/relatorio?mes=2027-03', { cookie: sOutro, conta: contaId })).status, 403);

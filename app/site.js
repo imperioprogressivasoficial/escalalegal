@@ -92,7 +92,7 @@ module.exports = function site({ app, APP_URL, PRODUCAO, seg }) {
   });
   app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(`# Sua Escala 5x2
 
-> Sistema brasileiro que monta a escala de trabalho 5x2 das empresas dentro da nova lei (Emenda Constitucional 141/2026, que acabou com a escala 6x1). A pessoa responde umas perguntas (tipo de negócio, dias que abre, quantas pessoas precisa e quem trabalha) e a escala sai pronta. Pagamento único de R$ ${PRECO.toFixed(2).replace('.', ',')}.
+> Sistema brasileiro que monta a escala de trabalho 5x2 das empresas dentro da nova lei (Emenda Constitucional 141/2026, que acabou com a escala 6x1). A pessoa responde umas perguntas (tipo de negócio, dias que abre, quantas pessoas precisa e quem trabalha) e a escala sai pronta. Preço: R$ ${PRECO.toFixed(2).replace('.', ',')}.
 
 ## O que faz
 - Monta a escala 5x2: 2 folgas por semana para cada pessoa, nenhum dia abaixo do mínimo de pessoas, rodízio de domingo (no comércio, 1 domingo de folga a cada 3 semanas, Lei 10.101) e aviso de feriado trabalhado (pago em dobro ou com outra folga, Lei 605/49).

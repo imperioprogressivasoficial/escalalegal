@@ -1,7 +1,7 @@
 // Lê o webhook de qualquer checkout (Kiwify, Hotmart, Eduzz, Cakto, Ticto, Clickmax,
 // n8n ou um JSON simples) e decide o que fazer com o acesso do comprador.
 //
-// Resultado: { acao: 'liberar' | 'bloquear' | 'ignorar', email, nome, transacao, evento, plataforma }
+// Resultado: { acao: 'liberar' | 'bloquear' | 'ignorar', email, nome, whatsapp, transacao, evento, plataforma }
 //   liberar  -> compra aprovada: cria/libera a conta e envia o acesso
 //   bloquear -> reembolso ou chargeback: tira o acesso
 //   ignorar  -> boleto gerado, Pix pendente, carrinho abandonado, recusado etc.
@@ -56,6 +56,12 @@ function interpretaPagamento(body, headers = {}) {
     'data.customer.name', 'cliente.nome', 'comprador.nome', 'edz_cli_rsocial', 'cus_name', 'contact.name',
   ]).trim().slice(0, 120);
 
+  // telefone do comprador (Kiwify manda Customer.mobile, ex.: "+5571999990000")
+  const whatsapp = primeiro(b, [
+    'whatsapp', 'telefone', 'phone', 'mobile', 'Customer.mobile', 'Customer.phone', 'customer.phone', 'customer.mobile', 'buyer.phone',
+    'buyer.checkout_phone', 'data.buyer.checkout_phone', 'data.buyer.phone', 'data.customer.phone', 'cliente.telefone', 'comprador.telefone', 'edz_cli_cel', 'cus_cel',
+  ]).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '').slice(0, 13);
+
   const transacao = primeiro(b, [
     'transacao', 'transaction', 'data.purchase.transaction', 'order_id', 'order.id', 'data.id', 'trans_cod',
     'sale_id', 'data.sale.id', 'id',
@@ -74,7 +80,7 @@ function interpretaPagamento(body, headers = {}) {
   else if (!sinais.length) acao = 'liberar'; // JSON simples { "email": "..." } (n8n, painel, testes)
   else acao = 'ignorar';
 
-  return { acao, email, nome, transacao, evento, plataforma };
+  return { acao, email, nome, whatsapp, transacao, evento, plataforma };
 }
 
 module.exports = { interpretaPagamento };

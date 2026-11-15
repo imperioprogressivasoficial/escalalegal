@@ -125,6 +125,7 @@ async function folhaSheets() {
 function ligaExportar(semsProntas) {
   $$('[data-x]').forEach(b => b.onclick = async () => {
     const tipo = b.dataset.x, txt = b.innerHTML;
+    window.marcaEnviada?.(); // conta como escala enviada no progresso da tela inicial
     if (tipo === 'link') { fechaFolha(); return linkEquipe(atual.id); }
     if (tipo === 'sheets') { try { return await folhaSheets(); } catch (err) { return toast(err.message); } }
     const sm = b.querySelector('small'), antes = sm?.textContent; b.disabled = true; if (sm) sm.textContent = 'Preparando…';

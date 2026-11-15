@@ -207,3 +207,18 @@ create table if not exists comissoes (
   pago_em timestamptz
 );
 create index if not exists comissoes_afiliado_idx on comissoes (afiliado_id, status);
+
+-- ---------- v8: cadastro completo da empresa (logo depois da compra) e progresso da área do cliente ----------
+alter table empresa_config add column if not exists telefone text;
+alter table empresa_config add column if not exists responsavel text;
+alter table empresa_config add column if not exists responsavel_cargo text;
+alter table empresa_config add column if not exists cep text;
+alter table empresa_config add column if not exists endereco text;
+alter table empresa_config add column if not exists sem_cnpj boolean not null default false;
+alter table empresa_config add column if not exists funcionarios_qtd int;
+alter table empresa_config add column if not exists unidades_qtd int;
+alter table empresa_config add column if not exists como_conheceu text;
+alter table empresa_config add column if not exists como_conheceu_outro text;
+alter table empresa_config add column if not exists cadastro_em timestamptz;
+alter table empresa_config add column if not exists escala_enviada_em timestamptz;
+alter table compras add column if not exists whatsapp text;

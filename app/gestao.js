@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe } = require('./public/scheduler.js');
 
+const Cadastro = require('./public/cadastro.js');
 const TIPOS = Object.keys(OCORRENCIAS);
 const COD_AUSENCIA = new Set(Object.values(OCORRENCIAS).map(o => o.cod).filter(Boolean));
 const dataValida = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v)) ? String(v) : null;
@@ -89,7 +90,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   }));
   app.get('/api/conta', L, erro(async (req, res) => {
     const c = await configDe(req.conta.id);
-    res.json({ ...req.conta, papel_nome: PAPEL_NOME[req.conta.papel], ctx: ctxFeriados(c), porte: c.porte || null, uf: c.uf || null });
+    res.json({ ...req.conta, papel_nome: PAPEL_NOME[req.conta.papel], ctx: ctxFeriados(c), porte: c.porte || null, uf: c.uf || null,
+      segmento: c.segmento || null, cadastro_ok: !!c.cadastro_em, unidades_qtd: c.unidades_qtd || null });
   }));
 
   // ---------- equipes ----------
@@ -517,11 +519,17 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   app.get('/api/empresa', L, erro(async (req, res) => {
     const c = await configDe(req.conta.id);
     res.json({ nome: c.nome || '', razao_social: c.razao_social || '', cnpj: c.cnpj || '', porte: c.porte || '', uf: c.uf || '', cidade: c.cidade || '',
-      feriados_locais: c.feriados_locais || [], portes: PORTES, ufs: UFS });
+      feriados_locais: c.feriados_locais || [], portes: PORTES, ufs: UFS,
+      sem_cnpj: !!c.sem_cnpj, telefone: c.telefone || '', responsavel: c.responsavel || '', responsavel_cargo: c.responsavel_cargo || '',
+      cep: c.cep || '', endereco: c.endereco || '', segmento: c.segmento || '', funcionarios_qtd: c.funcionarios_qtd || null, unidades_qtd: c.unidades_qtd || null,
+      como_conheceu: c.como_conheceu || '', como_conheceu_outro: c.como_conheceu_outro || '', cadastro_em: c.cadastro_em || null });
   }));
   const validaEmpresa = (b, atual = {}) => {
-    const cnpj = limpa(b.cnpj ?? atual.cnpj, 20).replace(/\D/g, '');
-    if (cnpj && cnpj.length !== 14) return { erro: 'CNPJ precisa ter 14 números.' };
+    const cnpj = Cadastro.soCnpj(b.cnpj ?? atual.cnpj);
+    if (cnpj && cnpj.length !== 14) return { erro: 'CNPJ precisa ter 14 caracteres.' };
+    if (cnpj && !Cadastro.cnpjValido(cnpj)) return { erro: 'Esse CNPJ não confere. Veja se algum número ficou trocado.' };
+    const txt = (k, max) => (b[k] === undefined ? atual[k] : limpa(b[k], max)) || null;
+    const num = (k, max) => { const v = b[k] === undefined ? atual[k] : Math.round(+b[k]); return v >= 1 && v <= max ? v : null; };
     const locais = [...new Set((Array.isArray(b.feriados_locais) ? b.feriados_locais : String(b.feriados_locais || '').split(/[\s,;]+/))
       .map(x => { const m = /^(\d{1,2})\/(\d{1,2})$/.exec(String(x).trim()) || /^(\d{2})-(\d{2})$/.exec(String(x).trim()); if (!m) return null;
         const [d, mm] = /\//.test(x) ? [m[1], m[2]] : [m[2], m[1]]; const md = `${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -530,14 +538,52 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       razao_social: limpa(b.razao_social ?? atual.razao_social, 120) || null, cnpj: cnpj || null,
       porte: PORTES[b.porte] ? b.porte : (atual.porte || null), uf: UFS.includes(b.uf) ? b.uf : (b.uf === '' ? null : atual.uf || null),
       cidade: limpa(b.cidade ?? atual.cidade, 80) || null, feriados_locais: b.feriados_locais === undefined ? (atual.feriados_locais || []) : locais,
+      telefone: (b.telefone === undefined ? atual.telefone : Cadastro.soNum(b.telefone).replace(/^55(?=\d{10,11}$)/, '').slice(0, 11)) || null,
+      responsavel: txt('responsavel', 80), responsavel_cargo: txt('responsavel_cargo', 60), endereco: txt('endereco', 160),
+      cep: (b.cep === undefined ? atual.cep : Cadastro.soNum(b.cep).slice(0, 8)) || null,
+      segmento: SETORES[b.segmento] ? b.segmento : (atual.segmento || null),
+      funcionarios_qtd: num('funcionarios_qtd', 100000), unidades_qtd: num('unidades_qtd', 1000),
+      como_conheceu: Cadastro.ORIGENS[b.como_conheceu] ? b.como_conheceu : (atual.como_conheceu || null), como_conheceu_outro: txt('como_conheceu_outro', 80),
+      sem_cnpj: b.sem_cnpj === undefined ? !!atual.sem_cnpj : !!b.sem_cnpj && !cnpj,
     };
   };
-  async function salvaEmpresa(contaId, v) {
-    await q(`insert into empresa_config (conta_id, razao_social, cnpj, porte, uf, cidade, feriados_locais) values ($1,$2,$3,$4,$5,$6,$7)
-      on conflict (conta_id) do update set razao_social=excluded.razao_social, cnpj=excluded.cnpj, porte=excluded.porte, uf=excluded.uf,
-      cidade=excluded.cidade, feriados_locais=excluded.feriados_locais, atualizado_em=now()`,
-    [contaId, v.razao_social, v.cnpj, v.porte, v.uf, v.cidade, v.feriados_locais]);
+  const CAMPOS = ['razao_social', 'cnpj', 'porte', 'uf', 'cidade', 'feriados_locais', 'telefone', 'responsavel', 'responsavel_cargo', 'cep', 'endereco',
+    'segmento', 'funcionarios_qtd', 'unidades_qtd', 'como_conheceu', 'como_conheceu_outro', 'sem_cnpj'];
+  async function salvaEmpresa(contaId, v, concluir = false) {
+    await q(`insert into empresa_config (conta_id, ${CAMPOS.join(', ')}, cadastro_em) values ($1, ${CAMPOS.map((_, i) => '$' + (i + 2)).join(', ')}, ${concluir ? 'now()' : 'null'})
+      on conflict (conta_id) do update set ${CAMPOS.map(k => `${k}=excluded.${k}`).join(', ')}, atualizado_em=now()
+      ${concluir ? ', cadastro_em=coalesce(empresa_config.cadastro_em, now())' : ''}`,
+    [contaId, ...CAMPOS.map(k => v[k] ?? (k === 'feriados_locais' ? [] : k === 'sem_cnpj' ? false : null))]);
   }
+  // cadastro completo da empresa (primeiro acesso, antes do quiz da escala): tudo obrigatório, CNPJ conferido
+  app.post('/api/empresa/cadastro', L, soDono, limite(30), erro(async (req, res) => {
+    const c = Cadastro.confere(req.body);
+    if (c.erro) return res.status(400).json(c);
+    const d = c.dados;
+    if (!UFS.includes(d.uf)) return res.status(400).json({ campo: 'uf', erro: 'Escolha o estado.' });
+    if (!SETORES[d.segmento]) return res.status(400).json({ campo: 'segmento', erro: 'Escolha o tipo de negócio.' });
+    const atual = await configDe(req.conta.id);
+    await salvaEmpresa(req.conta.id, { ...d, feriados_locais: atual.feriados_locais || [] }, true);
+    await q('update usuarios set empresa=$1, whatsapp=coalesce(whatsapp, $2) where id=$3', [d.nome, d.telefone, req.conta.id]);
+    auditar(req, 'Completou o cadastro da empresa');
+    res.json({ ok: true });
+  }));
+  // área do cliente: o que já foi feito (checklist da tela inicial)
+  app.get('/api/inicio', L, erro(async (req, res) => {
+    const { rows: [r] } = await q(`select
+        (select cadastro_em from empresa_config where conta_id=$1) cadastro_em,
+        (select escala_enviada_em from empresa_config where conta_id=$1) enviada_em,
+        (select count(*)::int from equipes where usuario_id=$1) unidades,
+        (select count(*)::int from equipes where usuario_id=$1 and link_token is not null) links,
+        (select count(*)::int from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=$1 and f.ativo) pessoas,
+        (select count(*)::int from membros where conta_id=$1 and papel='contador') contadores`, [req.conta.id]);
+    res.json({ cadastro_ok: !!r.cadastro_em, unidades: r.unidades, pessoas: r.pessoas, escala_enviada: !!r.enviada_em || r.links > 0, contador: r.contadores > 0 });
+  }));
+  app.post('/api/inicio/enviada', LE, erro(async (req, res) => {
+    await q(`insert into empresa_config (conta_id, escala_enviada_em) values ($1, now())
+      on conflict (conta_id) do update set escala_enviada_em=coalesce(empresa_config.escala_enviada_em, now())`, [req.conta.id]);
+    res.json({ ok: true });
+  }));
   app.put('/api/empresa', L, soDono, erro(async (req, res) => {
     const b = req.body || {}, v = validaEmpresa(b, await configDe(req.conta.id));
     if (v.erro) return res.status(400).json(v);

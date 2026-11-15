@@ -40,7 +40,7 @@ async function api(url, opts = {}) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
     if (j.trocar_conta) { gravar('conta', ''); location.hash = ''; location.reload(); }
-    const e = new Error(j.erro || 'Algo deu errado. Tente de novo.'); e.status = r.status; throw e;
+    const e = new Error(j.erro || 'Algo deu errado. Tente de novo.'); e.status = r.status; e.campo = j.campo; throw e;
   }
   return j;
 }
@@ -50,28 +50,29 @@ function folha(html) { $('#folhaCorpo').innerHTML = html; const d = $('#folha');
 const fechaFolha = () => $('#folha').close();
 
 // ================= entrada =================
+// só entra quem comprou: a conta da empresa nasce no pagamento aprovado (o acesso chega por e-mail).
+// O contador é o único que cria conta aqui, de graça.
 function modoEntrada(m) {
-  modo = m; $$('.abas button').forEach(x => x.classList.toggle('on', x.dataset.modo === m));
-  $('.so-cad').classList.toggle('hide', m !== 'cadastro');
-  $('.so-login').classList.toggle('hide', m !== 'login');
-  $('.so-empresa').classList.toggle('hide', tipoCadastro === 'contador');
-  $('.so-contador').classList.toggle('hide', tipoCadastro !== 'contador');
-  $('#btnEntrar').textContent = m === 'login' ? 'Entrar' : tipoCadastro === 'contador' ? 'Criar conta de contador' : 'Criar conta';
-  $('#cSenha').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+  modo = m;
+  const cont = m === 'contador';
+  $$('.so-cad').forEach(x => x.classList.toggle('hide', !cont));
+  $$('.so-login').forEach(x => x.classList.toggle('hide', cont));
+  $('#entTit').textContent = cont ? 'Conta de contador' : 'Entrar';
+  $('#entSub').textContent = cont ? 'Grátis. Depois, cada cliente libera o acesso dele para o seu e-mail.' : 'Use o e-mail da compra e a senha que você criou.';
+  $('#entradaTitulo').textContent = cont ? 'Seus clientes liberam o acesso e você vê escalas, faltas e o fechamento do mês num lugar só.' : 'A escala da sua equipe pronta em 2 minutos, dentro da nova lei.';
+  $('#btnEntrar').textContent = cont ? 'Criar conta de contador' : 'Entrar';
+  $('#cSenha').autocomplete = cont ? 'new-password' : 'current-password';
+  $('#erroEntrada').textContent = '';
 }
-$$('.abas button').forEach(b => b.onclick = () => modoEntrada(b.dataset.modo));
-$('#btnSouContador').onclick = () => {
-  tipoCadastro = 'contador';
-  $('#entradaTitulo').textContent = 'Seus clientes liberam o acesso e você vê escalas, faltas e o fechamento do mês num lugar só.';
-  modoEntrada('cadastro');
-};
+$('#btnSouContador').onclick = () => modoEntrada('contador');
+$('#btnVoltaLogin').onclick = () => modoEntrada('login');
 $('#formEntrada').onsubmit = async e => {
   e.preventDefault(); $('#erroEntrada').textContent = ''; $('#btnEntrar').disabled = true;
   try {
     if (modo === 'login') await api('/api/login', {method: 'POST', body: {email: $('#cEmail').value, senha: $('#cSenha').value}});
     else {
       let ref = ''; try { ref = JSON.parse(localStorage.getItem('ind') || 'null')?.c || ''; } catch {}
-      await api('/api/cadastro', {method: 'POST', body: {tipo: tipoCadastro, nome: $('#cNome').value, empresa: $('#cEmpresa').value, whatsapp: $('#cZap').value, email: $('#cEmail').value, senha: $('#cSenha').value, ref}});
+      await api('/api/cadastro', {method: 'POST', body: {tipo: 'contador', nome: $('#cNome').value, email: $('#cEmail').value, senha: $('#cSenha').value, ref}});
       window.rastrear?.('CompleteRegistration');
     }
     await iniciar();
@@ -99,15 +100,15 @@ async function telaSenha() {
   }
   $('#sTitulo').textContent = t.tem_senha ? 'Crie uma senha nova' : 'Falta só criar sua senha';
   $('#sTexto').innerHTML = `Conta: <b>${esc(t.email)}</b>`;
-  $('#sNome').value = t.nome || ''; $('#sEmpresa').value = t.empresa || ''; $('#sZap').value = t.whatsapp || '';
-  $('#sDados').classList.toggle('hide', !!(t.tem_senha && (t.empresa || t.convidado)));
-  $('#sEmpresaBox').classList.toggle('hide', !!t.convidado && !t.empresa);
+  if (!t.tem_senha && !t.convidado) $('#sTexto').innerHTML = `Pagamento confirmado. Sua conta: <b>${esc(t.email)}</b>`;
+  $('#sNome').value = t.nome || '';
+  $('#sDados').classList.toggle('hide', !!t.tem_senha);
   $('#formSenha').onsubmit = async e => {
     e.preventDefault(); $('#erroSenha').textContent = '';
     if ($('#sSenha').value !== $('#sSenha2').value) return $('#erroSenha').textContent = 'As duas senhas não são iguais.';
     $('#btnSenha').disabled = true;
     try {
-      await api('/api/senha/definir', {method: 'POST', body: {token: tokenAcesso, senha: $('#sSenha').value, nome: $('#sNome').value, empresa: $('#sEmpresa').value, whatsapp: $('#sZap').value}});
+      await api('/api/senha/definir', {method: 'POST', body: {token: tokenAcesso, senha: $('#sSenha').value, nome: $('#sNome').value}});
       history.replaceState(null, '', '/app'); $('#formSenha').classList.add('hide'); $('#formEntrada').classList.remove('hide');
       await iniciar();
     } catch (err) { $('#erroSenha').textContent = err.message; }
@@ -120,7 +121,7 @@ async function iniciar() {
   try { eu = await api('/api/eu'); } catch {
     $('#telaEntrada').classList.remove('hide'); $('#telaApp').classList.add('hide');
     const qs = new URLSearchParams(location.search);
-    if (qs.has('contador')) $('#btnSouContador').click(); else if (qs.has('cadastro')) modoEntrada('cadastro');
+    modoEntrada(qs.has('contador') ? 'contador' : 'login');
     return;
   }
   const salva = +ler('conta') || null;
@@ -132,8 +133,9 @@ async function iniciar() {
   $('#telaEntrada').classList.add('hide'); $('#telaApp').classList.remove('hide');
   // contador olhando um cliente: a 2ª aba vira o fechamento
   const nav = $('#navPessoas');
-  if (conta.papel === 'contador') { nav.dataset.ir = 'fechamento'; nav.textContent = 'Fechamento'; }
+  if (conta.papel === 'contador') { nav.dataset.ir = 'fechamento'; nav.textContent = 'Fechamento'; $('#navInicio').classList.add('hide'); $('.barra-baixo .in').classList.add('tres'); }
   $('#barraBaixo').classList.toggle('hide', ehModoContador());
+  pintaLateral();
   await carregaEquipes();
   rota();
 }
@@ -168,17 +170,27 @@ async function rota() {
   let [v, extra] = (location.hash.slice(1) || '').split('/');
   const mc = ehModoContador();
   if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique'].includes(v)) v = 'contador';
-  if (!v) v = 'escala';
-  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos', 'aula', 'instalar', 'indique'].includes(v)) v = 'comecar';
-  if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono')
-    || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : 'escala';
+  if (!v) v = conta.papel === 'contador' ? 'escala' : 'inicio';
+  // dono sem unidade: primeiro o cadastro completo da empresa, depois o quiz da escala
+  if (!mc && conta.papel === 'dono' && !equipes.length && !['comecar', 'cadastro', 'conta'].includes(v)) v = conta.cadastro_ok ? 'comecar' : 'cadastro';
+  if (v === 'comecar' && conta.papel === 'dono' && !conta.cadastro_ok && extra !== 'unidade') v = 'cadastro';
+  if (!document.getElementById('v-' + v) || (['acessos', 'empresa', 'cadastro'].includes(v) && conta.papel !== 'dono')
+    || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : conta.papel === 'contador' ? 'escala' : 'inicio';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
-  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (v === 'funcionamento' && b.dataset.ir === 'mais') || (v === 'tabela' && b.dataset.ir === 'escala')));
-  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela'].includes(v));
-  $('#barraBaixo').classList.toggle('hide', v === 'comecar' || v === 'aula' || mc);
+  ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
+  const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
+  const noMais = ['funcionamento', 'ocorrencias', 'fechamento', 'acessos', 'empresa', 'conta', 'instalar', 'indique'].includes(v) && conta.papel !== 'contador';
+  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (noMais && b.dataset.ir === 'mais') || (v === 'tabela' && b.dataset.ir === 'escala')));
+  pintaLateral(); marcaLateral(v);
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio'].includes(v));
+  $('#principal').classList.toggle('quiz-pg', foco);
+  document.body.classList.toggle('modo-foco', foco);
+  $('#barraBaixo').classList.toggle('hide', foco || v === 'aula' || mc);
   window.scrollTo(0, 0);
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
+    else if (v === 'cadastro') await telaCadastro();
+    else if (v === 'inicio') await telaInicio();
     else if (v === 'escala') await telaEscala();
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
@@ -197,12 +209,15 @@ async function rota() {
 }
 
 // ================= primeiro acesso: quiz (uma pergunta por tela) =================
+// Vem depois do cadastro da empresa: o tipo de negócio já vem de lá. Monta a unidade, a equipe e a escala.
 let wz = null;
 function wizInicio(soUnidade) {
-  const base = soUnidade && atual ? atual.setor : '';
-  wz = {i: 0, soUnidade, setor: base, empresa: {nome: conta.empresa || eu.empresa || '', porte: conta.porte || '', uf: conta.uf || '', cidade: ''},
-    texto: '', marcados: new Set(), nomeUn: '', minMudou: false};
-  if (base) aplicaSetor(base);
+  const base = soUnidade ? (atual?.setor || '') : (conta.segmento || '');
+  wz = {i: 0, soUnidade, setor: base, temSegmento: !soUnidade && !!conta.segmento, texto: '', marcados: new Set(),
+    nomeUn: soUnidade ? '' : (conta.empresa || ''), minMudou: false};
+  aplicaSetor(base || 'outro');
+  if (!base) wz.setor = '';
+  quizDir = 1;
   wizDesenha();
 }
 function aplicaSetor(k) {
@@ -215,98 +230,114 @@ const artigo = s => ['farmácia', 'clínica', 'academia', 'padaria', 'loja'].inc
 function perguntas() {
   const q = [];
   if (!wz.soUnidade) q.push('oi');
-  q.push('negocio', 'nome');
-  if (!wz.soUnidade) q.push('uf', 'cidade', 'porte');
+  if (wz.soUnidade || !wz.temSegmento) q.push('negocio');
+  if (wz.soUnidade || (conta.unidades_qtd || 1) > 1) q.push('nome');
   q.push('dias', 'horario', 'minimo', 'pessoas');
   if (wz.un?.criticas.length) q.push('critica');
   return q;
 }
+const DIAS_OP = [['1111111', 'Todo dia', 'De segunda a domingo'], ['1111110', 'Segunda a sábado', 'Fecha no domingo'], ['1111100', 'Segunda a sexta', 'Fecha sábado e domingo']];
+function wizResumo() {
+  const u = wz.un, s = seg(wz.setor || 'outro'), n = nomesWz().length, pad = u.abertos.join('');
+  const dias = DIAS_OP.find(o => o[0] === pad)?.[1] || DIAS.filter((_, i) => u.abertos[i]).join(', ');
+  const semana = `<div class="qr-semana">${DIAS.map((d, i) => `<span class="${u.abertos[i] ? 'a' : ''}"><small>${d}</small><b>${u.abertos[i] ? u.minimo[i] : '–'}</b></span>`).join('')}</div>
+    <p class="qr-nota">Pessoas trabalhando no mínimo, em cada dia. Cada um folga 2 dias por semana.</p>`;
+  return resumoLinhas('Sua escala', [
+    ['Negócio', wz.setor ? SEG_CURTO[wz.setor] : ''], ['Unidade', wz.nomeUn], ['Abre', wz.i > perguntas().indexOf('dias') ? dias : ''],
+    ['Horário', wz.i > perguntas().indexOf('horario') ? `${hora(u.abre)} às ${hora(u.fecha)}` : ''], ['Equipe', n ? plural(n, 'pessoa', 'pessoas') : ''],
+  ], semana);
+}
 function wizDesenha() {
   const lista = perguntas(), id = lista[wz.i], total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
-  const s = seg(wz.setor || 'outro'), u = wz.un, e = wz.empresa;
-  const falta = Math.max(1, Math.round((total - num + 1) * 12 / 60 * 2) / 2);
-  const topo = id === 'oi' ? '' : `<div class="quiz-topo"><button class="link" id="qVolta">‹ Voltar</button><span class="q-tempo">Falta${falta > 1 ? 'm' : ''} ~${String(falta).replace('.', ',')} min</span><span>Pergunta ${num} de ${total}</span></div>
-    <div class="q-barra"><i style="width:${Math.round(num / total * 100)}%"></i></div>`;
-  const continuar = (txt = 'Continuar') => `<button class="btn cheio fixo-baixo q-continuar" id="qOk">${txt}<span aria-hidden="true">→</span></button>`;
-  let h = '';
-  if (id === 'oi') h = `<div class="quiz-oi"><span class="q-selo">⏱ Leva uns 2 minutos</span><img src="/img/mascote.svg" alt="">
-      <h1>Oi, ${esc(nomeCurto(eu.nome))}! Vamos montar a sua <mark>escala 5x2</mark>?</h1>
-      <p>Responda umas perguntas rápidas. A escala sai pronta e já dentro da nova lei.</p>
-      <ul class="q-chips"><li>Uma pergunta por tela</li><li>Dentro da lei</li><li>Sem planilha</li></ul></div>${continuar('Começar')}`;
-  else if (id === 'negocio') h = `<h1>${wz.soUnidade ? 'Que tipo de <mark>negócio</mark> é esta unidade?' : 'Qual é o seu <mark>negócio</mark>?'}</h1>
-      <p class="sub">Cada negócio tem suas regras. Toque no seu.</p>
-      <div class="segs-foto">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><img class="foto" src="/img/segmentos/${k}.webp?v=1" alt="" loading="lazy" onerror="this.remove()"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>`;
-  else if (id === 'nome') h = wz.soUnidade
-    ? `<h1>Qual o <mark>nome</mark> desta unidade?</h1><p class="sub">Para você saber de qual escala está falando.</p><input id="qTxt" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" autocomplete="off">${continuar()}`
-    : `<h1>Qual o nome da sua <mark>empresa</mark>?</h1><p class="sub">Do jeito que sua equipe conhece.</p><input id="qTxt" value="${esc(e.nome)}" placeholder="Ex.: ${esc(s.nome.split(' /')[0])} Bom Preço" autocomplete="organization">${continuar()}`;
-  else if (id === 'uf') h = `<h1>Em que <mark>estado</mark> fica?</h1><p class="sub">Para colocar os feriados do seu estado.</p>
-      <div class="ufs">${Escala.UFS.map(x => `<button type="button" data-uf="${x}" class="${e.uf === x ? 'on' : ''}">${x}</button>`).join('')}</div>`;
-  else if (id === 'cidade') h = `<h1>E a <mark>cidade</mark>?</h1><p class="sub">Se sua cidade tem feriado próprio, você coloca depois em Mais › Dados da empresa.</p>
-      <input id="qTxt" value="${esc(e.cidade)}" placeholder="Ex.: Salvador" autocomplete="address-level2">${continuar()}`;
-  else if (id === 'porte') h = `<h1>Qual o <mark>tamanho</mark> da empresa?</h1><p class="sub">Se não souber, toque em "Não sei". Seu contador sabe.</p>
-      <div class="opcoes-grandes">${Object.entries(PORTES).filter(([k]) => k !== 'media').map(([k, [n, d]]) => `<button type="button" data-porte="${k}" class="${e.porte === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}</div>`;
-  else if (id === 'dias') {
-    const pad = u.abertos.join('');
-    const op = [['1111111', 'Todo dia', 'de segunda a domingo'], ['1111110', 'Segunda a sábado', 'fecha no domingo'], ['1111100', 'Segunda a sexta', 'fecha sábado e domingo']];
-    const igual = op.some(o => o[0] === pad);
-    h = `<h1>Que <mark>dias</mark> ${artigo(s)} ${esc(s.local)} abre?</h1><p class="sub">${esc(s.nome.split(' /')[0])} costuma abrir ${op.find(o => o[0] === seg(wz.setor).abertos.join(''))?.[1].toLowerCase() || 'em dias variados'}.</p>
-      <div class="opcoes-grandes">${op.map(([k, n, d]) => `<button type="button" data-dias="${k}" class="${pad === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}
-      <button type="button" id="qOutros" class="${igual ? '' : 'on'}">Outros dias<small>escolher um por um</small></button></div>
-      <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:12px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div>${continuar()}</div>`;
-  } else if (id === 'horario') h = `<h1>Abre às ${hora(u.abre)} e fecha às ${hora(u.fecha)}?</h1><p class="sub">É o horário mais comum. Se o seu for outro, toque em "Não".</p>
-      <div class="lado"><button class="btn" id="qSim">Sim</button><button class="btn sec" id="qNao">Não</button></div>
-      <div id="qHoraBox" class="hide" style="margin-top:14px"><div class="lado"><div><label for="qAbre" style="margin-top:0">Abre às</label><input id="qAbre" type="time" value="${u.abre}"></div><div><label for="qFecha" style="margin-top:0">Fecha às</label><input id="qFecha" type="time" value="${u.fecha}"></div></div>${continuar()}</div>`;
-  else if (id === 'minimo') {
-    const sug = Math.max(...seg(wz.setor).minimo), atualMin = wz.minMudou ? Math.max(...u.minimo) : sug;
-    h = `<h1>Quantas pessoas precisam estar <mark>trabalhando</mark> por dia?</h1>
-      <p class="sub">O mínimo para não deixar ${artigo(s)} ${esc(s.local)} descoberto, somando todos os turnos. Para ${esc(s.nome.split(' /')[0].toLowerCase())}, o comum é ${sug}.</p>
-      <div class="contador-mais grande"><button type="button" id="qMenos" aria-label="Menos">−</button><output id="qMin">${atualMin}</output><button type="button" id="qMais" aria-label="Mais">+</button></div>
-      <p class="dica" style="text-align:center;margin-top:6px">pessoas trabalhando, no mínimo</p>${continuar()}`;
-  } else if (id === 'pessoas') h = `<h1>Quem <mark>trabalha</mark> com você?</h1><p class="sub">Escreva um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
-      <textarea id="qPessoas" rows="8" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea><div id="qConta"></div>${continuar(u.criticas.length ? 'Continuar' : 'Montar minha escala')}`;
-  else if (id === 'critica') {
-    const c = u.criticas[0];
-    h = `<h1>Quem é ${esc(c.nome.toLowerCase())}?</h1><p class="sub">${esc(c.explica)}</p>
-      <div class="marcar">${nomesWz().map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div><div id="qConta"></div>${continuar('Montar minha escala')}`;
+  const s = seg(wz.setor || 'outro'), u = wz.un;
+  const local = `${artigo(s)} ${esc(s.local)}`;
+  let corpo = '', botao = 'Continuar', etapa = '', desl = false;
+  if (id === 'oi') {
+    $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi">
+      <span class="q-selo">Cadastro salvo</span><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc">
+      <h1>Agora a <mark>escala 5x2</mark> ${wz.nomeUn ? `da ${esc(wz.nomeUn)}` : 'da sua equipe'}.</h1>
+      <p>Umas perguntas rápidas sobre o funcionamento e quem trabalha com você. A escala sai pronta, dentro da nova lei.</p>
+      <ul class="q-chips"><li>${plural(total, 'pergunta', 'perguntas')}</li><li>Uns 2 minutos</li><li>Sem planilha</li></ul>
+      <div class="q-rodape"><button class="btn q-continuar" id="qOk" type="button">Começar<span aria-hidden="true" class="q-seta">→</span></button></div>
+    </div></div>`;
+    $('#qOk').onclick = () => { quizDir = 1; wz.i = 1; wizDesenha(); };
+    return;
   }
-  $('#v-comecar').innerHTML = `<div class="quiz">${topo}<div class="quiz-q">${h}</div><p class="erro" id="wzErro"></p>
-    ${wz.soUnidade && id === 'negocio' ? '<p style="text-align:center;margin-top:18px"><button class="link" data-ir="mais">Cancelar</button></p>' : ''}</div>`;
-  const prox = () => { wz.i = Math.min(wz.i + 1, perguntas().length - 1); wizDesenha(); };
+  if (id === 'negocio') {
+    etapa = 'Seu negócio';
+    corpo = `<h1>${wz.soUnidade ? 'Que tipo de <mark>negócio</mark> é esta unidade?' : 'Qual é o seu <mark>negócio</mark>?'}</h1>
+      <p class="sub">Cada negócio tem suas regras. A gente já traz os dias, o horário e as funções certas.</p>${cartoesSegmento(wz.setor)}`;
+    desl = !wz.setor;
+  } else if (id === 'nome') {
+    etapa = 'Unidade';
+    corpo = `<h1>Qual o <mark>nome</mark> ${wz.soUnidade ? 'desta unidade' : 'da primeira unidade'}?</h1>
+      <p class="sub">${wz.soUnidade ? 'Para você saber de qual escala está falando.' : `Você disse que tem ${conta.unidades_qtd} lojas ou unidades. Comece por uma; as outras você cria depois.`}</p>
+      <label for="qTxt">Nome da unidade</label><input id="qTxt" class="q-grande" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Centro" autocomplete="off">`;
+  } else if (id === 'dias') {
+    etapa = 'Funcionamento';
+    const pad = u.abertos.join(''), igual = DIAS_OP.some(o => o[0] === pad);
+    const comum = DIAS_OP.find(o => o[0] === s.abertos.join(''))?.[1].toLowerCase();
+    corpo = `<h1>Que <mark>dias</mark> ${local} abre?</h1><p class="sub">${comum ? `${esc(SEG_CURTO[wz.setor] || 'Seu negócio')} costuma abrir ${comum}.` : 'Escolha os dias de funcionamento.'}</p>
+      <div class="q-ops">${DIAS_OP.map(([k, n, d]) => opcao('data-dias', k, n, d, pad === k)).join('')}${opcao('id', 'qOutros', 'Outros dias', 'Escolher um por um', !igual)}</div>
+      <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:14px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div></div>`;
+  } else if (id === 'horario') {
+    etapa = 'Funcionamento';
+    corpo = `<h1>Abre às <mark>${hora(u.abre)}</mark> e fecha às <mark>${hora(u.fecha)}</mark>?</h1><p class="sub">É o horário mais comum para ${esc((SEG_CURTO[wz.setor] || 'o seu negócio').toLowerCase())}.</p>
+      <div class="q-ops duas">${opcao('id', 'qSim', 'Sim, é esse', `${hora(u.abre)} às ${hora(u.fecha)}`, false)}${opcao('id', 'qNao', 'Não, é outro', 'Escolher o horário', false)}</div>
+      <div id="qHoraBox" class="hide" style="margin-top:14px"><div class="lado"><div><label for="qAbre" style="margin-top:0">Abre às</label><input id="qAbre" type="time" value="${u.abre}"></div><div><label for="qFecha" style="margin-top:0">Fecha às</label><input id="qFecha" type="time" value="${u.fecha}"></div></div></div>`;
+  } else if (id === 'minimo') {
+    etapa = 'Funcionamento';
+    const sug = Math.max(...seg(wz.setor || 'outro').minimo), atualMin = wz.minMudou ? Math.max(...u.minimo) : sug;
+    corpo = `<h1>Quantas pessoas precisam estar <mark>trabalhando</mark> por dia?</h1>
+      <p class="sub">O mínimo para não deixar ${local} descoberto, somando todos os turnos. O comum é ${sug}.</p>
+      <div class="contador-mais grande"><button type="button" id="qMenos" aria-label="Menos">−</button><output id="qMin">${atualMin}</output><button type="button" id="qMais" aria-label="Mais">+</button></div>
+      <p class="dica" style="text-align:center;margin-top:6px">pessoas trabalhando, no mínimo</p>`;
+  } else if (id === 'pessoas') {
+    etapa = 'Equipe';
+    corpo = `<h1>Quem <mark>trabalha</mark> com você?</h1><p class="sub">Um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
+      <textarea id="qPessoas" rows="7" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea><div id="qConta"></div>`;
+    botao = u.criticas.length ? 'Continuar' : 'Montar minha escala';
+  } else if (id === 'critica') {
+    etapa = 'Equipe';
+    const c = u.criticas[0];
+    corpo = `<h1>Quem é <mark>${esc(c.nome.toLowerCase())}</mark>?</h1><p class="sub">${esc(c.explica)}</p>
+      <div class="marcar">${nomesWz().map(x => `<button type="button" class="${wz.marcados.has(x) ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div><div id="qConta"></div>`;
+    botao = 'Montar minha escala';
+  }
+  const restam = total - num + 1;
+  $('#v-comecar').innerHTML = quizMoldura({etapa, num, total, minutos: `~${Math.max(1, Math.round(restam * 12 / 60))} min`, corpo, botao, botaoDesligado: desl, resumo: wizResumo(),
+    rodapeExtra: wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="mais">Cancelar</button></p>' : ''});
+  const prox = () => { quizDir = 1; wz.i = Math.min(wz.i + 1, perguntas().length - 1); wizDesenha(); };
   const erro = m => { $('#wzErro').textContent = m; };
-  if ($('#qVolta')) $('#qVolta').onclick = () => { if (wz.i === 0) return ir('mais'); wz.i--; wizDesenha(); };
-  const ok = fn => { const b = $('#qOk'); if (b) b.onclick = fn; const t = $('#qTxt'); if (t) { t.focus(); t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; } };
-  if (id === 'oi') ok(prox);
-  if (id === 'negocio') $$('[data-seg]').forEach(b => b.onclick = () => { if (b.dataset.seg !== wz.setor) { aplicaSetor(b.dataset.seg); wz.minMudou = false; wz.marcados.clear(); } prox(); });
+  $('#qVolta').onclick = () => { quizDir = -1; if (wz.i === 0) return ir(wz.soUnidade ? 'mais' : 'inicio'); wz.i--; wizDesenha(); };
+  const ok = fn => { const b = $('#qOk'); if (b) b.onclick = fn; const t = $('#qTxt'); if (t) { if (matchMedia('(min-width: 700px)').matches) t.focus(); t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; } };
+  if (id === 'negocio') {
+    ligaSegmentos(() => wz.setor, (k, seguir) => { if (k && k !== wz.setor) { aplicaSetor(k); wz.minMudou = false; wz.marcados.clear(); } if (seguir) prox(); });
+    ok(() => wz.setor ? prox() : erro('Escolha o tipo de negócio.'));
+  }
   if (id === 'nome') ok(() => {
     const v = $('#qTxt').value.trim();
-    if (!v) return erro(wz.soUnidade ? 'Dê um nome. Ex.: Loja Shopping.' : 'Escreva o nome da empresa.');
-    if (wz.soUnidade) wz.nomeUn = v; else e.nome = v; prox();
-  });
-  if (id === 'uf') $$('[data-uf]').forEach(b => b.onclick = () => { e.uf = b.dataset.uf; prox(); });
-  if (id === 'cidade') ok(() => { e.cidade = $('#qTxt').value.trim(); prox(); });
-  if (id === 'porte') $$('[data-porte]').forEach(b => b.onclick = () => {
-    e.porte = b.dataset.porte;
-    if (e.porte === 'mei') { $$('[data-porte]').forEach(x => x.classList.toggle('on', x === b)); $('#wzErro').innerHTML = ''; $('.quiz-q').insertAdjacentHTML('beforeend', `<div class="nota">MEI pode ter <b>só 1 funcionário</b> registrado. Ele folga 2 dias por semana e nesses dias quem cobre é você.</div>${continuar()}`); $('#qOk').onclick = prox; return; }
-    prox();
+    if (!v) return erro('Dê um nome. Ex.: Loja Centro.');
+    wz.nomeUn = v; prox();
   });
   if (id === 'dias') {
     const aplica = pad => { u.abertos = pad.split('').map(Number); u.minimo = u.minimo.map((m, i) => u.abertos[i] ? (m || Math.max(...u.minimo, 1)) : 0); u.criticas.forEach(c => c.minimo = c.minimo.map((m, i) => u.abertos[i] ? (m || Math.max(...c.minimo, 1)) : 0)); };
-    $$('[data-dias]').forEach(b => b.onclick = () => { aplica(b.dataset.dias); prox(); });
-    $('#qOutros').onclick = () => { $('#qDiasBox').classList.remove('hide'); $$('.opcoes-grandes button').forEach(x => x.classList.toggle('on', x.id === 'qOutros')); };
+    escolheESegue($$('[data-dias]'), b => { aplica(b.dataset.dias); $('#qDiasBox').classList.add('hide'); $('#qOutros').classList.remove('on'); }, prox);
+    $('#qOutros').onclick = () => { $('#qDiasBox').classList.remove('hide'); $$('.q-op').forEach(x => x.classList.toggle('on', x.id === 'qOutros')); };
     $$('[data-ab]').forEach(b => b.onclick = () => { const i = +b.dataset.ab, p = [...u.abertos]; p[i] = p[i] ? 0 : 1; aplica(p.join('')); b.classList.toggle('on'); });
     ok(() => { if (!u.abertos.some(Boolean)) return erro('Marque pelo menos um dia.'); prox(); });
   }
   if (id === 'horario') {
-    $('#qSim').onclick = prox;
-    $('#qNao').onclick = () => { $('#qHoraBox').classList.remove('hide'); $('#qAbre').focus(); };
-    ok(() => { u.abre = $('#qAbre').value || u.abre; u.fecha = $('#qFecha').value || u.fecha; prox(); });
+    escolheESegue([$('#qSim')], () => {}, prox);
+    $('#qNao').onclick = () => { $('#qSim').classList.remove('on'); $('#qNao').classList.add('on'); $('#qHoraBox').classList.remove('hide'); $('#qAbre').focus(); };
+    ok(() => { if (!$('#qHoraBox').classList.contains('hide')) { u.abre = $('#qAbre').value || u.abre; u.fecha = $('#qFecha').value || u.fecha; } prox(); });
   }
   if (id === 'minimo') {
     const set = v => { $('#qMin').textContent = Math.max(1, Math.min(200, v)); };
     $('#qMenos').onclick = () => set(+$('#qMin').textContent - 1);
     $('#qMais').onclick = () => set(+$('#qMin').textContent + 1);
     ok(() => {
-      const v = +$('#qMin').textContent, base = seg(wz.setor).minimo;
+      const v = +$('#qMin').textContent, base = seg(wz.setor || 'outro').minimo;
       // manteve a sugestão: guarda o mínimo dia a dia do segmento (ex.: sábado com mais gente)
       if (v === Math.max(...base) && !wz.minMudou) u.minimo = base.map((m, i) => u.abertos[i] ? (m || v) : 0);
       else { u.minimo = u.minimo.map((_, i) => u.abertos[i] ? v : 0); wz.minMudou = true; }
@@ -314,17 +345,19 @@ function wizDesenha() {
     });
   }
   const contagem = () => {
-    const n = nomesWz().length, total = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(total / 5);
+    const n = nomesWz().length, totalMin = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(totalMin / 5);
     let html = '';
     if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
       : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente.</div>`;
     const c = u.criticas[0];
-    if (id === 'critica' && c) { const tem = nomesWz().filter(x => wz.marcados.has(x)).length, prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5); if (tem < prec) html = `<div class="nota">Para ter ${esc(c.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>`; else html = `<div class="nota ok">${plural(tem, 'marcado', 'marcados')}. Dá para ter ${esc(c.nome.toLowerCase())} todo dia.</div>`; }
-    if (e.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
+    if (id === 'critica' && c) { const tem = nomesWz().filter(x => wz.marcados.has(x)).length, prec = Math.ceil(c.minimo.reduce((a, m) => a + m, 0) / 5); html = tem < prec ? `<div class="nota">Para ter ${esc(c.nome.toLowerCase())} todo dia, precisa de ${prec}. Você marcou ${tem}.</div>` : `<div class="nota ok">${plural(tem, 'marcado', 'marcados')}. Dá para ter ${esc(c.nome.toLowerCase())} todo dia.</div>`; }
+    if (conta.porte === 'mei' && n > 1) html += '<div class="nota">MEI pode ter só 1 funcionário registrado. Confira com seu contador.</div>';
     if ($('#qConta')) $('#qConta').innerHTML = html;
+    const r = $('.quiz-resumo'); if (r) r.innerHTML = wizResumo();
   };
   if (id === 'pessoas') {
-    $('#qPessoas').oninput = () => { wz.texto = $('#qPessoas').value; contagem(); }; contagem(); $('#qPessoas').focus();
+    $('#qPessoas').oninput = () => { wz.texto = $('#qPessoas').value; contagem(); }; contagem();
+    if (matchMedia('(min-width: 700px)').matches) $('#qPessoas').focus();
     ok(() => { if (!nomesWz().length) return erro('Escreva pelo menos um nome.'); if (u.criticas.length) prox(); else wizGerar(); });
   }
   if (id === 'critica') {
@@ -335,19 +368,18 @@ function wizDesenha() {
 }
 async function wizGerar() {
   const lista = nomesWz(), crit = wz.un.criticas[0];
-  const nomeUn = wz.soUnidade ? wz.nomeUn : wz.empresa.nome;
-  $('#v-comecar').innerHTML = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt="" class="pulando"><h1>Montando sua escala…</h1><p>Distribuindo as folgas de ${plural(lista.length, 'pessoa', 'pessoas')} dentro da lei.</p></div>`;
-  const espera = new Promise(r => setTimeout(r, 1200));
+  const nomeUn = wz.nomeUn || conta.empresa || 'Minha unidade';
+  $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><img src="/img/mascote.svg?v=20261115b" alt="" class="oi-masc pulando"><h1>Montando sua escala…</h1>
+    <p>Distribuindo as folgas de ${plural(lista.length, 'pessoa', 'pessoas')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
+  const espera = new Promise(r => setTimeout(r, 1400));
   try {
     const pessoas = lista.map(nome => ({nome, cargo: crit && wz.marcados.has(nome) ? crit.nome : ''}));
     const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {
-      empresa: wz.soUnidade ? undefined : {...wz.empresa, porte: wz.empresa.porte || 'nao_sei', feriados_locais: ''},
-      unidade: {...wz.un, nome: nomeUn, setor: wz.setor}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
+      unidade: {...wz.un, nome: nomeUn, setor: wz.setor || 'outro'}, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
     conta = await api('/api/conta');
-    if (!wz.soUnidade) eu = await api('/api/eu');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
-    recem = true; semData = segundaDe(hojeIso()); diaSel = null; ir('escala');
+    recem = true; semData = segundaDe(hojeIso()); diaSel = null; ir(wz.soUnidade ? 'escala' : 'inicio');
   } catch (err) {
     wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
   }
@@ -356,7 +388,7 @@ function telaPagar(checkout) {
   $('#v-comecar').innerHTML = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Tudo pronto!</h1>
     <p>Sua equipe está salva. Falta só liberar o acesso para a escala aparecer.</p>
     ${checkout ? `<a class="btn cheio" href="${esc(checkout)}" target="_blank" rel="noopener">Liberar por R$ 97</a>` : '<p class="dica">Fale com o suporte para liberar.</p>'}
-    <p class="dica">Pagamento único. Depois de pagar, volte aqui.</p></div>`;
+    <p class="dica">Depois de pagar, volte aqui.</p></div>`;
 }
 
 // ================= escala (tela principal) =================
@@ -731,7 +763,7 @@ async function telaFechamento() {
   $('#fechEq').value = v; $('#fechEq').closest('div').classList.toggle('hide', equipes.length < 2);
   fech = await api(`/api/relatorio?mes=${$('#fechMes').value}${$('#fechEq').value ? '&equipe=' + $('#fechEq').value : ''}`);
   const nomeMes = new Date(fech.de + 'T12:00:00').toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
-  $('#fechSub').textContent = `${fech.empresa || ''}${fech.cnpj ? ' · CNPJ ' + fech.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : ''} · ${nomeMes}`;
+  $('#fechSub').textContent = `${fech.empresa || ''}${fech.cnpj ? ' · CNPJ ' + Cadastro.mascaraCnpj(fech.cnpj) : ''} · ${nomeMes}`;
   const nomeMesCurto = $('#fechMes').value.split('-').reverse().join('/'), futuro = $('#fechMes').value > mesAtual();
   $('#fechStatus').innerHTML = fech.fechado
     ? `<div class="status-mes"><div><span class="selo fechado">Mês fechado</span></div><p class="dica">Fechado em ${new Date(fech.fechado.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}${fech.fechado.por ? ' por ' + esc(fech.fechado.por) : ''}. Os números não mudam mais.</p>${conta.papel === 'dono' ? '<button class="btn sec" id="btnReabrir">Reabrir o mês</button>' : ''}</div>`
@@ -784,7 +816,7 @@ async function telaContador() {
   }
   $('#contEmpresas').innerHTML = `<div class="empresas">${r.empresas.map(e => `<article class="cartao emp-card">
       <h3>${esc(e.nome_fantasia || e.empresa)}</h3>
-      <p class="meta">${e.cnpj ? 'CNPJ ' + esc(e.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')) + ' · ' : ''}${esc(e.porte_nome || '')}${e.uf ? ' · ' + esc(e.uf) : ''}</p>
+      <p class="meta">${e.cnpj ? 'CNPJ ' + esc(Cadastro.mascaraCnpj(e.cnpj)) + ' · ' : ''}${esc(e.porte_nome || '')}${e.uf ? ' · ' + esc(e.uf) : ''}</p>
       <div class="linha-st"><span>Pessoas</span><b>${e.funcionarios} em ${plural(e.unidades, 'unidade', 'unidades')}</b></div>
       <div class="linha-st"><span>Fechamento de ${mAnt}</span>${e.fechado_ant ? '<span class="selo fechado">Fechado</span>' : '<span class="selo aberto">Aguardando</span>'}</div>
       <div class="linha-st"><span>Faltas e atestados em ${mAnt}</span><b>${e.faltas_atestados_ant}</b></div>
@@ -821,19 +853,43 @@ $('#formMembro').onsubmit = async e => {
 // ================= empresa =================
 async function telaEmpresa() {
   const [c, h] = await Promise.all([api('/api/empresa'), api('/api/historico')]);
+  $('#emAviso').innerHTML = c.cadastro_em ? '' : '<div class="aviso amarelo">Falta completar o cadastro da empresa. <button class="link" data-ir="cadastro">Completar passo a passo ›</button></div>';
   $('#emNome').value = c.nome; $('#emRazao').value = c.razao_social; $('#emCidade').value = c.cidade;
-  $('#emCnpj').value = c.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  $('#emPorte').innerHTML = Object.entries(PORTES).map(([k, [n, d]]) => `<label><input type="radio" name="emPorte" value="${k}" ${c.porte === k ? 'checked' : ''}>${n}${d ? `<small>${d}</small>` : ''}</label>`).join('');
+  $('#emCnpj').value = Cadastro.mascaraCnpj(c.cnpj); $('#emCnpjOk').textContent = '';
+  $('#emPorte').innerHTML = Object.entries(Cadastro.PORTES).map(([k, [n, d]]) => `<label><input type="radio" name="emPorte" value="${k}" ${c.porte === k ? 'checked' : ''}>${n}<small>${d}</small></label>`).join('');
   $('#emUf').innerHTML = '<option value="">—</option>' + c.ufs.map(u => `<option ${c.uf === u ? 'selected' : ''}>${u}</option>`).join('');
   $('#emFer').value = c.feriados_locais.map(md => md.slice(3) + '/' + md.slice(0, 2)).join(', ');
+  $('#emResp').value = c.responsavel; $('#emTel').value = Cadastro.mascaraTel(c.telefone);
+  $('#emCargo').innerHTML = '<option value="">—</option>' + [...new Set([...Cadastro.CARGOS, c.responsavel_cargo].filter(Boolean))].map(x => `<option ${x === c.responsavel_cargo ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  $('#emCep').value = Cadastro.mascaraCep(c.cep); $('#emEnd').value = c.endereco;
+  $('#emSeg').innerHTML = '<option value="">—</option>' + SEG_ORDEM.map(k => `<option value="${k}" ${c.segmento === k ? 'selected' : ''}>${esc(seg(k).nome)}</option>`).join('');
+  $('#emFunc').value = c.funcionarios_qtd || ''; $('#emUnid').value = c.unidades_qtd || '';
+  $('#emOrigem').innerHTML = '<option value="">—</option>' + Object.entries(Cadastro.ORIGENS).map(([k, [n]]) => `<option value="${k}" ${c.como_conheceu === k ? 'selected' : ''}>${n}</option>`).join('');
+  $('#emOrigemOutro').value = c.como_conheceu_outro; $('#emOrigemOutroBox').classList.toggle('hide', c.como_conheceu !== 'outro');
   $('#listaHist').innerHTML = h.length ? `<table class="tab"><tbody>${h.slice(0, 60).map(x => `<tr><td class="dica" style="white-space:nowrap">${new Date(x.criado_em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</td><td>${esc(x.quem)}: ${esc(x.acao)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="dica">Nada registrado ainda.</p>';
 }
+$('#emCnpj').oninput = e => {
+  e.target.value = Cadastro.mascaraCnpj(e.target.value);
+  const v = Cadastro.soCnpj(e.target.value), st = $('#emCnpjOk');
+  st.className = 'q-valida ' + (v.length === 14 ? (Cadastro.cnpjValido(v) ? 'ok' : 'ruim') : '');
+  st.textContent = v.length === 14 ? (Cadastro.cnpjValido(v) ? 'CNPJ confere' : 'Esse CNPJ não confere') : '';
+};
+$('#emTel').oninput = e => { e.target.value = Cadastro.mascaraTel(e.target.value); };
+$('#emCep').oninput = async e => {
+  e.target.value = Cadastro.mascaraCep(e.target.value);
+  const d = Cadastro.soNum(e.target.value); if (d.length !== 8) return;
+  try { const r = await api('/api/cep/' + d); $('#emUf').value = r.uf; if (r.cidade) $('#emCidade').value = r.cidade; if (r.endereco && !$('#emEnd').value) $('#emEnd').value = r.endereco + ', '; } catch {}
+};
+$('#emOrigem').onchange = () => $('#emOrigemOutroBox').classList.toggle('hide', $('#emOrigem').value !== 'outro');
 $('#formEmpresa').onsubmit = async e => {
   e.preventDefault(); $('#erroEmpresa').textContent = '';
   try {
-    await api('/api/empresa', {method: 'PUT', body: {nome: $('#emNome').value, razao_social: $('#emRazao').value, cnpj: $('#emCnpj').value, porte: $('input[name=emPorte]:checked')?.value, uf: $('#emUf').value, cidade: $('#emCidade').value, feriados_locais: $('#emFer').value}});
-    conta = await api('/api/conta'); pintaTopo(); toast('Dados da empresa salvos.');
+    await api('/api/empresa', {method: 'PUT', body: {nome: $('#emNome').value, razao_social: $('#emRazao').value, cnpj: $('#emCnpj').value, porte: $('input[name=emPorte]:checked')?.value,
+      uf: $('#emUf').value, cidade: $('#emCidade').value, feriados_locais: $('#emFer').value, responsavel: $('#emResp').value, responsavel_cargo: $('#emCargo').value,
+      telefone: $('#emTel').value, cep: $('#emCep').value, endereco: $('#emEnd').value.replace(/,\s*$/, ''), segmento: $('#emSeg').value,
+      funcionarios_qtd: $('#emFunc').value, unidades_qtd: $('#emUnid').value, como_conheceu: $('#emOrigem').value, como_conheceu_outro: $('#emOrigemOutro').value}});
+    conta = await api('/api/conta'); pintaTopo(); pintaLateral(); toast('Dados da empresa salvos.');
   } catch (err) { $('#erroEmpresa').textContent = err.message; }
 };
 
