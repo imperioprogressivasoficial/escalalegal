@@ -165,7 +165,7 @@ async function rota() {
   if (!conta) return;
   let [v, extra] = (location.hash.slice(1) || '').split('/');
   const mc = ehModoContador();
-  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique'].includes(v)) v = 'contador';
+  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique', 'materiais'].includes(v)) v = 'contador';
   if (!v) v = conta.papel === 'contador' ? 'escala' : 'inicio';
   // dono sem unidade: primeiro o cadastro completo da empresa, depois o quiz da escala
   if (!mc && conta.papel === 'dono' && !equipes.length && !conta.cadastro_ok && !['comecar', 'cadastro', 'conta'].includes(v)) v = 'cadastro';
@@ -181,6 +181,7 @@ async function rota() {
   $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio', 'resultado'].includes(v));
   $('#principal').classList.toggle('quiz-pg', foco);
   document.body.classList.toggle('modo-foco', foco);
+  document.body.classList.toggle('ini-escuro', v === 'inicio');
   window.scrollTo(0, 0);
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
@@ -191,7 +192,8 @@ async function rota() {
     else if (v === 'personalizar') telaPersonalizar();
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
-    else if (v === 'aula') { aulaI = 0; telaAula(); }
+    else if (v === 'aula') { aulaI = Math.max(0, +extra || 0); telaAula(); }
+    else if (v === 'materiais') await renderizarMateriais($('#v-materiais'));
     else if (v === 'instalar') telaInstalar();
     else if (v === 'indique') await telaIndique();
     else if (v === 'mais') telaMais();
@@ -858,6 +860,7 @@ function telaMais() {
     if (dono) h += item('empresa', 'Dados da empresa', 'Nome, CNPJ, cidade e feriados');
     h += '</ul>';
   }
+  h += `<p class="menu-tit">Seus materiais</p><ul class="menu"><li><button data-ir="materiais"><span>Seus materiais<small>Kit RH, Calculadora e Plaquinhas</small></span><span class="seta">›</span></button></li></ul>`;
   h += `<p class="menu-tit">Facilite</p><ul class="menu">
     <li><button data-ir="indique" class="menu-ind"><span>Indique para quem conhece<small>Mande o link para outros empresários</small></span><span class="seta">›</span></button></li>
     ${naTelaInicial() ? '' : `<li><button data-ir="instalar"><span>Colocar na tela inicial<small>Abre como aplicativo no celular</small></span><span class="seta">›</span></button></li>`}</ul>`;

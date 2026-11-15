@@ -61,6 +61,20 @@ label{display:block;font-weight:700;font-size:.92rem;color:var(--tinta);margin:1
 .ent-dias{display:grid;grid-template-columns:repeat(7,24px);gap:4px;margin-top:6px}
 .ent-dias i{font-style:normal;height:24px;border-radius:7px;display:grid;place-items:center;font-size:.72rem;font-weight:800;background:var(--azul-claro);color:var(--azul)}
 .ent-dias i.f{background:var(--amarelo);color:#3b2f00}
+/* computador: a foto ocupa o painel todo, com o degradê azul por cima para o texto */
+@media(min-width:861px){
+  .entrada-lado{background:#061533;grid-template-rows:auto 1fr auto;padding:44px 56px 52px}
+  .entrada-lado::after{inset:0;width:auto;height:auto;border:0;border-radius:0;z-index:1;background:linear-gradient(0deg,#061533 0%,rgba(6,21,51,.92) 22%,rgba(6,21,51,.35) 48%,rgba(6,21,51,0) 62%),linear-gradient(90deg,rgba(6,21,51,.55),rgba(6,21,51,0) 55%),linear-gradient(180deg,rgba(6,21,51,.55),rgba(6,21,51,0) 18%)}
+  .entrada-lado>.marca,.entrada-lado>.ent-texto{z-index:2}
+  .ent-texto{grid-row:3;align-self:end}
+  .entrada-lado h1{font-size:clamp(1.9rem,2.8vw,2.8rem);max-width:13em;text-shadow:0 2px 24px rgba(6,21,51,.6)}
+  .ent-sub{color:#d6e0f0}
+  .ent-foto{position:absolute!important;inset:0;width:auto;min-width:0;margin:0;z-index:auto!important}
+  .ent-foto-moldura{aspect-ratio:auto;height:100%;border-radius:0;box-shadow:none;background:#061533}
+  .ent-foto picture{display:block;height:100%}
+  .ent-foto img{object-position:50% 18%;padding:0}
+  .ent-chip{left:auto;right:44px;bottom:auto;top:44px;z-index:3}
+}
 .entrada-form{display:grid;place-items:center;padding:32px 20px;background:#fff}
 .entrada-form form{width:min(380px,100%)}
 
@@ -739,6 +753,44 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
 .bn-pontos button.on::before{width:22px;background:var(--azul)}
 @media(max-width:760px){.bn-item img{aspect-ratio:1080/1240}}
+/* ===== Início no estilo streaming (escuro só aqui) ===== */
+body.ini-escuro{background:#0b1220}
+.nf{color:#c9d3e3}
+.nf-oi{margin:2px 0 16px}.nf-oi p{color:#9fb0c9;font-size:.95rem}.nf-oi p b{color:#fff}
+.nf-oi h1{color:#fff;font-size:clamp(1.55rem,4.6vw,2.3rem);margin:2px 0 4px}
+.nf .bn-trilho{box-shadow:0 24px 50px -24px rgba(0,0,0,.8)}
+.nf .bn-pontos button::before{background:#34445f}.nf .bn-pontos button.on::before{background:#ffcd07}
+.nf-aviso{margin-top:8px;border-color:#1f2a40;background:#131c2e}
+.nf-fila{margin-top:24px}
+.nf-fila-topo{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+.nf-fila h2{color:#fff;font-size:1.2rem}
+.nf-ver{border:0;background:none;color:#8fb8ff;font-weight:700;cursor:pointer;padding:8px 0;font-size:.92rem}
+.nf-trilho{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(150px,44vw,210px);gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px;padding:6px 16px 16px;scroll-padding-left:16px}
+.nf-trilho::-webkit-scrollbar{display:none}
+.nf-trilho:has(.largo){grid-auto-columns:clamp(230px,74vw,300px)}
+.nf-card{scroll-snap-align:start;display:flex;flex-direction:column;background:#131c2e;border:1px solid #1f2a40;border-radius:14px;overflow:hidden;text-align:left;cursor:pointer;color:inherit;text-decoration:none;padding:0;font:inherit;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;position:relative}
+.nf-card:focus-visible{outline:3px solid #ffcd07;outline-offset:2px}
+@media(hover:hover){.nf-card:hover{transform:scale(1.045);border-color:#33507f;box-shadow:0 20px 40px -14px rgba(0,0,0,.75);z-index:2}}
+@media(prefers-reduced-motion:reduce){.nf-card{transition:none}.nf-card:hover{transform:none}}
+.nf-arte{display:block;aspect-ratio:16/10;position:relative;overflow:hidden;background:radial-gradient(80% 90% at 70% 10%,#1f6fe0 0,transparent 60%),linear-gradient(160deg,#0f2a5c,#0b1730)}
+.nf-arte img{display:block;width:100%;height:100%;object-fit:contain;object-position:center bottom;padding:12px 12px 0}
+.nf-arte img.nf-poster{object-fit:cover;padding:0;object-position:center}
+.nf-txt{display:grid;gap:3px;padding:11px 13px 14px;flex:1;align-content:start}
+.nf-txt b{color:#fff;font-size:.98rem;line-height:1.25}
+.nf-txt small{color:#93a3bd;font-size:.82rem;line-height:1.35}
+.nf-etq{font-style:normal;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#ffcd07}
+.nf-acao{margin-top:8px;justify-self:start;background:#168821;color:#fff;font-weight:800;font-size:.84rem;border-radius:8px;padding:7px 12px}
+.nf-num{display:grid;place-items:center;width:100%;height:100%;font:800 3.2rem/1 var(--display);font-stretch:85%;color:#fff;letter-spacing:-.02em}
+.nf-num.c0{background:linear-gradient(140deg,#1351b4,#0b2d6b)}.nf-num.c1{background:linear-gradient(140deg,#1f9a2c,#0d5c16)}
+.nf-num.c2{background:linear-gradient(140deg,#ffd84a,#f0b400);color:#3b2f00}.nf-num.c3{background:linear-gradient(140deg,#16325f,#071d41);color:#ffcd07}
+.nf-num.amarelo{background:linear-gradient(140deg,#ffd84a,#f0b400);color:#3b2f00;font-size:4rem}
+.nf-capa{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(-3deg);width:42%;aspect-ratio:3/4;border-radius:6px;background:#1351b4;box-shadow:0 14px 26px -10px rgba(0,0,0,.8);display:flex;align-items:flex-end;padding:10px}
+.nf-capa i{position:absolute;left:0;right:0;top:0;height:14%;background:#ffcd07;border-radius:6px 6px 0 0}
+.nf-capa b{color:#fff;font:800 .95rem/1.1 var(--display);font-stretch:88%}
+.nf-capa.calculadora{background:#168821}.nf-capa.plaquinhas{background:#ffcd07}.nf-capa.plaquinhas i{background:#1351b4}.nf-capa.plaquinhas b{color:#3b2f00}
+.nf-play{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.92)}
+.nf-play::after{content:"";position:absolute;left:21px;top:16px;border-left:16px solid #0b1220;border-top:10px solid transparent;border-bottom:10px solid transparent}
+@media(min-width:1024px){.nf-trilho{margin:0 -4px;padding:8px 4px 18px;grid-auto-columns:210px}.nf-trilho:has(.largo){grid-auto-columns:290px}}
 .ban-avisos{display:grid;gap:10px;margin-bottom:16px}
 .ban-aviso{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-radius:16px;padding:14px 16px;border:1px solid}
 .ban-aviso b{display:block;font:800 1.02rem var(--display);font-stretch:92%}
@@ -764,7 +816,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
       <p class="ent-sub" id="entradaSub">Duas folgas por semana para cada um, domingo no rodízio e gente suficiente todo dia.</p>
     </div>
     <figure class="ent-foto">
-      <span class="ent-foto-moldura"><img src="/img/login-foto.webp?v=1" alt="" width="400" height="600" decoding="async" fetchpriority="high"></span>
+      <span class="ent-foto-moldura"><picture><source media="(min-width:861px)" srcset="/img/login-foto-g.webp?v=1" width="1100" height="1650"><img src="/img/login-foto.webp?v=1" alt="" width="400" height="600" decoding="async" fetchpriority="high"></picture></span>
       <figcaption class="ent-chip" aria-hidden="true">
         <small>Escala desta semana</small><b>2 folgas para cada um</b>
         <span class="ent-dias"><i>S</i><i>T</i><i>Q</i><i>Q</i><i>S</i><i class="f">S</i><i class="f">D</i></span>
@@ -822,6 +874,8 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
     <section class="vista hide" id="v-resultado"></section>
     <!-- personalizar a escala (etapa 2): nomes, trocas, faltas, férias, mês -->
     <section class="vista hide" id="v-personalizar"></section>
+    <!-- Kit RH, Calculadora e Plaquinhas (extras-materiais.js) -->
+    <section class="vista hide" id="v-materiais"></section>
 
     <!-- escala (a tela principal) -->
     <section class="vista hide" id="v-escala">
@@ -1027,6 +1081,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 <script src="/aula.js?v=19"></script>
 <script src="/extras.js?v=19"></script>
 <script src="/inicio.js?v=19"></script>
+<script src="/extras-materiais.js?v=19"></script>
 <script src="/app.js?v=19"></script>
 </body>
 </html>
