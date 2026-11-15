@@ -324,7 +324,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .indique-passos b{flex:0 0 44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--grad-verde);color:#fff;font:900 1.3rem var(--display)}
 .indique-passos i{display:inline-block;vertical-align:middle;margin-left:8px}
 .vsl-sec{padding-top:clamp(56px,7vw,90px)}
-.vsl{max-width:980px;margin:0 auto;border-radius:22px;overflow:hidden;box-shadow:0 40px 90px -40px rgba(6,21,51,.55);background:#061533;aspect-ratio:16/9}
+.vsl{max-width:980px;margin:0 auto;border-radius:22px;overflow:hidden;box-shadow:0 40px 90px -40px rgba(6,21,51,.55);background:#061533}
 .vsl video{width:100%;height:100%;display:block}
 .centro-cta{display:flex;justify-content:center;margin-top:26px}
 @media(max-width:980px){.indique-grid{grid-template-columns:1fr;gap:28px}}
@@ -354,6 +354,14 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 @media(max-width:480px){.menu .btn{display:none}.fatos-grid{grid-template-columns:1fr}.fato{border-right:0;border-bottom:1px solid var(--linha)}.btn{width:100%}.btn-sec{width:100%;justify-content:center}.lado{padding:22px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 </style>
+<script>!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);</script>
+<link rel="preload" href="https://scripts.converteai.net/a9e81394-1e92-49e8-b5fe-c0cb8eac672b/players/6af91efaa49ed5c866e2aa65/v4/player.js" as="script">
+<link rel="preload" href="https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js" as="script">
+<link rel="preload" href="https://cdn.converteai.net/a9e81394-1e92-49e8-b5fe-c0cb8eac672b/6af91ef12b748eff0650764c/main.m3u8" as="fetch">
+<link rel="dns-prefetch" href="https://cdn.converteai.net">
+<link rel="dns-prefetch" href="https://scripts.converteai.net">
+<link rel="dns-prefetch" href="https://images.converteai.net">
+<link rel="dns-prefetch" href="https://license.vturb.com">
 </head>
 <body class="carrega">
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -402,7 +410,8 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <section class="sec vsl-sec" id="video">
   <div class="wrap">
     <div class="cab-sec centro" style="text-align:center"><span class="etq">Em 3 minutos</span><h2>Veja a notícia e o app por dentro</h2></div>
-    <div class="vsl" data-r><video controls playsinline preload="none" poster="/img/vsl-capa.jpg?v=3" src="/video/vsl.mp4?v=3" aria-label="Vídeo: o fim da escala 6x1 e como a Sua Escala 5x2 funciona por dentro"></video></div>
+    <div class="vsl vsl-vturb" data-r><vturb-smartplayer id="vid-6af91efaa49ed5c866e2aa65" style="display: block; margin: 0 auto; width: 100%; "><div class="vturb-player-placeholder" style="position: relative; width: 100%; padding: 56.25% 0 0; z-index: 0; background-color: black;"></div></vturb-smartplayer></div>
+    <script type="text/javascript"> var s=document.createElement("script"); s.src="https://scripts.converteai.net/a9e81394-1e92-49e8-b5fe-c0cb8eac672b/players/6af91efaa49ed5c866e2aa65/v4/player.js", s.async=!0,document.head.appendChild(s); </script>
     <div class="centro-cta"><a class="btn" href="#preco" data-comprar>Quero a Sua Escala 5x2 <small>R$&nbsp;97 · vitalício</small></a></div>
   </div>
 </section>
@@ -708,11 +717,6 @@ $('#formCompra').addEventListener('submit', async e => {
   if (!calmo) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !tempo) tempo = setInterval(() => vai(atual + 1), 4000); else if (!e.isIntersecting) parar(); })).observe(t);
 })();
 
-// vídeo: a seção só aparece quando o arquivo do vídeo existe
-fetch('/video/vsl.mp4', {method: 'HEAD'}).then(r => { if (!r.ok) throw 0; }).catch(() => {
-  const v = document.getElementById('video'); if (v) v.hidden = true;
-  document.querySelectorAll('a[href="#video"]').forEach(a => a.remove());
-});
 
 // contagem até 15/12/2026
 const alvo = new Date('2026-12-15T00:00:00-03:00'), dois = n => String(n).padStart(2, '0');
