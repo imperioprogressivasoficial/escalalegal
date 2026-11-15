@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..900&family=Public+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Vídeo vertical 1080x1920. Linha do tempo: cada cena tem --s (início, ms) e --l (duração, ms); cada elemento tem --d (atraso dentro da cena). */
+:root{--noite:#061533;--azul:#1351b4;--azul-vivo:#2670e8;--verde:#168821;--verde-vivo:#23b53a;--amarelo:#ffcd07;--tinta:#0c1b33}
+*{box-sizing:border-box;margin:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noite)}
+body{font-family:"Public Sans",Arial,sans-serif;color:#fff}
+.fundo{position:absolute;inset:0;background:radial-gradient(900px 700px at 90% 8%,rgba(38,112,232,.55),transparent 60%),radial-gradient(800px 700px at 0% 100%,rgba(35,181,58,.3),transparent 60%),linear-gradient(165deg,#061533 0%,#0a2557 55%,#0f3f8f 100%)}
+.grade{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 2px,transparent 2px),linear-gradient(90deg,rgba(255,255,255,.04) 2px,transparent 2px);background-size:90px 90px}
+.marca-topo{position:absolute;top:70px;left:0;right:0;text-align:center;font:800 44px "Archivo";font-stretch:85%;letter-spacing:-.02em}
+.marca-topo span{color:#7be08a}
+.cena{position:absolute;inset:0;opacity:0;animation:cena calc(var(--l) * 1ms) linear calc(var(--s) * 1ms) forwards}
+@keyframes cena{0%{opacity:0}4%{opacity:1}94%{opacity:1}100%{opacity:0}}
+.e{animation:entra 700ms cubic-bezier(.2,.9,.25,1.1) calc((var(--s) + var(--d, 0)) * 1ms) both}
+@keyframes entra{from{opacity:0;transform:translateY(60px) scale(.96)}to{opacity:1;transform:none}}
+.pop{animation:pop 600ms cubic-bezier(.3,1.6,.5,1) calc((var(--s) + var(--d, 0)) * 1ms) both}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
+h1{font:900 118px/1 "Archivo";font-stretch:84%;letter-spacing:-.03em;text-align:center;padding:0 60px}
+h2{font:900 92px/1.02 "Archivo";font-stretch:84%;letter-spacing:-.03em;text-align:center;padding:0 70px}
+.g{background:linear-gradient(90deg,#9fd0ff,#7be08a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.am{color:var(--amarelo)}
+.sub{font:600 40px/1.35 "Public Sans";text-align:center;color:#c9d8f0;padding:0 90px}
+.centro{position:absolute;left:0;right:0}
+
+/* cena 1: 6x1 vira 5x2 */
+.linha{display:flex;gap:16px;justify-content:center}
+.linha i{width:112px;height:112px;border-radius:22px;display:grid;place-items:center;font:900 46px "Archivo";font-style:normal;background:#e8f0fb;color:var(--azul)}
+.linha i.f{background:var(--amarelo);color:#4a3a00}
+.vira{animation:vira 500ms ease calc((var(--s) + var(--d)) * 1ms) both}
+@keyframes vira{0%{background:#e8f0fb;color:var(--azul);transform:rotateY(0)}50%{transform:rotateY(90deg)}100%{background:var(--amarelo);color:#4a3a00;transform:rotateY(0)}}
+.rot{font:800 40px "Public Sans";text-align:center;margin-bottom:20px;color:#c9d8f0}
+.risco{position:absolute;left:150px;right:150px;height:12px;border-radius:6px;background:#ff4d4f;transform-origin:left;animation:risca 500ms ease calc((var(--s) + var(--d)) * 1ms) both}
+@keyframes risca{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* cena 2: a planilha na mão */
+.planilha{width:860px;margin:0 auto;background:#fff;border-radius:28px;padding:30px;color:var(--tinta);box-shadow:0 40px 80px -30px rgba(0,0,0,.6)}
+.pl{display:grid;grid-template-columns:150px repeat(7,1fr);gap:8px;margin-bottom:8px}
+.pl b{font:800 30px "Public Sans";align-self:center}
+.pl i{height:64px;border-radius:12px;background:#eef2f7;font-style:normal;display:grid;place-items:center;font:800 28px "Public Sans";color:#8a94a6}
+.pl i.f{background:var(--amarelo);color:#4a3a00}
+.pl i.x{background:#fde0e0;color:#c4161c;animation:treme 400ms ease calc((var(--s) + var(--d)) * 1ms) 3}
+@keyframes treme{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+.balao-x{display:inline-block;background:#c4161c;color:#fff;font:800 36px "Public Sans";border-radius:18px;padding:14px 26px}
+
+/* celular */
+.cel{position:absolute;left:50%;width:640px;height:1062px;margin-left:-320px;border-radius:84px;background:#0c1b33;padding:20px;box-shadow:0 60px 120px -40px rgba(0,0,0,.8),0 0 0 3px rgba(255,255,255,.08)}
+.cel .tela{position:relative;width:100%;height:100%;border-radius:66px;overflow:hidden;background:#fff}
+.cel .tela img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top}
+.slide{opacity:0;animation:slide calc(var(--l2) * 1ms) ease calc((var(--s) + var(--d)) * 1ms) both}
+@keyframes slide{0%{opacity:0;transform:translateX(120px)}12%{opacity:1;transform:none}88%{opacity:1;transform:none}100%{opacity:0;transform:translateX(-120px)}}
+.slide.ultimo{animation-name:slidefica}
+@keyframes slidefica{0%{opacity:0;transform:translateX(120px)}12%{opacity:1;transform:none}100%{opacity:1;transform:none}}
+.toque{position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,205,7,.55);border:6px solid var(--amarelo);opacity:0;animation:toque 900ms ease calc((var(--s) + var(--d)) * 1ms) both}
+@keyframes toque{0%{opacity:0;transform:scale(.4)}30%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
+.selo{display:inline-flex;align-items:center;gap:14px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.18);border-radius:99px;padding:12px 28px;font:800 34px "Public Sans"}
+
+/* cena 4: checks */
+.checks{display:grid;gap:22px;width:860px;margin:0 auto}
+.check{display:flex;align-items:center;gap:24px;background:#fff;color:var(--tinta);border-radius:26px;padding:26px 30px;font:800 40px "Public Sans";box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
+.check b{flex:0 0 70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#23b53a,#168821);color:#fff;display:grid;place-items:center;font:900 40px "Public Sans"}
+
+/* cena 5: formatos */
+.logos{display:grid;grid-template-columns:repeat(3,250px);gap:30px;justify-content:center}
+.logo{background:#fff;border-radius:36px;height:270px;display:grid;place-items:center;align-content:center;gap:18px;color:var(--tinta);font:800 30px/1.1 "Public Sans";text-align:center;padding:0 14px;box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
+.logo img{width:120px;height:120px}
+
+/* cena 6: aula */
+.aula{width:880px;margin:0 auto;background:#fff;color:var(--tinta);border-radius:34px;padding:44px;box-shadow:0 40px 80px -30px rgba(0,0,0,.6)}
+.aula small{font:800 28px "Public Sans";color:var(--azul);letter-spacing:.06em}
+.aula h3{font:900 70px/1 "Archivo";font-stretch:86%;margin:10px 0 18px}
+.aula p{font:500 36px/1.4 "Public Sans";color:#3d4a5c}
+.aula .fer{display:inline-block;background:var(--amarelo);color:#4a3a00;border-radius:16px;padding:6px 18px;font-weight:800}
+.ze{position:absolute;width:300px}
+
+/* cena 7 */
+.marca-grande{font:900 120px/1 "Archivo";font-stretch:82%;letter-spacing:-.03em;text-align:center}
+.marca-grande span{color:#7be08a}
+.preco{display:inline-block;background:linear-gradient(135deg,#23b53a,#168821);border-radius:32px;padding:26px 54px;font:900 76px "Archivo";font-stretch:86%;box-shadow:0 30px 70px -20px rgba(35,181,58,.8)}
+.preco small{display:block;font:700 30px "Public Sans";opacity:.9}
+.site{font:800 46px "Public Sans";color:var(--amarelo)}
+</style></head>
+<body>
+<div class="fundo"></div><div class="grade"></div>
+<div class="marca-topo">SuaEscala<span>5x2</span></div>
+
+<!-- 1. A escala 6x1 acabou (0–3,8s) -->
+<section class="cena" style="--s:0;--l:3800">
+  <div class="centro" style="top:330px"><h1 class="e" style="--d:100">A escala <span class="am">6x1</span> acabou.</h1></div>
+  <div class="centro" style="top:760px">
+    <p class="rot e" style="--d:500">Cada pessoa agora tem 2 folgas por semana</p>
+    <div class="linha e" style="--d:700"><i>S</i><i>T</i><i>Q</i><i>Q</i><i>S</i><i class="vira" style="--d:1700">S</i><i class="f">D</i></div>
+  </div>
+  <div class="centro" style="top:1120px"><p class="sub e" style="--d:2000">Emenda Constitucional 141/2026<br>Vale a partir de <b style="color:#fff">15 de dezembro</b></p></div>
+</section>
+
+<!-- 2. Na mão quebra (3,8–7,6s) -->
+<section class="cena" style="--s:3800;--l:3800">
+  <div class="centro" style="top:300px"><h2 class="e" style="--d:100">Montar a escala nova <span class="am">na mão?</span></h2></div>
+  <div class="centro" style="top:620px"><div class="planilha e" style="--d:400">
+    <div class="pl"><b></b><i>S</i><i>T</i><i>Q</i><i>Q</i><i>S</i><i>S</i><i>D</i></div>
+    <div class="pl"><b>Ana</b><i></i><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i></div>
+    <div class="pl"><b>Bruno</b><i></i><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i></div>
+    <div class="pl"><b>Carla</b><i></i><i></i><i></i><i></i><i class="f">F</i><i class="f">F</i><i></i></div>
+    <div class="pl"><b>Hoje</b><i>3</i><i>3</i><i>3</i><i>3</i><i>2</i><i class="x" style="--d:1500">0</i><i class="x" style="--d:1500">1</i></div>
+  </div></div>
+  <div class="centro" style="top:1220px;text-align:center"><span class="balao-x pop" style="--d:1700">Sábado e domingo sem ninguém</span></div>
+  <div class="centro" style="top:1400px"><p class="sub e" style="--d:2200">Folga em cima de folga, domingo esquecido, feriado sem pagar em dobro.</p></div>
+</section>
+
+<!-- 3. Mecanismo: responda as perguntas (7,6–13,8s) -->
+<section class="cena" style="--s:7600;--l:6200">
+  <div class="centro" style="top:180px"><h2 class="e" style="--d:100">É só <span class="g">responder umas perguntas</span></h2></div>
+  <div class="cel e" style="top:470px;--d:400"><div class="tela">
+    <img class="slide" src="q1-negocio.png" style="--d:500;--l2:1900">
+    <img class="slide" src="q6-dias.png" style="--d:2300;--l2:1900">
+    <img class="slide ultimo" src="q9-pessoas.png" style="--d:4100;--l2:1900">
+    <span class="toque" style="left:60px;top:330px;--d:1500"></span>
+    <span class="toque" style="left:250px;top:330px;--d:3300"></span>
+    <span class="toque" style="left:240px;top:760px;--d:5300"></span>
+  </div></div>
+  <div class="centro" style="top:1600px;text-align:center"><span class="selo e" style="--d:900">Uma pergunta por vez · uns 2 minutos</span></div>
+</section>
+
+<!-- 4. A escala sai pronta, dentro da lei (13,8–19,2s) -->
+<section class="cena" style="--s:13800;--l:5400">
+  <div class="centro" style="top:180px"><h2 class="e" style="--d:100">Sua escala sai <span class="g">pronta e dentro da lei</span></h2></div>
+  <div class="cel e" style="top:470px;--d:300;transform-origin:top"><div class="tela"><img src="e-escala.png"></div></div>
+  <div class="centro" style="top:1230px"><div class="checks">
+    <div class="check e" style="--d:1500"><b>✓</b>2 folgas para cada um</div>
+    <div class="check e" style="--d:2100"><b>✓</b>Nenhum dia descoberto</div>
+    <div class="check e" style="--d:2700"><b>✓</b>Domingo e feriado em dia</div>
+  </div></div>
+</section>
+
+<!-- 5. Formatos (19,2–24,4s) -->
+<section class="cena" style="--s:19200;--l:5200">
+  <div class="centro" style="top:240px"><h2 class="e" style="--d:100">Baixe ou envie <span class="g">do seu jeito</span></h2></div>
+  <div class="centro" style="top:620px"><div class="logos">
+    <div class="logo pop" style="--d:600"><img src="whatsapp.svg">WhatsApp</div>
+    <div class="logo pop" style="--d:850"><img src="pdf.svg">PDF</div>
+    <div class="logo pop" style="--d:1100"><img src="excel.svg">Excel</div>
+    <div class="logo pop" style="--d:1350"><img src="sheets.svg">Google Planilhas</div>
+    <div class="logo pop" style="--d:1600"><img src="jpg.svg">Imagem</div>
+    <div class="logo pop" style="--d:1850"><img src="link.svg">Link da equipe</div>
+  </div></div>
+  <div class="centro" style="top:1360px"><p class="sub e" style="--d:2400">Cada funcionário vê a própria folga.<br>O contador recebe a planilha pronta.</p></div>
+</section>
+
+<!-- 6. Aula da lei (24,4–28,6s) -->
+<section class="cena" style="--s:24400;--l:4200">
+  <div class="centro" style="top:220px"><h2 class="e" style="--d:100">E você <span class="g">entende a lei</span> sem juridiquês</h2></div>
+  <div class="centro" style="top:620px"><div class="aula e" style="--d:500">
+    <small>LIÇÃO 5 DE 8 · FERIADO</small>
+    <h3>Trabalhou no feriado?</h3>
+    <p>Recebe o dia <span class="fer">em dobro</span> ou ganha outra folga. A Sua Escala 5x2 avisa quantos dias foram.</p>
+  </div></div>
+  <img class="ze pop" src="mascote.svg" style="left:390px;top:1290px;--d:1000">
+</section>
+
+<!-- 7. Chamada (28,6–33s) -->
+<section class="cena" style="--s:28600;--l:4600">
+  <img class="ze pop" src="mascote.svg" style="left:390px;top:300px;--d:100">
+  <div class="centro" style="top:700px"><p class="marca-grande e" style="--d:300">SuaEscala<span>5x2</span></p></div>
+  <div class="centro" style="top:960px"><p class="sub e" style="--d:700">Responda. Receba. Envie.</p></div>
+  <div class="centro" style="top:1130px;text-align:center"><span class="preco pop" style="--d:1100">R$ 97<small>7 dias de garantia</small></span></div>
+  <div class="centro" style="top:1500px;text-align:center"><p class="site e" style="--d:1600">suaescala5x2.com.br</p></div>
+</section>
+</body></html>

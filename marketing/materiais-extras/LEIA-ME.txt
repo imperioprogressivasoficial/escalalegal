@@ -1,0 +1,13 @@
+Geradores dos materiais extras (order bumps): Kit RH, Calculadora e Plaquinhas.
+Saída: app/extras/kit-rh, app/extras/calculadora, app/extras/plaquinhas (com o .zip de cada um).
+
+Requisitos: python3 com python-docx, python-pptx, openpyxl, reportlab e fonttools.
+Fontes (Archivo e Public Sans) para os PDFs, numa pasta fonts/ ao lado dos scripts:
+  npm pack @fontsource/archivo@5.1.0 @fontsource/public-sans@5.1.0
+  converter os .woff (latin 700/800/900 do Archivo; 400/600/700/400-italic do Public Sans) para .ttf com fontTools
+  e salvar como Archivo-Bold.ttf, Archivo-ExtraBold.ttf, Archivo-Black.ttf, PublicSans-Regular.ttf,
+  PublicSans-SemiBold.ttf, PublicSans-Bold.ttf, PublicSans-Italic.ttf.
+
+Rodar: python3 kit_rh.py && python3 calculadora.py && python3 plaquinhas.py
+Se mudar um nome de arquivo, atualize a lista em app/extras.js (CATALOGO): só baixa o que estiver na lista.
+Prévia: preview.sh arquivo (LibreOffice + pdftoppm).

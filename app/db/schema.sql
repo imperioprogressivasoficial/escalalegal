@@ -57,3 +57,254 @@ create table if not exists compras (
   criado_em timestamptz not null default now(),
   origem text
 );
+
+-- ---------- v2: entrega de acesso após a compra ----------
+-- conta criada pela compra ainda não tem senha (a pessoa define pelo link do e-mail)
+alter table usuarios alter column senha_hash drop not null;
+alter table usuarios alter column empresa drop not null;
+alter table usuarios add column if not exists sessao_v int not null default 0;
+alter table usuarios add column if not exists origem text;
+alter table usuarios add column if not exists ultimo_acesso timestamptz;
+
+alter table compras add column if not exists status text not null default 'aprovada';
+alter table compras add column if not exists nome text;
+alter table compras add column if not exists transacao text;
+alter table compras add column if not exists atualizado_em timestamptz not null default now();
+
+-- todo evento recebido do checkout fica guardado (auditoria e suporte)
+create table if not exists pagamentos_eventos (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  email text,
+  acao text not null,           -- liberar | bloquear | ignorar | erro
+  evento text,
+  plataforma text,
+  payload jsonb
+);
+create index if not exists pagamentos_eventos_email_idx on pagamentos_eventos (email, criado_em desc);
+
+-- links de criar/redefinir senha (guarda só o hash do token)
+create table if not exists acesso_tokens (
+  token_hash text primary key,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  criado_em timestamptz not null default now(),
+  expira_em timestamptz not null,
+  usado_em timestamptz
+);
+create index if not exists acesso_tokens_usuario_idx on acesso_tokens (usuario_id);
+
+-- fila de e-mails: tenta de novo se o SMTP falhar
+create table if not exists emails (
+  id bigserial primary key,
+  criado_em timestamptz not null default now(),
+  para text not null,
+  assunto text not null,
+  html text not null,
+  texto text not null,
+  tentativas int not null default 0,
+  proxima_em timestamptz not null default now(),
+  enviado_em timestamptz,
+  erro text
+);
+create index if not exists emails_pendentes_idx on emails (proxima_em) where enviado_em is null;
+
+-- ---------- v3: gestão completa ----------
+alter table funcionarios add column if not exists matricula text;
+alter table funcionarios add column if not exists admissao date;
+alter table funcionarios add column if not exists telefone text;
+
+-- pessoas com acesso à empresa (conta) de outro usuário: gestor (edita) ou contador (consulta e relatórios)
+create table if not exists membros (
+  id serial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  papel text not null check (papel in ('gestor', 'contador')),
+  criado_em timestamptz not null default now(),
+  unique (conta_id, usuario_id)
+);
+create index if not exists membros_usuario_idx on membros (usuario_id);
+
+-- férias, atestado, falta, afastamento, folga extra, banco de horas
+create table if not exists ocorrencias (
+  id serial primary key,
+  funcionario_id int not null references funcionarios(id) on delete cascade,
+  tipo text not null,
+  inicio date not null,
+  fim date not null,
+  horas numeric(6,2),
+  obs text,
+  criado_por int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now()
+);
+create index if not exists ocorrencias_func_idx on ocorrencias (funcionario_id, inicio);
+
+-- quem mudou o quê (aparece no histórico da empresa)
+create table if not exists auditoria (
+  id bigserial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  usuario_id int references usuarios(id) on delete set null,
+  criado_em timestamptz not null default now(),
+  acao text not null
+);
+create index if not exists auditoria_conta_idx on auditoria (conta_id, id desc);
+
+-- ---------- v4: integração contábil e acesso do funcionário ----------
+-- dados da empresa e códigos dos eventos da folha (rubricas do sistema do contador)
+create table if not exists empresa_config (
+  conta_id int primary key references usuarios(id) on delete cascade,
+  razao_social text,
+  cnpj text,
+  eventos jsonb not null default '{}'::jsonb,
+  api_prefixo text,
+  api_hash text unique,
+  api_criado_em timestamptz,
+  atualizado_em timestamptz not null default now()
+);
+
+-- mês fechado: trava alterações e guarda os números como foram entregues ao contador
+create table if not exists fechamentos (
+  conta_id int not null references usuarios(id) on delete cascade,
+  mes text not null,
+  fechado_em timestamptz not null default now(),
+  fechado_por int references usuarios(id) on delete set null,
+  dados jsonb not null,
+  primary key (conta_id, mes)
+);
+
+-- link da escala para os funcionários (só leitura, sem login)
+alter table equipes add column if not exists link_token text unique;
+
+-- ---------- v5: primeiro acesso guiado, porte, estado e feriados da cidade ----------
+alter table empresa_config add column if not exists porte text;
+alter table empresa_config add column if not exists uf text;
+alter table empresa_config add column if not exists cidade text;
+alter table empresa_config add column if not exists feriados_locais text[] not null default '{}';
+alter table equipes add column if not exists horas_dia numeric(4,2) not null default 8;
+
+-- ---------- v6: escala que se adapta ao segmento ----------
+alter table equipes add column if not exists abre text;
+alter table equipes add column if not exists fecha text;
+-- função que não pode faltar no dia (ex.: farmacêutico): [{ nome, chave, minimo: [7] }]
+alter table equipes add column if not exists criticas jsonb not null default '[]'::jsonb;
+alter table empresa_config add column if not exists segmento text;
+
+-- v7: várias empresas na mesma conta e programa de indicação
+-- empresa extra = um "usuário" sem login (origem 'empresa_extra'); quem a criou entra nela como dono via membros
+alter table membros drop constraint if exists membros_papel_check;
+alter table membros add constraint membros_papel_check check (papel in ('gestor', 'contador', 'dono'));
+alter table usuarios add column if not exists ref_codigo text unique;
+alter table usuarios add column if not exists indicado_por int references usuarios(id) on delete set null;
+alter table usuarios add column if not exists pix text;
+alter table leads add column if not exists ref text;
+-- gerador grátis do blog: de onde veio o lead e quando autorizou o envio (LGPD)
+alter table leads add column if not exists origem text;
+alter table leads add column if not exists consentimento_em timestamptz;
+alter table leads add column if not exists novidades boolean not null default false;
+-- uma comissão por compra indicada: devida -> paga (ou cancelada se houver reembolso antes de pagar)
+create table if not exists comissoes (
+  id serial primary key,
+  afiliado_id int not null references usuarios(id) on delete cascade,
+  comprador_email text not null unique,
+  valor numeric(10,2) not null,
+  status text not null default 'devida' check (status in ('devida', 'paga', 'cancelada')),
+  criado_em timestamptz not null default now(),
+  pago_em timestamptz
+);
+create index if not exists comissoes_afiliado_idx on comissoes (afiliado_id, status);
+
+-- ---------- v8: cadastro completo da empresa (logo depois da compra) e progresso da área do cliente ----------
+alter table empresa_config add column if not exists telefone text;
+alter table empresa_config add column if not exists responsavel text;
+alter table empresa_config add column if not exists responsavel_cargo text;
+alter table empresa_config add column if not exists cep text;
+alter table empresa_config add column if not exists endereco text;
+alter table empresa_config add column if not exists sem_cnpj boolean not null default false;
+alter table empresa_config add column if not exists funcionarios_qtd int;
+alter table empresa_config add column if not exists unidades_qtd int;
+alter table empresa_config add column if not exists como_conheceu text;
+alter table empresa_config add column if not exists como_conheceu_outro text;
+alter table empresa_config add column if not exists cadastro_em timestamptz;
+alter table empresa_config add column if not exists escala_enviada_em timestamptz;
+alter table compras add column if not exists whatsapp text;
+
+-- configurações feitas no /admin (ex.: token da API de Conversões da Meta)
+create table if not exists config (
+  chave text primary key,
+  valor text,
+  atualizado_em timestamptz not null default now()
+);
+
+-- primeiro acesso por função: jornada e folgas de cada função (o motor usa por pessoa)
+alter table equipes add column if not exists funcoes jsonb not null default '[]'::jsonb;
+alter table funcionarios add column if not exists dias_semana int not null default 5;
+alter table funcionarios add column if not exists entrada text;
+alter table funcionarios add column if not exists saida text;
+alter table funcionarios add column if not exists intervalo_min int;
+alter table funcionarios add column if not exists folga_pref jsonb not null default '[]'::jsonb;
+alter table escalas add column if not exists ajustes jsonb not null default '[]'::jsonb;
+
+-- ---------- v9: materiais extras (order bumps do checkout: Kit RH, Calculadora, Plaquinhas) ----------
+-- um registro por e-mail e extra; reembolso/chargeback do extra muda só o status dele
+create table if not exists extras_compras (
+  id serial primary key,
+  email text not null,
+  extra text not null,
+  transacao text,
+  status text not null default 'aprovada',
+  origem text,
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now(),
+  unique (email, extra)
+);
+alter table extras_compras drop constraint if exists extras_compras_extra_check;
+alter table extras_compras add constraint extras_compras_extra_check check (extra in ('kit_rh', 'calculadora', 'plaquinhas'));
+alter table extras_compras drop constraint if exists extras_compras_status_check;
+alter table extras_compras add constraint extras_compras_status_check check (status in ('aprovada', 'reembolsada'));
+
+-- notificações do app (sino). papel: null = todos da conta, 'dono' = dono e gerente, 'contador'. chave evita repetir.
+create table if not exists notificacoes (
+  id serial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  papel text,
+  tipo text not null,
+  titulo text not null,
+  texto text,
+  link text,
+  chave text,
+  lida boolean not null default false,
+  criado_em timestamptz not null default now()
+);
+create unique index if not exists notificacoes_chave_idx on notificacoes (conta_id, chave) where chave is not null;
+create index if not exists notificacoes_conta_idx on notificacoes (conta_id, criado_em desc);
+
+-- suporte: conversa com o assistente que precisou de uma pessoa (ou o cliente tocou em "Falar com o suporte").
+-- Uma linha por conversa (conversa_id = 'u<usuario>-<id do widget>'); repetir só atualiza.
+create table if not exists suporte_chamados (
+  id serial primary key,
+  conversa_id text not null,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  conta_id int references usuarios(id) on delete set null,
+  resumo text,
+  conversa jsonb not null default '[]',
+  tela text,
+  origem text,
+  status text not null default 'aberto',
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+create unique index if not exists suporte_chamados_conversa_idx on suporte_chamados (conversa_id);
+create index if not exists suporte_chamados_status_idx on suporte_chamados (status, atualizado_em desc);
+-- chamado do site (visitante sem conta): usuario_id vazio, origem 'site'
+alter table suporte_chamados alter column usuario_id drop not null;
+alter table suporte_chamados drop constraint if exists suporte_chamados_status_check;
+alter table suporte_chamados add constraint suporte_chamados_status_check check (status in ('aberto', 'fechado'));
+
+-- ---------- v10: sexo do colaborador (domingo das mulheres, CLT art. 386) e feriados por unidade ----------
+-- sexo: 'F', 'M' ou vazio (não informado). Usado só para o revezamento de domingo.
+alter table funcionarios add column if not exists sexo text;
+-- feriados da unidade: { abre: [datas em que abre], removidos: [datas tratadas como dia normal], extras: [{data, nome}] }
+alter table equipes add column if not exists feriados_config jsonb not null default '{}'::jsonb;
+-- feriados com a unidade fechada que entraram na escala (para refazer as semanas futuras quando mudar)
+alter table escalas add column if not exists feriados jsonb;
+-- escolha do aviso de cookies guardada na conta: quem já respondeu não vê o aviso de novo (outro aparelho, app na tela inicial)
+alter table usuarios add column if not exists cookies text;

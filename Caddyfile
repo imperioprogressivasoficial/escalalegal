@@ -1,4 +1,12 @@
 {$DOMAIN} {
-	encode gzip
+	encode zstd gzip
+	reverse_proxy app:3000 {
+		health_uri /api/health
+	}
+}
+
+# blog + gerador grátis: o mesmo app responde pelo Host (registro DNS A: blog -> IP do VPS)
+blog.{$DOMAIN} {
+	encode zstd gzip
 	reverse_proxy app:3000
 }

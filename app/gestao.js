@@ -1,0 +1,875 @@
+// Gestão da empresa: equipes, funcionários, escalas, ocorrências (férias, atestado, falta...),
+// acesso de gestor e contador, visão geral, fechamento do mês e histórico.
+//
+// "Conta" = a empresa (o usuário dono). Quem entra pode ser o dono, um gestor (edita tudo)
+// ou o contador (só consulta e baixa relatórios). O front manda a conta escolhida no cabeçalho x-conta.
+const crypto = require('crypto');
+const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe, diasFeriadoFechado, configFeriados } = require('./public/scheduler.js');
+
+const Cadastro = require('./public/cadastro.js');
+const TIPOS = Object.keys(OCORRENCIAS);
+const COD_AUSENCIA = new Set(Object.values(OCORRENCIAS).map(o => o.cod).filter(Boolean));
+const dataValida = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v)) ? String(v) : null;
+const diasEntre = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const hojeBR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // horário de Brasília
+const PAPEL_NOME = { dono: 'Dono', gestor: 'Gestor', contador: 'Contador' };
+
+const { jornada } = require('./jornada.js');
+module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LIBERAR_TUDO, CHECKOUT_URL, criaLink, fila, modelo, APP_URL, rodapeSuporte, VALOR_COMISSAO = 0 }) {
+  // ---------- conta e permissões ----------
+  const naConta = erro(async (req, res, next) => {
+    const cid = +req.get('x-conta') || req.u.id;
+    if (cid === req.u.id) {
+      req.conta = { id: req.u.id, papel: 'dono', liberado: req.u.acesso_liberado || LIBERAR_TUDO === '1', empresa: req.u.empresa };
+      return next();
+    }
+    const { rows } = await q(`select m.papel, u.acesso_liberado, u.empresa from membros m join usuarios u on u.id=m.conta_id
+      where m.conta_id=$1 and m.usuario_id=$2`, [cid, req.u.id]);
+    if (!rows[0]) return res.status(403).json({ erro: 'Você não tem acesso a esta empresa.', trocar_conta: true });
+    const liberado = rows[0].papel === 'dono' ? req.u.acesso_liberado : rows[0].acesso_liberado; // empresa extra: vale o acesso de quem criou
+    req.conta = { id: cid, papel: rows[0].papel, liberado: liberado || LIBERAR_TUDO === '1', empresa: rows[0].empresa };
+    next();
+  });
+  const edita = (req, res, next) => req.conta.papel === 'contador'
+    ? res.status(403).json({ erro: 'Seu acesso é de consulta. Peça ao dono da empresa para fazer essa alteração.' }) : next();
+  const soDono = (req, res, next) => req.conta.papel === 'dono'
+    ? next() : res.status(403).json({ erro: 'Só o dono da empresa pode gerenciar os acessos.' });
+  const pago = (req, res, next) => req.conta.liberado
+    ? next() : res.status(402).json({ erro: 'O acesso desta empresa ainda não foi liberado. Conclua o pagamento para gerar escalas.', checkout: CHECKOUT_URL });
+  const L = [logado, naConta], LE = [logado, naConta, edita];
+  const { notificar } = require('./notificacoes.js')({ app, q, erro, L });
+  const foto = require('./foto.js')({ app, q, erro, logado });
+  // dados da empresa pelo CNPJ (cadastro): Receita Federal via BrasilAPI, com CNPJ.ws de reserva; guarda 24h em memória
+  const Cnpj = require('./cnpj.js'), cnpjs = new Map();
+  app.get('/api/cnpj/:cnpj', logado, limite(40), erro(async (req, res) => {
+    const cnpj = Cadastro.soCnpj(req.params.cnpj);
+    if (!Cadastro.cnpjValido(cnpj)) return res.status(400).json({ erro: 'Esse CNPJ não confere.' });
+    const c = cnpjs.get(cnpj);
+    if (c && Date.now() - c.em < 864e5) return res.json(c.dados);
+    const dados = await Cnpj.buscaCnpj(cnpj);
+    if (!dados) return res.status(404).json({ erro: 'Não encontramos os dados deste CNPJ.' }); // não guarda: pode ter sido uma queda das fontes
+    if (cnpjs.size > 5000) cnpjs.clear();
+    cnpjs.set(cnpj, { em: Date.now(), dados });
+    res.json(dados);
+  }));
+  const br = d => d.split('-').reverse().slice(0, 2).join('/');
+
+  const minhaEquipe = erro(async (req, res, next) => {
+    const { rows } = await q('select * from equipes where id=$1 and usuario_id=$2', [+req.params.id || 0, req.conta.id]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Unidade não encontrada.' });
+    req.equipe = rows[0]; next();
+  });
+  const auditar = (req, acao) => q('insert into auditoria (conta_id, usuario_id, acao) values ($1,$2,$3)', [req.conta.id, req.u.id, String(acao).slice(0, 300)])
+    .catch(e => console.error('auditoria:', e.message));
+  // setores da unidade (mínimo por setor; tabela própria em db/setores.sql)
+  const Setores = require('./setores.js');
+  const setores = Setores({ app, q, erro, L, LE, minhaEquipe, auditar });
+
+  // ---------- ocorrências na escala ----------
+  // ocorrências de dia inteiro dos funcionários no período [de, ate]
+  async function ocorrenciasDe(ids, de, ate) {
+    if (!ids.length) return [];
+    const { rows } = await q(`select id, funcionario_id, tipo, inicio, fim from ocorrencias
+      where funcionario_id = any($1) and tipo <> 'banco_horas' and inicio <= $3 and fim >= $2`, [ids, de, ate]);
+    return rows;
+  }
+  // mapa "funcionarioId|data" -> código
+  function mapaOcorrencias(ocs) {
+    const m = new Map();
+    for (const o of ocs) {
+      const cod = OCORRENCIAS[o.tipo]?.cod;
+      if (!cod) continue;
+      for (let d = o.inicio; d <= o.fim; d = somaDias(d, 1)) m.set(o.funcionario_id + '|' + d, cod);
+    }
+    return m;
+  }
+  // aplica as ocorrências atuais sobre a escala salva (uma ocorrência lançada depois aparece na hora)
+  function sobrepor(escala, mapa) {
+    const dados = escala.dados.map((sem, s) => sem.map((dias, f) => dias.map((c, d) => {
+      const fid = escala.funcionarios[f]?.id, data = somaDias(escala.inicio, s * 7 + d);
+      const oc = fid && mapa.get(fid + '|' + data);
+      if (oc && escala.abertos[d]) return oc;
+      return COD_AUSENCIA.has(c) ? 'T' : c; // ocorrência apagada: volta a trabalhar
+    })));
+    return { ...escala, dados };
+  }
+  async function escalasComOcorrencias(escalas) {
+    if (!escalas.length) return escalas;
+    const ids = [...new Set(escalas.flatMap(e => e.funcionarios.map(f => f.id)))];
+    const de = escalas.reduce((a, e) => (e.inicio < a ? e.inicio : a), escalas[0].inicio);
+    const ate = escalas.reduce((a, e) => { const f = somaDias(e.inicio, e.semanas * 7 - 1); return f > a ? f : a; }, de);
+    const mapa = mapaOcorrencias(await ocorrenciasDe(ids, de, ate));
+    return escalas.map(e => sobrepor(e, mapa));
+  }
+
+  // ---------- conta: empresas que a pessoa acessa ----------
+  app.get('/api/contas', logado, erro(async (req, res) => {
+    const { rows } = await q(`select m.conta_id id, coalesce(u.empresa, u.nome) empresa, m.papel from membros m
+      join usuarios u on u.id=m.conta_id where m.usuario_id=$1 order by u.empresa`, [req.u.id]);
+    res.json([{ id: req.u.id, empresa: req.u.empresa || req.u.nome, papel: 'dono' }, ...rows]);
+  }));
+  app.get('/api/conta', L, erro(async (req, res) => {
+    const c = await configDe(req.conta.id);
+    res.json({ ...req.conta, papel_nome: PAPEL_NOME[req.conta.papel], ctx: ctxFeriados(c), porte: c.porte || null, uf: c.uf || null,
+      segmento: c.segmento || null, cadastro_ok: !!c.cadastro_em, unidades_qtd: c.unidades_qtd || null });
+  }));
+
+  // ---------- equipes ----------
+  function validaEquipe(b) {
+    const setor = SETORES[b.setor] ? b.setor : 'outro';
+    const abertos = Array.isArray(b.abertos) && b.abertos.length === 7 ? b.abertos.map(x => (x ? 1 : 0)) : SETORES[setor].abertos;
+    const minimo = Array.isArray(b.minimo) && b.minimo.length === 7 ? b.minimo.map(x => Math.max(0, Math.min(200, Math.round(+x) || 0))) : SETORES[setor].minimo;
+    const horas_dia = Math.max(1, Math.min(12, Math.round((+String(b.horas_dia ?? 8).replace(',', '.') || 8) * 60) / 60));
+    const hora = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
+    const abre = hora(b.abre) || SETORES[setor].abre, fecha = hora(b.fecha) || SETORES[setor].fecha;
+    // função que não pode faltar: vem do segmento e a empresa ajusta o mínimo por dia
+    const base = Array.isArray(b.criticas) ? b.criticas : SETORES[setor].criticas;
+    const criticas = base.slice(0, 10).map(c => ({ nome: limpa(c?.nome, 40), chave: limpa(c?.chave, 20).toLowerCase(), ...(limpa(c?.cargo, 60) && { cargo: limpa(c.cargo, 60) }),
+      minimo: Array.isArray(c?.minimo) && c.minimo.length === 7 ? c.minimo.map((x, d) => abertos[d] ? Math.max(0, Math.min(50, Math.round(+x) || 0)) : 0) : [0, 0, 0, 0, 0, 0, 0],
+      explica: limpa(c?.explica, 300) })).filter(c => c.nome && c.chave);
+    // jornada e folgas de cada função, como o dono respondeu no primeiro acesso
+    const funcoes = (Array.isArray(b.funcoes) ? b.funcoes : []).slice(0, 20).map(f => ({
+      nome: limpa(f?.nome, 60), n: Math.max(0, Math.min(200, Math.round(+f?.n) || 0)), dias: Math.max(1, Math.min(5, Math.round(+f?.dias) || 5)),
+      entrada: hora(f?.entrada), saida: hora(f?.saida), intervalo: Math.max(0, Math.min(240, Math.round(+f?.intervalo) || 0)),
+      folga: { modo: ['rodizio', 'preferidos', 'fixa'].includes(f?.folga?.modo) ? f.folga.modo : 'rodizio', dias: fixosDias(f?.folga?.dias) },
+      minimo: Math.max(0, Math.min(50, Math.round(+f?.minimo) || 0)), critica: !!f?.critica })).filter(f => f.nome);
+    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes, feriados_config: validaFeriados(b.feriados_config) };
+  }
+  // feriados da unidade: datas em que abre, datas tratadas como dia normal e feriados a mais (ex.: padroeiro do bairro)
+  function validaFeriados(v) {
+    v = v && typeof v === 'object' ? v : {};
+    const datas = l => [...new Set((Array.isArray(l) ? l : []).map(dataValida).filter(Boolean))].sort().slice(-400);
+    const extras = (Array.isArray(v.extras) ? v.extras : []).map(x => ({ data: dataValida(x?.data), nome: limpa(x?.nome, 60) || 'Feriado' }))
+      .filter(x => x.data).filter((x, i, l) => l.findIndex(y => y.data === x.data) === i).sort((a, b) => a.data < b.data ? -1 : 1).slice(-200);
+    return { abre: datas(v.abre), fecha: datas(v.fecha), removidos: datas(v.removidos), extras };
+  }
+  const fixosDias = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 6);
+  app.get('/api/equipes', L, erro(async (req, res) => {
+    const { rows } = await q(`select e.*, (select count(*)::int from funcionarios f where f.equipe_id=e.id and f.ativo) total,
+      (select max(criado_em) from escalas s where s.equipe_id=e.id) ultima,
+      (e.link_token is not null or exists (select 1 from escalas s where s.equipe_id=e.id and s.inicio <= current_date)
+        or exists (select 1 from empresa_config c where c.conta_id=e.usuario_id and c.escala_enviada_em is not null)) publicada
+      from equipes e where usuario_id=$1 order by e.id`, [req.conta.id]);
+    res.json(rows);
+  }));
+  app.post('/api/equipes', LE, erro(async (req, res) => {
+    const e = validaEquipe(req.body || {});
+    const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
+    if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
+    const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, feriados_config) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *',
+      [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), JSON.stringify(e.feriados_config)]);
+    auditar(req, `Criou a unidade ${e.nome}`);
+    res.json(rows[0]);
+  }));
+  app.put('/api/equipes/:id', LE, minhaEquipe, erro(async (req, res) => {
+    const e = validaEquipe({ ...req.equipe, ...req.body });
+    const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4, horas_dia=$5, abre=$6, fecha=$7, criticas=$8, feriados_config=$9 where id=$10 returning *',
+      [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), JSON.stringify(e.feriados_config), req.equipe.id]);
+    auditar(req, `Alterou o funcionamento da unidade ${e.nome}`);
+    res.json(rows[0]);
+  }));
+  app.delete('/api/equipes/:id', LE, minhaEquipe, erro(async (req, res) => {
+    await q('delete from equipes where id=$1', [req.equipe.id]);
+    auditar(req, `Excluiu a unidade ${req.equipe.nome}`);
+    res.json({ ok: true });
+  }));
+
+  // ---------- funcionários ----------
+  const fixos = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 2);
+  const sexoValido = v => (['F', 'M'].includes(String(v || '').toUpperCase()) ? String(v).toUpperCase() : null);
+  const horaFunc = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
+  const dadosFunc = f => ({
+    nome: limpa(f.nome, 60), cargo: limpa(f.cargo, 60), folga_fixa: fixos(f.folga_fixa),
+    matricula: limpa(f.matricula, 30) || null, admissao: dataValida(f.admissao), telefone: limpa(f.telefone, 20).replace(/\D/g, '') || null,
+    sexo: sexoValido(f.sexo), entrada: horaFunc(f.entrada), saida: horaFunc(f.saida),
+  });
+  app.get('/api/equipes/:id/funcionarios', L, minhaEquipe, erro(async (req, res) => {
+    const { rows } = await q('select * from funcionarios where equipe_id=$1 and ativo order by nome', [req.equipe.id]);
+    res.json(rows);
+  }));
+  app.get('/api/funcionarios', L, erro(async (req, res) => {
+    const { rows } = await q(`select f.id, f.nome, f.cargo, f.matricula, e.id equipe_id, e.nome equipe from funcionarios f
+      join equipes e on e.id=f.equipe_id where e.usuario_id=$1 and f.ativo order by e.nome, f.nome`, [req.conta.id]);
+    res.json(rows);
+  }));
+  app.post('/api/equipes/:id/funcionarios', LE, minhaEquipe, erro(async (req, res) => {
+    const lista = (Array.isArray(req.body) ? req.body : [req.body]).filter(f => limpa(f?.nome));
+    if (!lista.length) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
+    const { rows: n } = await q('select count(*)::int c from funcionarios where equipe_id=$1 and ativo', [req.equipe.id]);
+    if (n[0].c + lista.length > 200) return res.status(400).json({ erro: 'Limite de 200 funcionários por equipe.' });
+    const { rows } = await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa, matricula, admissao, telefone, sexo)
+      select $1, x.nome, x.cargo, x.folga_fixa, x.matricula, x.admissao, x.telefone, x.sexo
+      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, matricula text, admissao date, telefone text, sexo text) returning *`,
+    [req.equipe.id, JSON.stringify(lista.map(dadosFunc))]);
+    auditar(req, `Cadastrou ${rows.length === 1 ? rows[0].nome : rows.length + ' funcionários'} em ${req.equipe.nome}`);
+    res.json(rows);
+  }));
+  app.put('/api/funcionarios/:fid', LE, erro(async (req, res) => {
+    const b = req.body || {};
+    if (!limpa(b.nome)) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
+    const f = dadosFunc(b);
+    // sexo e horário só mudam quando vêm no pedido (quem não manda, não apaga)
+    const { rows } = await q(`update funcionarios f set nome=$1, cargo=$2, folga_fixa=$3, matricula=$4, admissao=$5, telefone=$6,
+      sexo=case when $9 then $10 else f.sexo end, entrada=case when $11 then $12 else f.entrada end, saida=case when $11 then $13 else f.saida end
+      from equipes e where f.id=$7 and f.equipe_id=e.id and e.usuario_id=$8 returning f.*`,
+    [f.nome, f.cargo, JSON.stringify(f.folga_fixa), f.matricula, f.admissao, f.telefone, +req.params.fid || 0, req.conta.id,
+      'sexo' in b, f.sexo, 'entrada' in b || 'saida' in b, f.entrada, f.saida]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+    auditar(req, `Editou o cadastro de ${f.nome}`);
+    res.json(rows[0]);
+  }));
+  app.delete('/api/funcionarios/:fid', LE, erro(async (req, res) => {
+    const { rows } = await q(`update funcionarios f set ativo=false from equipes e where f.id=$1 and f.equipe_id=e.id and e.usuario_id=$2
+      returning f.nome`, [+req.params.fid || 0, req.conta.id]);
+    if (rows[0]) auditar(req, `Removeu ${rows[0].nome}`);
+    res.json({ ok: true });
+  }));
+  // desfazer a remoção: o colaborador volta para a equipe
+  app.post('/api/funcionarios/:fid/reativar', LE, erro(async (req, res) => {
+    const { rows } = await q(`update funcionarios f set ativo=true from equipes e where f.id=$1 and f.equipe_id=e.id and e.usuario_id=$2
+      returning f.*`, [+req.params.fid || 0, req.conta.id]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+    auditar(req, `Desfez a remoção de ${rows[0].nome}`);
+    res.json(rows[0]);
+  }));
+
+  // ---------- escalas ----------
+  const proximaSegunda = () => { const h = hojeBR(), dow = (new Date(h + 'T12:00:00Z').getUTCDay() + 6) % 7; return somaDias(h, dow === 0 ? 0 : 7 - dow); };
+  // gera e salva a escala da unidade (férias, atestados etc. já lançados entram no cálculo)
+  async function gerarParaEquipe(req, equipe, inicio, semanas) {
+    const sets = await setores.daEquipe(equipe.id);
+    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana, setor_id, sexo from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
+    if (!fs.length) { const e = new Error('Cadastre pelo menos uma pessoa antes de gerar a escala.'); e.status = 400; throw e; }
+    const travado = await mesFechadoEntre(req.conta.id, inicio, somaDias(inicio, semanas * 7 - 1));
+    if (travado) { const e = new Error(erroFechado(travado)); e.status = 409; throw e; }
+    const mapa = mapaOcorrencias(await ocorrenciasDe(fs.map(f => f.id), inicio, somaDias(inicio, semanas * 7 - 1)));
+    const ausencias = Array.from({ length: semanas }, (_, s) => fs.map(f => Array.from({ length: 7 }, (_, d) =>
+      mapa.get(f.id + '|' + somaDias(inicio, s * 7 + d)) || null)));
+    const grupos = [...gruposDaUnidade(fs, equipe.criticas || []), ...Setores.gruposDosSetores(fs, sets)];
+    const fechadosFer = await feriadosFechadosDe(req.conta.id, equipe, inicio, semanas);
+    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa, pref: f.folga_pref || [], dias: f.dias_semana || 5, sexo: f.sexo })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
+      grupos, domingoSemanas: domingoSemanasDe(equipe.setor), feriadosFechados: fechadosFer });
+    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes, setores, feriados)
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
+    [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo, setor_id: f.setor_id, ...(f.sexo && { sexo: f.sexo }) }))),
+      JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || []),
+      JSON.stringify(Setores.assinatura(sets)), JSON.stringify(fechadosFer.map(i => somaDias(inicio, i)))]);
+    auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
+    await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} gerada`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
+      link: 'escala', chave: `escala:${equipe.id}:${hojeBR()}` });
+    return (await escalasComOcorrencias(rows))[0];
+  }
+  // feriados em que a unidade fecha no período (dias contados a partir do início)
+  async function feriadosFechadosDe(contaId, equipe, inicio, semanas) {
+    return diasFeriadoFechado(inicio, semanas, { ...(await ctxDe(contaId)), config: configFeriados(equipe.feriados_config, equipe.abertos) }, equipe.abertos);
+  }
+  app.post('/api/equipes/:id/escalas', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
+    const semanas = Math.max(1, Math.min(8, Math.round(+req.body?.semanas) || 4));
+    const inicio = dataValida(req.body?.inicio) || hojeBR();
+    try { res.json(await gerarParaEquipe(req, req.equipe, inicio, semanas)); }
+    catch (e) { if (e.status) return res.status(e.status).json({ erro: e.message }); throw e; }
+  }));
+  app.get('/api/equipes/:id/escalas', L, minhaEquipe, erro(async (req, res) => {
+    const { rows } = await q('select * from escalas where equipe_id=$1 order by criado_em desc limit 20', [req.equipe.id]);
+    res.json(await escalasComOcorrencias(rows));
+  }));
+  // a semana (segunda a domingo) da unidade. Mecanismo único: se não existe escala para a semana,
+  // ela é montada sozinha; se a equipe ou o funcionamento mudou, as semanas futuras são refeitas sozinhas.
+  const segundaDe = d => somaDias(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
+  app.get('/api/equipes/:id/semana', L, minhaEquipe, erro(async (req, res) => {
+    const hoje = hojeBR(), seg = segundaDe(dataValida(req.query.data) || hoje), dom = somaDias(seg, 6);
+    const eq = req.equipe;
+    const sets = await setores.daEquipe(eq.id);
+    const { rows: fs } = await q('select id, setor_id, sexo from funcionarios where equipe_id=$1 and ativo', [eq.id]);
+    const { rows: cand } = await q(`select * from escalas where equipe_id=$1 and inicio <= $2 and inicio + semanas * 7 > $3::date
+      order by criado_em desc limit 10`, [eq.id, seg, dom]);
+    let escala = cand.find(e => diasEntre(e.inicio, seg) % 7 === 0) || null;
+    const podeMontar = req.conta.papel !== 'contador' && req.conta.liberado && fs.length > 0;
+    const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    // feriados fechados: escala antiga (sem a coluna) só fica velha se o período tiver feriado fechado
+    const ferEsperado = escala ? (await feriadosFechadosDe(req.conta.id, eq, escala.inicio, escala.semanas)).map(i => somaDias(escala.inicio, i)) : [];
+    const desatualizada = escala && (
+      !igual(escala.funcionarios.map(f => [f.id, f.setor_id ?? null, f.sexo || null]).sort((a, b) => a[0] - b[0]), fs.map(f => [f.id, f.setor_id ?? null, f.sexo || null]).sort((a, b) => a[0] - b[0]))
+      || !igual(escala.feriados || [], ferEsperado)
+      || !igual(escala.setores || [], Setores.assinatura(sets))
+      || !igual(escala.abertos, eq.abertos) || !igual(escala.minimo, eq.minimo));
+    let montada = false;
+    // monta: semana sem escala (da atual em diante) ou semana futura desatualizada. A semana em curso nunca é refeita sozinha.
+    if (podeMontar && ((!escala && seg >= segundaDe(hoje)) || (desatualizada && seg > hoje)) && seg <= somaDias(hoje, 26 * 7)) {
+      try { escala = await gerarParaEquipe(req, eq, seg, 4); montada = true; }
+      catch (e) { if (!e.status) throw e; }
+    }
+    if (escala && !montada) escala = (await escalasComOcorrencias([escala]))[0];
+    const semana = escala ? diasEntre(escala.inicio, seg) / 7 : null;
+    const motivo = escala ? null : !fs.length ? 'sem_pessoas' : !req.conta.liberado ? 'nao_pago' : seg < segundaDe(hoje) ? 'passado' : 'sem_escala';
+    res.json({ inicio: seg, escala, semana, montada, motivo, novos: escala ? fs.filter(f => !escala.funcionarios.some(x => x.id === f.id)).length : 0, checkout: CHECKOUT_URL });
+  }));
+  // refaz as semanas a partir de uma data (depois de lançar férias ou afastamento). Nunca mexe na semana em curso.
+  app.post('/api/equipes/:id/refazer', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
+    const hoje = hojeBR(), de = dataValida(req.body?.de) || hoje, ate = dataValida(req.body?.ate) || de;
+    let seg = segundaDe(de > hoje ? de : hoje);
+    if (seg <= hoje) seg = somaDias(seg, 7);
+    if (ate < seg) return res.json({ ok: true, refeito: false });
+    const semanas = Math.max(4, Math.min(8, Math.ceil((diasEntre(seg, ate) + 1) / 7)));
+    try { await gerarParaEquipe(req, req.equipe, seg, semanas); res.json({ ok: true, refeito: true, de: seg }); }
+    catch (e) { if (e.status) return res.json({ ok: true, refeito: false, aviso: e.message }); throw e; }
+  }));
+  // ajuste manual de uma célula (trabalha <-> folga)
+  app.patch('/api/escalas/:eid', LE, erro(async (req, res) => {
+    const { semana, funcionario, dia } = req.body || {};
+    if (![semana, funcionario, dia].every(Number.isInteger) || dia < 0 || dia > 6) return res.status(400).json({ erro: 'Célula inválida.' });
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const { rows } = await client.query(`select s.*, e.nome equipe from escalas s join equipes e on e.id=s.equipe_id
+        where s.id=$1 and e.usuario_id=$2 for update`, [+req.params.eid || 0, req.conta.id]);
+      if (!rows[0]) { await client.query('rollback'); return res.status(404).json({ erro: 'Escala não encontrada.' }); }
+      const esc = rows[0], d = esc.dados;
+      if (!Array.isArray(d[semana]?.[funcionario])) { await client.query('rollback'); return res.status(400).json({ erro: 'Célula inválida.' }); }
+      const fid = esc.funcionarios[funcionario]?.id, data = somaDias(esc.inicio, semana * 7 + dia);
+      const travado = await mesFechadoEntre(req.conta.id, data, data);
+      if (travado) { await client.query('rollback'); return res.status(409).json({ erro: erroFechado(travado) }); }
+      const oc = await ocorrenciasDe([fid], data, data);
+      if (oc.length) {
+        await client.query('rollback');
+        return res.status(409).json({ erro: `Esse dia tem ${OCORRENCIAS[oc[0].tipo].nome.toLowerCase()} lançado. Remova a ocorrência para mudar.` });
+      }
+      const novo = d[semana][funcionario][dia] === 'F' ? 'T' : 'F';
+      d[semana][funcionario][dia] = novo;
+      await client.query('update escalas set dados=$1 where id=$2', [JSON.stringify(d), esc.id]);
+      await client.query('commit');
+      auditar(req, `Ajustou a escala de ${esc.equipe}: ${esc.funcionarios[funcionario]?.nome} ${novo === 'F' ? 'folga' : 'trabalha'} em ${data.split('-').reverse().join('/')}`);
+      if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'troca', papel: 'dono', titulo: `${req.u.nome} trocou uma folga`,
+        texto: `${esc.funcionarios[funcionario]?.nome} ${novo === 'F' ? 'folga' : 'trabalha'} em ${br(data)} (${esc.equipe}).`, link: 'escala' });
+      res.json({ ok: true, dados: (await escalasComOcorrencias([{ ...esc, dados: d }]))[0].dados });
+    } catch (e) { await client.query('rollback').catch(() => {}); throw e; } finally { client.release(); }
+  }));
+
+  // ---------- ocorrências ----------
+  app.get('/api/ocorrencias', L, erro(async (req, res) => {
+    const de = dataValida(req.query.de) || somaDias(hojeBR(), -60), ate = dataValida(req.query.ate) || somaDias(hojeBR(), 120);
+    const { rows } = await q(`select o.*, f.nome funcionario, f.cargo, e.id equipe_id, e.nome equipe, u.nome criado_por_nome
+      from ocorrencias o join funcionarios f on f.id=o.funcionario_id join equipes e on e.id=f.equipe_id
+      left join usuarios u on u.id=o.criado_por
+      where e.usuario_id=$1 and o.inicio <= $3 and o.fim >= $2 and ($4::int is null or e.id=$4) and ($5::int is null or f.id=$5)
+      order by o.inicio desc, f.nome limit 1000`, [req.conta.id, de, ate, +req.query.equipe || null, +req.query.funcionario || null]);
+    res.json(rows);
+  }));
+  app.post('/api/ocorrencias', LE, limite(60), erro(async (req, res) => {
+    const b = req.body || {};
+    const tipo = TIPOS.includes(b.tipo) ? b.tipo : null;
+    if (!tipo) return res.status(400).json({ erro: 'Escolha o tipo da ocorrência.' });
+    const inicio = dataValida(b.inicio), fim = tipo === 'banco_horas' ? inicio : (dataValida(b.fim) || inicio);
+    if (!inicio) return res.status(400).json({ erro: 'Informe a data.' });
+    if (fim < inicio) return res.status(400).json({ erro: 'A data final é antes da inicial.' });
+    if (diasEntre(inicio, fim) > 366) return res.status(400).json({ erro: 'Período longo demais (máximo 1 ano).' });
+    let horas = null;
+    if (tipo === 'banco_horas') {
+      horas = Math.round(parseFloat(String(b.horas).replace(',', '.')) * 100) / 100;
+      if (!horas || Math.abs(horas) > 200) return res.status(400).json({ erro: 'Informe as horas (positivo = crédito, negativo = desconto).' });
+    }
+    const travado = await mesFechadoEntre(req.conta.id, inicio, fim);
+    if (travado) return res.status(409).json({ erro: erroFechado(travado) });
+    const { rows: fr } = await q(`select f.id, f.nome from funcionarios f join equipes e on e.id=f.equipe_id
+      where f.id=$1 and e.usuario_id=$2 and f.ativo`, [+b.funcionario_id || 0, req.conta.id]);
+    if (!fr[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+    if (tipo !== 'banco_horas') {
+      const conflito = await ocorrenciasDe([fr[0].id], inicio, fim);
+      if (conflito.length) {
+        const c = conflito[0];
+        return res.status(409).json({ erro: `${fr[0].nome} já tem ${OCORRENCIAS[c.tipo].nome.toLowerCase()} de ${c.inicio.split('-').reverse().join('/')} a ${c.fim.split('-').reverse().join('/')}.` });
+      }
+    }
+    const { rows } = await q(`insert into ocorrencias (funcionario_id, tipo, inicio, fim, horas, obs, criado_por)
+      values ($1,$2,$3,$4,$5,$6,$7) returning *`, [fr[0].id, tipo, inicio, fim, horas, limpa(b.obs, 300) || null, req.u.id]);
+    const periodo = inicio === fim ? inicio.split('-').reverse().join('/') : `${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`;
+    auditar(req, `Lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}${horas ? ` (${horas > 0 ? '+' : ''}${horas}h)` : ''} para ${fr[0].nome}: ${periodo}`);
+    if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'ocorrencia', papel: 'dono', titulo: `${req.u.nome} lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}`,
+      texto: `${fr[0].nome}: ${periodo}.`, link: 'colaboradores/ausencias' });
+    res.json(rows[0]);
+  }));
+  app.delete('/api/ocorrencias/:oid', LE, erro(async (req, res) => {
+    const { rows: o } = await q(`select o.inicio, o.fim from ocorrencias o join funcionarios f on f.id=o.funcionario_id join equipes e on e.id=f.equipe_id
+      where o.id=$1 and e.usuario_id=$2`, [+req.params.oid || 0, req.conta.id]);
+    const travado = o[0] && await mesFechadoEntre(req.conta.id, o[0].inicio, o[0].fim);
+    if (travado) return res.status(409).json({ erro: erroFechado(travado) });
+    const { rows } = await q(`delete from ocorrencias o using funcionarios f, equipes e
+      where o.id=$1 and f.id=o.funcionario_id and e.id=f.equipe_id and e.usuario_id=$2 returning o.tipo, o.inicio, f.nome`, [+req.params.oid || 0, req.conta.id]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Ocorrência não encontrada.' });
+    auditar(req, `Apagou ${OCORRENCIAS[rows[0].tipo]?.nome.toLowerCase()} de ${rows[0].nome} (${rows[0].inicio.split('-').reverse().join('/')})`);
+    res.json({ ok: true });
+  }));
+
+  // ---------- visão geral (hoje e próximos 7 dias) ----------
+  // escala vigente de cada funcionário em cada dia: a gerada por último que cobre o dia
+  async function vigentes(contaId, de, ate, equipeId) {
+    const { rows } = await q(`select s.*, e.nome equipe from escalas s join equipes e on e.id=s.equipe_id
+      where e.usuario_id=$1 and s.inicio <= $3 and s.inicio + s.semanas * 7 > $2::date and ($4::int is null or e.id=$4)
+      order by s.criado_em desc`, [contaId, de, ate, equipeId || null]);
+    const escalas = await escalasComOcorrencias(rows);
+    const cel = new Map(); // "fid|data" -> código
+    const cob = new Map(); // "equipeId|data" -> escala usada no dia
+    for (const e of escalas) { // da mais nova para a mais velha: a primeira que preencher fica
+      e.dados.forEach((sem, s) => sem.forEach((dias, f) => dias.forEach((c, d) => {
+        const data = somaDias(e.inicio, s * 7 + d), fid = e.funcionarios[f]?.id;
+        if (data < de || data > ate || !fid) return;
+        const k = fid + '|' + data;
+        if (!cel.has(k)) cel.set(k, e.abertos[d] ? c : 'F');
+      })));
+      for (let i = 0; i < e.semanas * 7; i++) { const k = e.equipe_id + '|' + somaDias(e.inicio, i); if (!cob.has(k)) cob.set(k, e); }
+    }
+    return { cel, cob };
+  }
+
+  app.get('/api/visao', L, erro(async (req, res) => {
+    const hoje = dataValida(req.query.data) || hojeBR(), fim = somaDias(hoje, 6), ctx = await ctxDe(req.conta.id);
+    const [{ rows: equipes }, { rows: funcs }] = await Promise.all([
+      q('select * from equipes where usuario_id=$1 order by id', [req.conta.id]),
+      q(`select f.id, f.nome, f.cargo, f.equipe_id from funcionarios f join equipes e on e.id=f.equipe_id
+        where e.usuario_id=$1 and f.ativo order by f.nome`, [req.conta.id]),
+    ]);
+    const { cel, cob } = await vigentes(req.conta.id, hoje, somaDias(hoje, 13));
+    const mapaOc = mapaOcorrencias(await ocorrenciasDe(funcs.map(f => f.id), hoje, fim));
+    const out = equipes.map(e => {
+      const fe = funcs.filter(f => f.equipe_id === e.id);
+      const dias = Array.from({ length: 7 }, (_, i) => {
+        const data = somaDias(hoje, i), dow = (new Date(data + 'T12:00:00Z').getUTCDay() + 6) % 7;
+        const tem = cob.has(e.id + '|' + data);
+        const presentes = fe.filter(f => (cel.get(f.id + '|' + data) || (tem ? '' : null)) === 'T').length;
+        return { data, dia: DIAS[dow], aberto: !!e.abertos[dow], minimo: e.minimo[dow], presentes: tem ? presentes : null, feriado: feriado(data, { ...ctx, config: configFeriados(e.feriados_config, e.abertos) }) };
+      });
+      const st = f => cel.get(f.id + '|' + hoje) || mapaOc.get(f.id + '|' + hoje) || null;
+      const semEscala = [7, 8, 9, 10, 11, 12, 13].filter(i => !cob.has(e.id + '|' + somaDias(hoje, i))).length;
+      return {
+        id: e.id, nome: e.nome, total: fe.length, dias,
+        hoje: {
+          trabalham: fe.filter(f => st(f) === 'T').map(f => ({ nome: f.nome, cargo: f.cargo })),
+          folgam: fe.filter(f => st(f) === 'F').map(f => ({ nome: f.nome })),
+          ausentes: fe.filter(f => COD_NOME[st(f)]).map(f => ({ nome: f.nome, motivo: COD_NOME[st(f)] })),
+        },
+        proxima_semana_sem_escala: semEscala >= 7,
+      };
+    });
+    const { rows: ocs } = await q(`select o.tipo, o.inicio, o.fim, o.horas, f.nome funcionario, e.nome equipe from ocorrencias o
+      join funcionarios f on f.id=o.funcionario_id join equipes e on e.id=f.equipe_id
+      where e.usuario_id=$1 and o.fim >= $2 and o.inicio <= $3 and o.tipo <> 'banco_horas' order by o.inicio limit 50`, [req.conta.id, hoje, somaDias(hoje, 30)]);
+    res.json({ data: hoje, feriado: feriado(hoje, ctx), equipes: out, ocorrencias: ocs });
+  }));
+
+  // ---------- fechamento do mês (para o contador) ----------
+  const mesValido = m => (/^\d{4}-(0[1-9]|1[0-2])$/.test(m || '') ? m : null);
+  const fimDoMes = de => somaDias(somaDias(de, 32).slice(0, 7) + '-01', -1);
+  const mesBR = m => m.split('-').reverse().join('/');
+
+  // números do mês por funcionário, calculados das escalas vigentes + ocorrências
+  async function calcularFechamento(contaId, mes, equipeId) {
+    const de = mes + '-01', ate = fimDoMes(de);
+    const { rows: funcs } = await q(`select f.id, f.nome, f.cargo, f.matricula, f.admissao, f.ativo, e.id equipe_id, e.nome equipe
+      from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=$1 and ($2::int is null or e.id=$2)
+      and (f.ativo or exists (select 1 from ocorrencias o where o.funcionario_id=f.id and o.fim >= $3 and o.inicio <= $4))
+      order by e.nome, f.nome`, [contaId, equipeId || null, de, ate]);
+    const { cel } = await vigentes(contaId, de, ate, equipeId);
+    const { rows: banco } = await q(`select funcionario_id,
+        sum(horas) filter (where inicio between $2 and $3 and horas > 0) credito,
+        sum(horas) filter (where inicio between $2 and $3 and horas < 0) debito,
+        sum(horas) total
+      from ocorrencias where funcionario_id = any($1) and tipo='banco_horas' and inicio <= $3 group by funcionario_id`, [funcs.map(f => f.id), de, ate]);
+    const mapaOc = mapaOcorrencias(await ocorrenciasDe(funcs.map(f => f.id), de, ate));
+    const bancoDe = Object.fromEntries(banco.map(b => [b.funcionario_id, b]));
+    const ctx = await ctxDe(contaId);
+    const dias = []; for (let d = de; d <= ate; d = somaDias(d, 1)) dias.push({ data: d, dia: DIAS[(new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7], feriado: feriado(d, ctx) });
+    // feriado trabalhado conta pelos feriados de cada unidade (a unidade pode ter tirado ou somado um feriado)
+    const { rows: cfgs } = await q('select id, feriados_config, abertos from equipes where usuario_id=$1', [contaId]);
+    const ctxEq = Object.fromEntries(cfgs.map(e => [e.id, { ...ctx, config: configFeriados(e.feriados_config, e.abertos) }]));
+    const linhas = funcs.map(f => {
+      const c = { trabalhados: 0, folgas: 0, domingos: 0, feriados: 0, faltas: 0, atestado: 0, ferias: 0, afastamento: 0, folga_extra: 0, sem_escala: 0 };
+      const codigos = dias.map(({ data, dia }) => {
+        const v = cel.get(f.id + '|' + data) || mapaOc.get(f.id + '|' + data) || '';
+        if (v === 'T') { c.trabalhados++; if (dia === 'Dom') c.domingos++; if (feriado(data, ctxEq[f.equipe_id] || ctx)) c.feriados++; }
+        else if (v === 'F') c.folgas++;
+        else if (v === 'X') c.faltas++;
+        else if (v === 'M') c.atestado++;
+        else if (v === 'V') c.ferias++;
+        else if (v === 'L') c.afastamento++;
+        else if (v === 'E') c.folga_extra++;
+        else c.sem_escala++;
+        return v;
+      });
+      const b = bancoDe[f.id] || {};
+      const credito = +b.credito || 0, debito = -(+b.debito || 0);
+      return { ...f, ...c, horas_credito: credito, horas_debito: debito, banco_mes: Math.round((credito - debito) * 100) / 100, banco_saldo: +b.total || 0, codigos };
+    });
+    return { mes, de, ate, dias, linhas };
+  }
+
+  // mês fechado: devolve os números congelados no fechamento
+  async function fechamentoDoMes(contaId, mes, equipeId) {
+    const { rows } = await q(`select f.dados, f.fechado_em, u.nome fechado_por from fechamentos f left join usuarios u on u.id=f.fechado_por
+      where f.conta_id=$1 and f.mes=$2`, [contaId, mes]);
+    if (rows[0]) {
+      const d = rows[0].dados;
+      return { ...d, linhas: equipeId ? d.linhas.filter(l => l.equipe_id === equipeId) : d.linhas, fechado: { em: rows[0].fechado_em, por: rows[0].fechado_por } };
+    }
+    return { ...(await calcularFechamento(contaId, mes, equipeId)), fechado: null };
+  }
+  // trava: algum dia do período está num mês fechado?
+  async function mesFechadoEntre(contaId, de, ate) {
+    const { rows } = await q(`select mes from fechamentos where conta_id=$1 and mes between $2 and $3 order by mes limit 1`, [contaId, de.slice(0, 7), ate.slice(0, 7)]);
+    return rows[0]?.mes || null;
+  }
+  const erroFechado = mes => `O mês ${mesBR(mes)} já foi fechado e entregue ao contador. Peça ao dono para reabrir antes de alterar.`;
+
+  const numBR = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  const celCsv = v => { const s = String(v ?? ''); return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+
+  function csvCompleto(f) {
+    const leg = { T: 'T', F: 'F', X: 'FALTA', M: 'ATEST', V: 'FÉRIAS', L: 'AFAST', E: 'F.EXTRA', '': '' };
+    const cab = ['Equipe', 'Matrícula', 'Funcionário', 'Cargo', 'Dias trabalhados', 'Folgas', 'Domingos trabalhados', 'Feriados trabalhados',
+      'Faltas', 'Atestado (dias)', 'Férias (dias)', 'Afastamento (dias)', 'Folgas extras', 'Horas extras (banco)', 'Horas a descontar (banco)',
+      'Banco de horas no mês', 'Saldo banco de horas', 'Dias sem escala', ...f.dias.map(d => d.data.slice(8) + '/' + d.data.slice(5, 7))];
+    const corpo = f.linhas.map(l => [l.equipe, l.matricula, l.nome, l.cargo, l.trabalhados, l.folgas, l.domingos, l.feriados, l.faltas, l.atestado,
+      l.ferias, l.afastamento, l.folga_extra, numBR(l.horas_credito || 0), numBR(l.horas_debito || 0), numBR(l.banco_mes), numBR(l.banco_saldo), l.sem_escala,
+      ...l.codigos.map(c => leg[c])].map(celCsv).join(';'));
+    return '﻿' + [cab.join(';'), ...corpo].join('\r\n');
+  }
+  // arquivo de eventos para importar na folha: uma linha por funcionário x evento com quantidade
+  // ---------- dados da empresa (porte, estado, feriados da cidade) ----------
+  const PORTES = { mei: 'MEI', me: 'Microempresa (ME)', epp: 'Empresa de Pequeno Porte (EPP)', media: 'Média ou grande', nao_sei: 'Não sei' };
+  async function configDe(contaId) {
+    const { rows } = await q(`select c.*, u.empresa nome from usuarios u left join empresa_config c on c.conta_id=u.id where u.id=$1`, [contaId]);
+    return rows[0] || {};
+  }
+  const ctxFeriados = c => ({ uf: c.uf || null, locais: c.feriados_locais || [] });
+  async function ctxDe(contaId) { return ctxFeriados(await configDe(contaId)); }
+
+  async function enviarPlanilha(res, contaId, mes, equipeId) {
+    const f = await fechamentoDoMes(contaId, mes, equipeId);
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="fechamento-${mes}.csv"` }).send(csvCompleto(f));
+  }
+
+  app.get('/api/relatorio', L, erro(async (req, res) => {
+    const mes = mesValido(req.query.mes) || hojeBR().slice(0, 7);
+    if (req.query.formato === 'csv') { auditar(req, `Baixou a planilha do fechamento de ${mesBR(mes)}`); return enviarPlanilha(res, req.conta.id, mes, +req.query.equipe || null); }
+    const f = await fechamentoDoMes(req.conta.id, mes, +req.query.equipe || null);
+    const cfg = await configDe(req.conta.id);
+    res.json({ ...f, empresa: cfg.razao_social || cfg.nome || req.conta.empresa, cnpj: cfg.cnpj || null, sem_matricula: f.linhas.filter(l => !l.matricula).length });
+  }));
+
+  // fechar o mês: congela os números, trava alterações e avisa o contador
+  app.get('/api/fechamentos', L, erro(async (req, res) => {
+    const { rows } = await q(`select f.mes, f.fechado_em, u.nome fechado_por from fechamentos f left join usuarios u on u.id=f.fechado_por
+      where f.conta_id=$1 order by f.mes desc limit 36`, [req.conta.id]);
+    res.json(rows);
+  }));
+  app.post('/api/fechamentos', LE, erro(async (req, res) => {
+    const mes = mesValido(req.body?.mes);
+    if (!mes) return res.status(400).json({ erro: 'Mês inválido.' });
+    if (mes > hojeBR().slice(0, 7)) return res.status(400).json({ erro: 'Não dá para fechar um mês que ainda não começou.' });
+    const f = await calcularFechamento(req.conta.id, mes, null);
+    const { rowCount } = await q(`insert into fechamentos (conta_id, mes, fechado_por, dados) values ($1,$2,$3,$4) on conflict do nothing`,
+      [req.conta.id, mes, req.u.id, JSON.stringify(f)]);
+    if (!rowCount) return res.status(409).json({ erro: `O mês ${mesBR(mes)} já está fechado.` });
+    auditar(req, `Fechou o mês ${mesBR(mes)} e enviou ao contador`);
+    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Competência ${mesBR(mes)} fechada`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, ausências e feriados prontos para a folha.`, link: 'fechamento', chave: `fechado:${mes}` });
+    const { rows: conts } = await q(`select u.email, u.nome from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 and m.papel='contador'`, [req.conta.id]);
+    const empresa = req.conta.empresa || req.u.nome;
+    for (const c of conts) {
+      await fila.enfileirar(c.email, `Fechamento de ${mesBR(mes)} da ${empresa} está pronto`, modelo({
+        titulo: `Fechamento de ${mesBR(mes)} pronto para a folha`,
+        paragrafos: [`${req.u.nome} fechou o mês ${mesBR(mes)} da ${empresa}.`, `São ${f.linhas.length} funcionário(s): dias trabalhados, folgas, domingos e feriados trabalhados, faltas, atestados, férias e banco de horas.`,
+          'Entre no seu Espaço do contador para ver e baixar a planilha.'],
+        botao: 'Abrir o Espaço do contador', link: `${APP_URL}/app#contador`, rodape: rodapeSuporte,
+      }));
+    }
+    res.json({ ok: true, contadores_avisados: conts.length });
+  }));
+  app.delete('/api/fechamentos/:mes', L, soDono, erro(async (req, res) => {
+    const mes = mesValido(req.params.mes);
+    const { rowCount } = await q('delete from fechamentos where conta_id=$1 and mes=$2', [req.conta.id, mes]);
+    if (rowCount) auditar(req, `Reabriu o mês ${mesBR(mes)}`);
+    res.json({ ok: true });
+  }));
+
+  app.get('/api/empresa', L, erro(async (req, res) => {
+    const c = await configDe(req.conta.id);
+    res.json({ nome: c.nome || '', razao_social: c.razao_social || '', cnpj: c.cnpj || '', porte: c.porte || '', uf: c.uf || '', cidade: c.cidade || '',
+      feriados_locais: c.feriados_locais || [], portes: PORTES, ufs: UFS,
+      sem_cnpj: !!c.sem_cnpj, telefone: c.telefone || '', responsavel: c.responsavel || '', responsavel_cargo: c.responsavel_cargo || '',
+      cep: c.cep || '', endereco: c.endereco || '', segmento: c.segmento || '', funcionarios_qtd: c.funcionarios_qtd || null, unidades_qtd: c.unidades_qtd || null,
+      como_conheceu: c.como_conheceu || '', como_conheceu_outro: c.como_conheceu_outro || '', cadastro_em: c.cadastro_em || null });
+  }));
+  const validaEmpresa = (b, atual = {}) => {
+    const cnpj = Cadastro.soCnpj(b.cnpj ?? atual.cnpj);
+    if (cnpj && cnpj.length !== 14) return { erro: 'CNPJ precisa ter 14 caracteres.' };
+    if (cnpj && !Cadastro.cnpjValido(cnpj)) return { erro: 'Esse CNPJ não confere. Veja se algum número ficou trocado.' };
+    const txt = (k, max) => (b[k] === undefined ? atual[k] : limpa(b[k], max)) || null;
+    const num = (k, max) => { const v = b[k] === undefined ? atual[k] : Math.round(+b[k]); return v >= 1 && v <= max ? v : null; };
+    const locais = [...new Set((Array.isArray(b.feriados_locais) ? b.feriados_locais : String(b.feriados_locais || '').split(/[\s,;]+/))
+      .map(x => { const m = /^(\d{1,2})\/(\d{1,2})$/.exec(String(x).trim()) || /^(\d{2})-(\d{2})$/.exec(String(x).trim()); if (!m) return null;
+        const [d, mm] = /\//.test(x) ? [m[1], m[2]] : [m[2], m[1]]; const md = `${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        return +mm >= 1 && +mm <= 12 && +d >= 1 && +d <= 31 ? md : null; }).filter(Boolean))].slice(0, 20);
+    return {
+      razao_social: limpa(b.razao_social ?? atual.razao_social, 120) || null, cnpj: cnpj || null,
+      porte: PORTES[b.porte] ? b.porte : (atual.porte || null), uf: UFS.includes(b.uf) ? b.uf : (b.uf === '' ? null : atual.uf || null),
+      cidade: limpa(b.cidade ?? atual.cidade, 80) || null, feriados_locais: b.feriados_locais === undefined ? (atual.feriados_locais || []) : locais,
+      telefone: (b.telefone === undefined ? atual.telefone : Cadastro.soNum(b.telefone).replace(/^55(?=\d{10,11}$)/, '').slice(0, 11)) || null,
+      responsavel: txt('responsavel', 80), responsavel_cargo: txt('responsavel_cargo', 60), endereco: txt('endereco', 160),
+      cep: (b.cep === undefined ? atual.cep : Cadastro.soNum(b.cep).slice(0, 8)) || null,
+      segmento: SETORES[b.segmento] ? b.segmento : (atual.segmento || null),
+      funcionarios_qtd: num('funcionarios_qtd', 100000), unidades_qtd: num('unidades_qtd', 1000),
+      como_conheceu: Cadastro.ORIGENS[b.como_conheceu] ? b.como_conheceu : (atual.como_conheceu || null), como_conheceu_outro: txt('como_conheceu_outro', 80),
+      sem_cnpj: b.sem_cnpj === undefined ? !!atual.sem_cnpj : !!b.sem_cnpj && !cnpj,
+    };
+  };
+  const CAMPOS = ['razao_social', 'cnpj', 'porte', 'uf', 'cidade', 'feriados_locais', 'telefone', 'responsavel', 'responsavel_cargo', 'cep', 'endereco',
+    'segmento', 'funcionarios_qtd', 'unidades_qtd', 'como_conheceu', 'como_conheceu_outro', 'sem_cnpj'];
+  async function salvaEmpresa(contaId, v, concluir = false) {
+    await q(`insert into empresa_config (conta_id, ${CAMPOS.join(', ')}, cadastro_em) values ($1, ${CAMPOS.map((_, i) => '$' + (i + 2)).join(', ')}, ${concluir ? 'now()' : 'null'})
+      on conflict (conta_id) do update set ${CAMPOS.map(k => `${k}=excluded.${k}`).join(', ')}, atualizado_em=now()
+      ${concluir ? ', cadastro_em=coalesce(empresa_config.cadastro_em, now())' : ''}`,
+    [contaId, ...CAMPOS.map(k => v[k] ?? (k === 'feriados_locais' ? [] : k === 'sem_cnpj' ? false : null))]);
+  }
+  // cadastro completo da empresa (primeiro acesso, antes do quiz da escala): tudo obrigatório, CNPJ conferido
+  app.post('/api/empresa/cadastro', L, soDono, limite(30), erro(async (req, res) => {
+    const c = Cadastro.confere(req.body);
+    if (c.erro) return res.status(400).json(c);
+    const d = c.dados;
+    if (!UFS.includes(d.uf)) return res.status(400).json({ campo: 'uf', erro: 'Escolha o estado.' });
+    if (!SETORES[d.segmento]) return res.status(400).json({ campo: 'segmento', erro: 'Escolha o tipo de negócio.' });
+    const atual = await configDe(req.conta.id);
+    await salvaEmpresa(req.conta.id, { ...d, feriados_locais: atual.feriados_locais || [] }, true);
+    await q('update usuarios set empresa=$1, whatsapp=coalesce(whatsapp, $2) where id=$3', [d.nome, d.telefone, req.conta.id]);
+    auditar(req, 'Completou o cadastro da empresa');
+    res.json({ ok: true });
+  }));
+  // área do cliente: o que já foi feito (checklist da tela inicial)
+  app.get('/api/inicio', L, erro(async (req, res) => {
+    const { rows: [r] } = await q(`select
+        (select cadastro_em from empresa_config where conta_id=$1) cadastro_em,
+        (select escala_enviada_em from empresa_config where conta_id=$1) enviada_em,
+        (select count(*)::int from equipes where usuario_id=$1) unidades,
+        (select count(*)::int from equipes where usuario_id=$1 and link_token is not null) links,
+        (select count(*)::int from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=$1 and f.ativo) pessoas,
+        (select count(*)::int from membros where conta_id=$1 and papel='contador') contadores`, [req.conta.id]);
+    res.json({ cadastro_ok: !!r.cadastro_em, unidades: r.unidades, pessoas: r.pessoas, escala_enviada: !!r.enviada_em || r.links > 0, contador: r.contadores > 0 });
+  }));
+  // estado da jornada (próximo passo por papel), lido dos dados reais da empresa: app/jornada.js
+  app.get('/api/jornada', L, erro(async (req, res) => {
+    res.json(await jornada(q, req.conta.id, req.conta.papel));
+  }));
+  app.post('/api/inicio/enviada', LE, erro(async (req, res) => {
+    await q(`insert into empresa_config (conta_id, escala_enviada_em) values ($1, now())
+      on conflict (conta_id) do update set escala_enviada_em=coalesce(empresa_config.escala_enviada_em, now())`, [req.conta.id]);
+    await q("update notificacoes set lida=true where conta_id=$1 and tipo='enviar' and not lida", [req.conta.id]);
+    res.json({ ok: true });
+  }));
+  app.put('/api/empresa', L, soDono, erro(async (req, res) => {
+    const b = req.body || {}, v = validaEmpresa(b, await configDe(req.conta.id));
+    if (v.erro) return res.status(400).json(v);
+    await salvaEmpresa(req.conta.id, v);
+    if (limpa(b.nome)) await q('update usuarios set empresa=$1 where id=$2', [limpa(b.nome), req.conta.id]);
+    auditar(req, 'Alterou os dados da empresa');
+    res.json({ ok: true });
+  }));
+
+  // ---------- primeiro acesso: em um passo cria empresa, unidade, pessoas e já gera a escala ----------
+  app.post('/api/onboarding', L, soDono, limite(20), erro(async (req, res) => {
+    const b = req.body || {};
+    if (b.empresa) {
+      const v = validaEmpresa(b.empresa, await configDe(req.conta.id));
+      if (v.erro) return res.status(400).json(v);
+      await salvaEmpresa(req.conta.id, v);
+      if (limpa(b.empresa.nome)) { await q('update usuarios set empresa=$1 where id=$2', [limpa(b.empresa.nome), req.conta.id]); req.conta.empresa = limpa(b.empresa.nome); }
+    }
+    const u = validaEquipe(b.unidade || {});
+    const hora = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
+    const pessoas = (Array.isArray(b.pessoas) ? b.pessoas : []).map(p => ({ nome: limpa(p?.nome, 60), cargo: limpa(p?.cargo, 60),
+      folga_fixa: fixos(p?.folga_fixa), folga_pref: fixosDias(p?.folga_pref), dias_semana: Math.max(1, Math.min(5, Math.round(+p?.dias_semana) || 5)),
+      entrada: hora(p?.entrada), saida: hora(p?.saida), intervalo_min: p?.intervalo_min == null ? null : Math.max(0, Math.min(240, Math.round(+p.intervalo_min) || 0)) }))
+      .filter(p => p.nome).slice(0, 200);
+    if (!pessoas.length) return res.status(400).json({ erro: 'Informe pelo menos uma pessoa da equipe.' });
+    const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
+    if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
+    const { rows: [eq] } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *',
+      [req.conta.id, u.nome, u.setor, JSON.stringify(u.abertos), JSON.stringify(u.minimo), u.horas_dia, u.abre, u.fecha, JSON.stringify(u.criticas), JSON.stringify(u.funcoes)]);
+    if (b.empresa || !(await configDe(req.conta.id)).segmento) await q(`insert into empresa_config (conta_id, segmento) values ($1,$2)
+      on conflict (conta_id) do update set segmento=coalesce(empresa_config.segmento, excluded.segmento)`, [req.conta.id, u.setor]);
+    await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa, folga_pref, dias_semana, entrada, saida, intervalo_min)
+      select $1, x.nome, x.cargo, x.folga_fixa, x.folga_pref, x.dias_semana, x.entrada, x.saida, x.intervalo_min
+      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, folga_pref jsonb, dias_semana int, entrada text, saida text, intervalo_min int)`,
+    [eq.id, JSON.stringify(pessoas)]);
+    if (Array.isArray(b.setores) && b.setores.length) await setores.criaLote(eq.id, b.setores);
+    auditar(req, `Cadastrou a unidade ${u.nome} com ${pessoas.length} pessoa(s)`);
+    let escala = null;
+    if (req.conta.liberado) {
+      const inicio = dataValida(b.inicio) || proximaSegunda();
+      escala = await gerarParaEquipe(req, eq, inicio, Math.max(1, Math.min(8, +b.semanas || 4)));
+    }
+    res.json({ ok: true, equipe: eq, escala, liberado: req.conta.liberado, checkout: CHECKOUT_URL });
+  }));
+
+  // ---------- várias empresas na mesma conta ----------
+  // cria uma empresa nova (ex.: outro CNPJ, ou a empresa de um cliente). Quem criou é o dono dela.
+  app.post('/api/empresas', logado, limite(20), erro(async (req, res) => {
+    const nome = limpa(req.body?.nome, 80);
+    if (!nome) return res.status(400).json({ erro: 'Escreva o nome da empresa.' });
+    const { rows: n } = await q("select count(*)::int c from membros where usuario_id=$1 and papel='dono'", [req.u.id]);
+    if (n[0].c >= 100) return res.status(400).json({ erro: 'Limite de 100 empresas por conta.' });
+    const email = `empresa-${crypto.randomBytes(8).toString('hex')}@empresa.invalid`;
+    const { rows } = await q(`insert into usuarios (nome, empresa, email, acesso_liberado, origem) values ($1,$2,$3,false,'empresa_extra') returning id`,
+      [req.u.nome, nome, email]);
+    await q("insert into membros (conta_id, usuario_id, papel) values ($1,$2,'dono')", [rows[0].id, req.u.id]);
+    await q('insert into auditoria (conta_id, usuario_id, acao) values ($1,$2,$3)', [rows[0].id, req.u.id, `Criou a empresa ${nome}`]).catch(() => {});
+    res.json({ id: rows[0].id, empresa: nome });
+  }));
+
+  // ---------- indique e ganhe ----------
+  const novoCodigo = () => crypto.randomBytes(5).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 7).padEnd(6, 'x');
+  app.get('/api/indicacao', logado, erro(async (req, res) => {
+    let codigo = req.u.ref_codigo;
+    for (let i = 0; !codigo && i < 5; i++) {
+      const c = novoCodigo();
+      const r = await q('update usuarios set ref_codigo=$1 where id=$2 and ref_codigo is null and not exists (select 1 from usuarios where ref_codigo=$1) returning ref_codigo', [c, req.u.id]);
+      codigo = r.rows[0]?.ref_codigo || (await q('select ref_codigo from usuarios where id=$1', [req.u.id])).rows[0].ref_codigo;
+    }
+    const { rows } = await q(`select count(*) filter (where status<>'cancelada')::int vendas,
+        coalesce(sum(valor) filter (where status='devida'), 0) a_receber, coalesce(sum(valor) filter (where status='paga'), 0) recebido
+      from comissoes where afiliado_id=$1`, [req.u.id]);
+    const { rows: pix } = await q('select pix from usuarios where id=$1', [req.u.id]);
+    res.json({ codigo, link: `${APP_URL}/?ind=${codigo}`, valor_por_venda: VALOR_COMISSAO, ...rows[0], pix: pix[0]?.pix || '' });
+  }));
+  app.put('/api/indicacao/pix', logado, erro(async (req, res) => {
+    await q('update usuarios set pix=$1 where id=$2', [limpa(req.body?.pix, 120) || null, req.u.id]);
+    res.json({ ok: true });
+  }));
+
+  // ---------- espaço do contador: todas as empresas que ele atende ----------
+  app.get('/api/contador', logado, erro(async (req, res) => {
+    const mesAnt = somaDias(hojeBR().slice(0, 7) + '-01', -1).slice(0, 7), mesAt = hojeBR().slice(0, 7);
+    const { rows } = await q(`select m.conta_id id, coalesce(c.razao_social, u.empresa, u.nome) empresa, u.empresa nome_fantasia, c.cnpj, c.porte, c.uf,
+        (select count(*)::int from equipes e where e.usuario_id=m.conta_id) unidades,
+        (select count(*)::int from funcionarios f join equipes e on e.id=f.equipe_id where e.usuario_id=m.conta_id and f.ativo) funcionarios,
+        (select fechado_em from fechamentos fe where fe.conta_id=m.conta_id and fe.mes=$2) fechado_ant,
+        (select fechado_em from fechamentos fe where fe.conta_id=m.conta_id and fe.mes=$3) fechado_atual,
+        to_char(u.criado_em at time zone 'America/Sao_Paulo', 'YYYY-MM') criada_mes,
+        (select count(*)::int from ocorrencias o join funcionarios f on f.id=o.funcionario_id join equipes e on e.id=f.equipe_id
+          where e.usuario_id=m.conta_id and o.tipo in ('falta','atestado') and o.inicio <= ($2 || '-28')::date + 3 and o.fim >= ($2 || '-01')::date) faltas_atestados_ant
+      from membros m join usuarios u on u.id=m.conta_id left join empresa_config c on c.conta_id=m.conta_id
+      where m.usuario_id=$1 and m.papel='contador' order by 2`, [req.u.id, mesAnt, mesAt]);
+    res.json({ mes_anterior: mesAnt, mes_atual: mesAt, empresas: rows.map(r => ({ ...r, porte_nome: PORTES[r.porte] || null })) });
+  }));
+
+  // ---------- link da escala para os funcionários (só leitura, sem login) ----------
+  app.post('/api/equipes/:id/link', LE, minhaEquipe, erro(async (req, res) => {
+    let token = req.equipe.link_token;
+    if (!token || req.body?.novo) {
+      token = crypto.randomBytes(12).toString('base64url');
+      await q('update equipes set link_token=$1 where id=$2', [token, req.equipe.id]);
+      auditar(req, `${req.equipe.link_token ? 'Trocou' : 'Criou'} o link da escala de ${req.equipe.nome} para os funcionários`);
+    }
+    res.json({ link: `${APP_URL}/e/${token}` });
+  }));
+  app.delete('/api/equipes/:id/link', LE, minhaEquipe, erro(async (req, res) => {
+    await q('update equipes set link_token=null where id=$1', [req.equipe.id]);
+    auditar(req, `Desligou o link da escala de ${req.equipe.nome}`);
+    res.json({ ok: true });
+  }));
+  // escala das 4 semanas a partir da semana atual, pelo link da equipe (sem login)
+  async function escalaPublica(token) {
+    const { rows } = await q(`select e.*, coalesce(c.razao_social, u.empresa) empresa from equipes e join usuarios u on u.id=e.usuario_id
+      left join empresa_config c on c.conta_id=e.usuario_id where e.link_token=$1`, [String(token || '').slice(0, 40)]);
+    const e = rows[0];
+    if (!e) return null;
+    const hoje = hojeBR(), dow = (new Date(hoje + 'T12:00:00Z').getUTCDay() + 6) % 7, de = somaDias(hoje, -dow), ate = somaDias(de, 27);
+    const { rows: fs } = await q('select id, nome, cargo from funcionarios where equipe_id=$1 and ativo order by nome', [e.id]);
+    const { cel } = await vigentes(e.usuario_id, de, ate, e.id);
+    const ctx = { ...(await ctxDe(e.usuario_id)), config: configFeriados(e.feriados_config, e.abertos) };
+    const dias = Array.from({ length: 28 }, (_, i) => { const d = somaDias(de, i); return { data: d, dia: DIAS[i % 7], aberto: !!e.abertos[i % 7], feriado: feriado(d, ctx) }; });
+    return { empresa: e.empresa, equipe: e.nome, hoje, dias,
+      pessoas: fs.map(f => ({ nome: f.nome, cargo: f.cargo, dias: dias.map(d => cel.get(f.id + '|' + d.data) || '') })) };
+  }
+  app.get('/api/publico/escala/:token', limite(60), erro(async (req, res) => {
+    const r = await escalaPublica(req.params.token);
+    if (!r) return res.status(404).json({ erro: 'Link desligado ou inválido. Peça um novo ao seu gestor.' });
+    res.json(r);
+  }));
+  // a mesma escala em CSV: o Google Planilhas puxa com =IMPORTDATA("link") e se atualiza sozinho
+  app.get('/api/publico/planilha/:token', limite(120), erro(async (req, res) => {
+    const r = await escalaPublica(String(req.params.token || '').replace(/\.csv$/, ''));
+    res.set('Content-Type', 'text/csv; charset=utf-8').set('Cache-Control', 'no-store');
+    if (!r) return res.status(404).send('"Link desligado. Gere um novo na Sua Escala 5x2."\n');
+    const c = v => `"${String(v ?? '').replace(/"/g, '""')}"`, dm = d => d.slice(8, 10) + '/' + d.slice(5, 7);
+    const L = [[`${r.equipe} — escala (atualiza sozinha)`], []];
+    for (let s = 0; s < 4; s++) {
+      const ds = r.dias.slice(s * 7, s * 7 + 7);
+      L.push([`Semana de ${dm(ds[0].data)} a ${dm(ds[6].data)}`]);
+      L.push(['Pessoa', ...ds.map(d => `${d.dia} ${dm(d.data)}${d.feriado ? ' (feriado)' : ''}`)]);
+      for (const p of r.pessoas) L.push([p.nome, ...p.dias.slice(s * 7, s * 7 + 7).map((x, i) => !ds[i].aberto ? 'Fechado' : x === 'T' ? 'Trabalha' : x === 'F' ? 'FOLGA' : COD_NOME[x] || '')]);
+      L.push([]);
+    }
+    L.push(['Feita na Sua Escala 5x2, dentro da nova lei. Feriado trabalhado: pague em dobro ou dê outra folga.']);
+    res.send(L.map(l => l.map(c).join(',')).join('\n') + '\n');
+  }));
+
+  // ---------- histórico ----------
+  app.get('/api/historico', L, erro(async (req, res) => {
+    const { rows } = await q(`select a.id, a.criado_em, a.acao, coalesce(u.nome, 'Sistema') quem from auditoria a
+      left join usuarios u on u.id=a.usuario_id where a.conta_id=$1 order by a.id desc limit 300`, [req.conta.id]);
+    res.json(rows);
+  }));
+
+  // ---------- acessos: gestor e contador ----------
+  app.get('/api/membros', L, soDono, erro(async (req, res) => {
+    await foto.garante().catch(() => {});
+    const { rows } = await q(`select m.id, m.papel, m.criado_em, u.id usuario_id, u.foto_em, u.nome, u.email, u.senha_hash is not null ativo, u.ultimo_acesso
+      from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 order by m.criado_em`, [req.conta.id]);
+    res.json(rows);
+  }));
+  app.post('/api/membros', L, soDono, limite(20), erro(async (req, res) => {
+    const email = limpa(req.body?.email, 160).toLowerCase(), nome = limpa(req.body?.nome);
+    const papel = ['gestor', 'contador'].includes(req.body?.papel) ? req.body.papel : 'contador';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+    if (email === req.u.email) return res.status(400).json({ erro: 'Esse é o seu próprio e-mail.' });
+    const { rows: n } = await q('select count(*)::int c from membros where conta_id=$1', [req.conta.id]);
+    if (n[0].c >= 20) return res.status(400).json({ erro: 'Limite de 20 acessos por empresa.' });
+    let { rows: [u] } = await q('select * from usuarios where email=$1', [email]);
+    // o link de criar senha só volta para quem convidou se a conta acabou de nascer neste convite.
+    // Conta que já existia sem senha (comprou e não criou a senha, ou foi convidada por outra empresa) recebe só por e-mail:
+    // devolver o link deixaria qualquer um tomar a conta de outra pessoa.
+    let novo = false;
+    if (!u) {
+      const r = await q(`insert into usuarios (nome, email, origem) values ($1,$2,'convite') on conflict (email) do nothing returning *`, [nome || email.split('@')[0], email]);
+      if (r.rows[0]) { u = r.rows[0]; novo = true; } else ({ rows: [u] } = await q('select * from usuarios where email=$1', [email]));
+    }
+    await q(`insert into membros (conta_id, usuario_id, papel) values ($1,$2,$3)
+      on conflict (conta_id, usuario_id) do update set papel=excluded.papel`, [req.conta.id, u.id, papel]);
+    const empresa = req.conta.empresa || req.u.nome;
+    const link = u.senha_hash ? `${APP_URL}/app` : await criaLink(u.id, 24 * 14);
+    await fila.enfileirar(email, `${req.u.nome} liberou seu acesso à escala da ${empresa}`, modelo({
+      titulo: `Você tem acesso à escala da ${empresa}`,
+      paragrafos: [
+        `${req.u.nome} liberou seu acesso como ${PAPEL_NOME[papel].toLowerCase()} na Sua Escala 5x2.`,
+        papel === 'contador' ? 'Você pode ver as escalas, folgas, férias, atestados e baixar o fechamento do mês em planilha.' : 'Você pode montar e ajustar escalas, lançar férias, atestados e faltas.',
+        u.senha_hash ? 'Entre com o seu e-mail e senha de sempre e escolha a empresa no menu.' : 'Clique no botão para criar sua senha. O link vale 14 dias.',
+      ],
+      botao: u.senha_hash ? 'Entrar na Sua Escala 5x2' : 'Criar minha senha', link, rodape: rodapeSuporte,
+    }));
+    auditar(req, `Deu acesso de ${PAPEL_NOME[papel].toLowerCase()} para ${email}`);
+    res.json({ ok: true, link: novo ? link : null });
+  }));
+  app.patch('/api/membros/:mid', L, soDono, erro(async (req, res) => {
+    const papel = ['gestor', 'contador'].includes(req.body?.papel) ? req.body.papel : null;
+    if (!papel) return res.status(400).json({ erro: 'Papel inválido.' });
+    const { rows } = await q(`update membros m set papel=$1 from usuarios u where m.id=$2 and m.conta_id=$3 and u.id=m.usuario_id returning u.email`,
+      [papel, +req.params.mid || 0, req.conta.id]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Acesso não encontrado.' });
+    auditar(req, `Mudou ${rows[0].email} para ${PAPEL_NOME[papel].toLowerCase()}`);
+    res.json({ ok: true });
+  }));
+  app.delete('/api/membros/:mid', L, soDono, erro(async (req, res) => {
+    const { rows } = await q(`delete from membros m using usuarios u where m.id=$1 and m.conta_id=$2 and u.id=m.usuario_id returning u.email`,
+      [+req.params.mid || 0, req.conta.id]);
+    if (rows[0]) auditar(req, `Removeu o acesso de ${rows[0].email}`);
+    res.json({ ok: true });
+  }));
+};
