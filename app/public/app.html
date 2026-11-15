@@ -578,10 +578,6 @@ body.modo-foco .topo-in select,body.modo-foco .lateral{display:none!important}
 .lat-emp small{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
 .lat-emp b{font:800 1.05rem/1.2 var(--display);font-stretch:90%;color:var(--tinta)}
 .lateral nav{display:grid;gap:2px}
-.lateral nav button{text-align:left;border:0;background:none;border-radius:10px;padding:10px 12px;font-weight:600;color:var(--texto);cursor:pointer;font-size:.95rem;position:relative}
-.lateral nav button:hover{background:var(--cinza);color:var(--tinta)}
-.lateral nav button.on{background:var(--azul-claro);color:var(--azul);font-weight:700}
-.lateral nav button.on::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--azul)}
 /* ===== menu do celular: gaveta que desliza da esquerda ===== */
 .btn-menu,.gav-fundo,.so-gaveta{display:none}
 @media(max-width:1023.98px){
@@ -601,9 +597,8 @@ body.modo-foco .topo-in select,body.modo-foco .lateral{display:none!important}
   .lat-quem i{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--amarelo);color:#3b2f00;font:800 .85rem var(--display);font-style:normal}
   .lat-quem span{min-width:0;display:grid}.lat-quem span b{font:700 .92rem var(--corpo);margin:0;color:#fff}.lat-quem span em{font-style:normal;color:#9fb3d6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gav-x{display:grid!important;place-items:center;position:absolute;right:10px;top:10px;width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:1.35rem;line-height:1;cursor:pointer}
-  .lateral nav button{padding:13px 14px;font-size:1rem}
-  .lateral nav button.lat-sair{margin-top:8px;border-top:1px solid #eef1f5;border-radius:0 0 10px 10px;color:var(--vermelho)}
-  .lat-pe span{display:none}
+  .lat-item,.lat-g{padding:12px 14px;font-size:1rem}.lat-item.sub{padding:10px 14px 10px 28px}
+  .lat-pe span{display:none}.lat-pe{margin-top:14px}
 }
 @media(prefers-reduced-motion:reduce){#telaApp .lateral,.gav-fundo{transition:none!important}}
 .lat-pe{margin-top:auto;padding:14px 10px 4px;border-top:1px solid #eef1f5;display:grid;gap:4px;font-size:.84rem}
@@ -754,6 +749,33 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
 .bn-pontos button.on::before{width:22px;background:var(--azul)}
 @media(max-width:760px){.bn-item img{aspect-ratio:1080/1240}}
+/* menu em grupos (sanfona) */
+.lateral nav{display:grid;gap:2px}
+.lat-item,.lat-g{width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px 12px;font-weight:600;color:var(--texto);cursor:pointer;font-size:.95rem;position:relative;display:block;text-decoration:none}
+.lat-item:hover,.lat-g:hover{background:var(--cinza);color:var(--tinta)}
+.lat-item.on{background:var(--azul-claro);color:var(--azul);font-weight:700}
+.lat-item.on::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--azul)}
+.lat-g{display:flex;align-items:center;justify-content:space-between;font-weight:700;color:var(--tinta)}
+.lat-chev{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .22s ease;opacity:.6;margin-right:4px}
+.lat-grupo.aberto .lat-chev{transform:rotate(45deg)}
+.lat-sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.lat-grupo.aberto .lat-sub{grid-template-rows:1fr}
+.lat-sub-in{overflow:hidden;min-height:0}
+.lat-grupo.aberto .lat-sub-in{background:#f5f8fd;border-radius:10px;margin:2px 0 6px;padding:4px 0}
+.lat-item.sub{padding:8px 12px 8px 26px;font-size:.92rem;font-weight:500}
+.lat-item.sub.atual::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--verde)}
+.lat-sair-btn{width:100%;border:1.5px solid #f2b8ba;background:#fff;color:var(--vermelho);border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;font-size:.92rem}
+.lat-sair-btn:hover{background:var(--vermelho-claro)}
+.lat-pe{display:grid;gap:8px}
+/* menu do usuário no topo (computador) */
+.topo-user{position:relative;display:none}
+.btn-user{width:38px;height:38px;border-radius:50%;border:0;background:var(--amarelo);color:#3b2f00;font:800 .85rem var(--display);cursor:pointer}
+.menu-user{position:absolute;right:0;top:calc(100% + 8px);width:240px;background:#fff;border-radius:14px;box-shadow:0 20px 50px -14px rgba(2,10,30,.45);padding:8px;z-index:40;color:var(--texto);animation:sobe .18s ease-out}
+.menu-user p{padding:8px 10px 10px;border-bottom:1px solid #eef1f5;margin-bottom:6px;display:grid}.menu-user p b{color:var(--tinta)}.menu-user p span{font-size:.82rem;color:var(--mut);word-break:break-all}
+.menu-user button{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;color:var(--tinta)}
+.menu-user button:hover{background:var(--cinza)}.menu-user .mu-sair{color:var(--vermelho)}
+@media(min-width:1024px){body:not(.modo-foco) .topo-user{display:block}.topo .quem{margin-left:auto}#selUnidade+.quem.hide+.topo-user,.topo-in>.topo-user{margin-left:0}}
+@media(max-width:760px){.bn-item img{aspect-ratio:auto;height:min(46vh,calc(100vw - 32px));object-fit:cover;object-position:top}}
 /* ===== animações: só transform/opacity, curtas; nada com movimento reduzido ===== */
 @keyframes vistaEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes sobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -888,6 +910,9 @@ body.ini-escuro{background:#0b1220}
     <span class="marca">SuaEscala<span>5x2</span></span>
     <select id="selUnidade" class="hide" aria-label="Unidade"></select>
     <span class="quem" id="topoQuem"></span>
+    <div class="topo-user"><button type="button" id="btnUser" class="btn-user" aria-haspopup="menu" aria-expanded="false" aria-controls="menuUser" aria-label="Sua conta"></button>
+      <div class="menu-user" id="menuUser" role="menu" hidden><p><b id="muNome"></b><span id="muEmail"></span></p>
+        <button type="button" role="menuitem" data-ir="conta">Minha conta</button><button type="button" role="menuitem" class="mu-sair" data-sair>Sair</button></div></div>
   </div></header>
 
   <aside class="lateral" id="lateral" aria-label="Menu"></aside>
@@ -1104,13 +1129,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=21"></script>
-<script src="/cadastro.js?v=21"></script>
-<script src="/exportar.js?v=21"></script>
-<script src="/aula.js?v=21"></script>
-<script src="/extras.js?v=21"></script>
-<script src="/inicio.js?v=21"></script>
-<script src="/extras-materiais.js?v=21"></script>
-<script src="/app.js?v=21"></script>
+<script src="/scheduler.js?v=22"></script>
+<script src="/cadastro.js?v=22"></script>
+<script src="/exportar.js?v=22"></script>
+<script src="/aula.js?v=22"></script>
+<script src="/extras.js?v=22"></script>
+<script src="/inicio.js?v=22"></script>
+<script src="/extras-materiais.js?v=22"></script>
+<script src="/app.js?v=22"></script>
 </body>
 </html>

@@ -391,10 +391,13 @@ async function telaInicio() {
   ligaCarrosselImg(); animaContadores(v);
   $$('#v-inicio [data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
   const bv = $('#v-inicio [data-video]');
-  if (bv) bv.onclick = () => {
+  if (bv) bv.onclick = abreVideoAula;
+}
+function abreVideoAula() {
+  {
     folha('<h2>Como usar o app</h2><video controls autoplay playsinline preload="none" poster="/video/aula-app.jpg?v=1" style="width:100%;border-radius:14px;margin-top:12px;background:#000"><source src="/video/aula-app.mp4?v=1" type="video/mp4"><track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>');
     $('#folha').addEventListener('close', () => $('#folha video')?.pause(), { once: true });
-  };
+  }
 }
 
 // escala mandada para a equipe (qualquer saída: WhatsApp, PDF, Excel, link...) marca o passo do progresso
@@ -406,26 +409,67 @@ window.marcaEnviada = () => {
 
 // ================= menu lateral (computador) e gaveta (celular) =================
 // O mesmo #lateral é a barra fixa no computador e, abaixo de 1024px, a gaveta que desliza da esquerda.
+// Menu em grupos que abrem e fecham (sanfona). O grupo da tela atual abre sozinho; os que a pessoa abriu ficam salvos.
+function itensMenu() {
+  const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador', ed = podeEditar();
+  const aprender = { g: 'aprender', t: 'Aprender', itens: [['@video', 'Aula do app (vídeo)'], ['aula', 'Aula da nova lei'], ['@ajuda', 'Ajuda']] };
+  if (mc) return [['contador', 'Suas empresas'], aprender, { g: 'config', t: 'Configurações', itens: [['conta', 'Minha conta'], ['instalar', 'Colocar na tela inicial']] }];
+  if (cont) return [
+    { g: 'escala', t: 'Escala', itens: [['escala', 'Escala da semana'], ['tabela', 'Baixar ou imprimir']] },
+    { g: 'equipe', t: 'Equipe', itens: [['ocorrencias', 'Férias e faltas']] },
+    { g: 'painel', t: 'Painel', itens: [['fechamento', 'Fechamento do mês']] },
+    aprender, ['materiais', 'Seus materiais'],
+  ];
+  const unidades = equipes.map(e => ['@un:' + e.id, e.nome]);
+  if (ed) unidades.push(['comecar/unidade', '+ Nova unidade']);
+  return [
+    ['inicio', 'Início'],
+    { g: 'escala', t: 'Escala', itens: [['escala', 'Escala da semana'], ['resultado', 'Resultado por função'], ...(ed ? [['personalizar', 'Personalizar a escala']] : []), ['tabela', 'Baixar, enviar ou imprimir']] },
+    { g: 'equipe', t: 'Equipe', itens: [['pessoas', 'Pessoas'], ['ocorrencias', 'Férias e faltas']] },
+    { g: 'painel', t: 'Painel', itens: [['fechamento', 'Fechar o mês'], ...(dono ? [['empresa/historico', 'Histórico']] : [])] },
+    unidades.length && { g: 'unidades', t: 'Unidades', itens: unidades },
+    { g: 'config', t: 'Configurações', itens: [...(dono ? [['empresa', 'Dados da empresa']] : []), ...(ed ? [['funcionamento', 'Funcionamento']] : []),
+      ...(dono ? [['acessos', 'Acessos (contador e gerente)']] : []), ['@outra', 'Outra empresa'], ['instalar', 'Colocar na tela inicial'], ['indique', 'Indique para quem conhece'], ['conta', 'Minha conta']] },
+    aprender, ['materiais', 'Seus materiais'],
+  ].filter(Boolean);
+}
+const gruposAbertos = () => { try { return new Set(JSON.parse(ler('menuAberto') || '[]')); } catch { return new Set(); } };
+function botaoMenu([r, t], sub) {
+  const cls = sub ? 'lat-item sub' : 'lat-item';
+  if (r === '@ajuda') return `<a class="${cls}" href="/ajuda">${esc(t)}</a>`;
+  if (r === '@video') return `<button type="button" class="${cls}" data-acao="video">${esc(t)}</button>`;
+  if (r === '@outra') return `<button type="button" class="${cls}" data-acao="outra">${esc(t)}</button>`;
+  if (r.startsWith('@un:')) { const id = +r.slice(4); return `<button type="button" class="${cls} ${id === atual?.id ? 'atual' : ''}" data-unidade="${id}">${esc(t)}</button>`; }
+  return `<button type="button" class="${cls}" data-ir="${r}" data-lat="${r.split('/')[0] === 'empresa' && r.includes('/') ? 'historico' : r}">${esc(t)}</button>`;
+}
 function pintaLateral() {
   const el = $('#lateral'); if (!el) return;
-  const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
-  const itens = mc ? [['contador', 'Suas empresas'], ['aula', 'Aula da nova lei'], ['mais', 'Mais opções']]
-    : cont ? [['escala', 'Escala da semana'], ['fechamento', 'Fechamento do mês'], ['ocorrencias', 'Férias e faltas'], ['mais', 'Mais opções']]
-      : [['inicio', 'Início'], ['escala', 'Escala da semana'], ['personalizar', 'Personalizar a escala'], ['pessoas', 'Equipe'], ['tabela', 'Baixar ou enviar'], ['ocorrencias', 'Férias e faltas'], ['fechamento', 'Fechar o mês'],
-        ...(dono ? [['acessos', 'Contador'], ['empresa', 'Dados da empresa']] : []), ['materiais', 'Seus materiais'], ['aula', 'Aula da nova lei'], ['mais', 'Mais opções']];
+  const mc = ehModoContador(), abertos = gruposAbertos();
   const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  const nav = itensMenu().map(x => Array.isArray(x) ? botaoMenu(x) : `<div class="lat-grupo ${abertos.has(x.g) ? 'aberto' : ''}" data-grupo="${x.g}">
+      <button type="button" class="lat-g" aria-expanded="${abertos.has(x.g)}" aria-controls="lg-${x.g}"><span>${esc(x.t)}</span><i class="lat-chev" aria-hidden="true"></i></button>
+      <div class="lat-sub" id="lg-${x.g}" role="group" aria-label="${esc(x.t)}" ${abertos.has(x.g) ? '' : 'inert'}><div class="lat-sub-in">${x.itens.map(i => botaoMenu(i, true)).join('')}</div></div></div>`).join('');
   el.innerHTML = `<div class="lat-emp"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
       <div class="lat-quem so-gaveta"><i aria-hidden="true">${esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
       <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
-    <nav aria-label="Seções">${itens.map(([r, t]) => `<button data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}<button type="button" class="lat-sair so-gaveta" data-sair>Sair</button></nav>
-    <div class="lat-pe"><a href="/ajuda">Ajuda e a nova lei</a><span>${esc(eu.email)}</span></div>`;
+    <nav aria-label="Seções">${nav}</nav>
+    <div class="lat-pe"><button type="button" class="lat-sair-btn" data-sair>Sair do app</button><span>${esc(eu.email)}</span></div>`;
 }
-function marcaLateral(v) {
-  const mapa = { resultado: 'escala', materiais: 'materiais', funcionamento: 'mais', comecar: 'inicio', cadastro: 'inicio', conta: 'mais', instalar: 'mais', indique: 'mais' };
+function abreGrupo(g, abrir, salvar = true) {
+  const el = $(`#lateral [data-grupo="${g}"]`); if (!el) return;
+  el.classList.toggle('aberto', abrir);
+  el.querySelector('.lat-g').setAttribute('aria-expanded', String(abrir));
+  el.querySelector('.lat-sub').inert = !abrir;
+  if (salvar) { const s = gruposAbertos(); abrir ? s.add(g) : s.delete(g); gravar('menuAberto', JSON.stringify([...s])); }
+}
+function marcaLateral(v, extra) {
+  const mapa = { resultado: 'resultado', comecar: 'inicio', cadastro: 'inicio', mais: 'conta' };
+  const alvo = v === 'empresa' && extra === 'historico' ? 'historico' : (mapa[v] || v);
   $$('#lateral [data-lat]').forEach(b => {
-    const on = b.dataset.lat === (mapa[v] || v);
+    const on = b.dataset.lat === alvo;
     b.classList.toggle('on', on);
-    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    if (on) { b.setAttribute('aria-current', 'page'); const g = b.closest('.lat-grupo'); if (g && !g.classList.contains('aberto')) abreGrupo(g.dataset.grupo, true, false); }
+    else b.removeAttribute('aria-current');
   });
 }
 
@@ -463,9 +507,21 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btnMenu').onclick = () => (gavetaAberta() ? fechaGaveta() : abreGaveta());
   $('#gavFundo').onclick = () => fechaGaveta();
   $('#lateral').addEventListener('click', e => {
+    const g = e.target.closest('.lat-g'), un = e.target.closest('[data-unidade]'), acao = e.target.closest('[data-acao]')?.dataset.acao;
     if (e.target.closest('[data-fecha-gaveta]')) fechaGaveta();
     else if (e.target.closest('[data-sair]')) sair();
+    else if (g) { const el = g.closest('.lat-grupo'); abreGrupo(el.dataset.grupo, !el.classList.contains('aberto')); }
+    else if (un) trocaUnidade(+un.dataset.unidade);
+    else if (acao === 'video') { fechaGaveta(); abreVideoAula(); }
+    else if (acao === 'outra') { fechaGaveta(); folhaOutraEmpresa(); }
   });
+  // menu do usuário no topo (computador): Minha conta e Sair
+  const bu = $('#btnUser'), mu = $('#menuUser');
+  const fechaMu = () => { mu.hidden = true; bu.setAttribute('aria-expanded', 'false'); };
+  bu.onclick = e => { e.stopPropagation(); const abre = mu.hidden; mu.hidden = !abre; bu.setAttribute('aria-expanded', String(abre)); if (abre) mu.querySelector('button')?.focus(); };
+  document.addEventListener('click', e => { if (!mu.hidden && !mu.contains(e.target)) fechaMu(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !mu.hidden) { fechaMu(); bu.focus(); } });
+  mu.addEventListener('click', e => { if (e.target.closest('[data-sair]')) sair(); fechaMu(); });
   celular.addEventListener('change', () => { if (!celular.matches) fechaGaveta(false); gavetaEstado(); });
   document.addEventListener('keydown', e => {
     if (!gavetaAberta()) return;

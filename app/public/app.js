@@ -147,12 +147,16 @@ function pintaTopo() {
   sel.classList.toggle('hide', equipes.length < 2);
   sel.innerHTML = equipes.map(e => `<option value="${e.id}" ${e.id === atual?.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('');
   $('#topoQuem').classList.toggle('hide', equipes.length > 1);
+  const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  $('#btnUser').textContent = ini; $('#muNome').textContent = eu.nome || ''; $('#muEmail').textContent = eu.email || '';
   $('#topoQuem').textContent = ehModoContador() ? eu.nome : conta.papel === 'contador' ? (conta.empresa || '') : (atual?.nome || conta.empresa || '');
 }
-$('#selUnidade').onchange = async () => {
-  atual = equipes.find(e => e.id === +$('#selUnidade').value); gravar('unidade', atual.id);
-  funcs = await api(`/api/equipes/${atual.id}/funcionarios`); semana = null; rota();
-};
+async function trocaUnidade(id) {
+  atual = equipes.find(e => e.id === id) || atual; gravar('unidade', atual.id);
+  funcs = await api(`/api/equipes/${atual.id}/funcionarios`); semana = null; pintaTopo();
+  if (location.hash === '#escala') rota(); else ir('escala');
+}
+$('#selUnidade').onchange = () => trocaUnidade(+$('#selUnidade').value);
 
 // rotas: #escala #pessoas #mais #comecar #funcionamento #ocorrencias #fechamento #contador #acessos #empresa #conta
 window.onhashchange = () => rota();
@@ -177,7 +181,7 @@ async function rota() {
   fechaGaveta();
   ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
-  pintaLateral(); marcaLateral(v);
+  pintaLateral(); marcaLateral(v, extra);
   $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela', 'inicio', 'resultado'].includes(v));
   $('#principal').classList.toggle('quiz-pg', foco);
   document.body.classList.toggle('modo-foco', foco);
@@ -202,7 +206,7 @@ async function rota() {
     else if (v === 'fechamento') await telaFechamento();
     else if (v === 'contador') await telaContador();
     else if (v === 'acessos') await telaAcessos();
-    else if (v === 'empresa') await telaEmpresa();
+    else if (v === 'empresa') { await telaEmpresa(); if (extra === 'historico') $('#listaHist')?.scrollIntoView({block: 'start'}); }
     else if (v === 'conta') telaConta();
   } catch (err) { toast(err.message); }
 }
@@ -837,7 +841,10 @@ function folhaFunc(f) {
   };
 }
 
-async function sair() { await api('/api/sair', {method: 'POST'}).catch(() => {}); gravar('conta', ''); location.href = '/app'; }
+async function sair() {
+  if (!confirm('Sair da sua conta?')) return;
+  await api('/api/sair', {method: 'POST'}).catch(() => {}); gravar('conta', ''); location.href = '/app';
+}
 
 // ================= mais =================
 function telaMais() {
