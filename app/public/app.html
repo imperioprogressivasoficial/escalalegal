@@ -42,6 +42,11 @@ label{display:block;font-weight:700;font-size:.92rem;color:var(--tinta);margin:1
 .cartao{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:18px}
 .marca{font:800 1.3rem/1 var(--display);font-stretch:85%;color:#fff;letter-spacing:-.02em}
 .marca span{color:#7be08a}
+.marca picture{display:block}.marca img{display:block;height:30px;width:auto}
+.lat-logo{display:none}
+@media(max-width:860px){.entrada-lado .marca img{height:26px}}
+@media(max-width:520px){.topo .marca img{height:26px}}
+@media(max-width:1023.98px){.lat-logo{display:block;height:24px;width:auto;margin-bottom:12px}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tinta);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:99;width:max-content;max-width:90vw;text-align:center}
 
 /* ===== entrada ===== */
@@ -886,7 +891,7 @@ body.ini-escuro{background:#0b1220}
 <!-- ENTRADA -->
 <div class="entrada hide" id="telaEntrada">
   <div class="entrada-lado">
-    <div class="marca">SuaEscala<span>5x2</span></div>
+    <div class="marca"><img src="/img/logo-escuro-completo.webp?v=1" alt="Sua Escala 5x2" width="814" height="148"></div>
     <div class="ent-texto">
       <h1 id="entradaTitulo">A escala da sua equipe pronta em 2 minutos, dentro da nova lei.</h1>
       <p class="ent-sub" id="entradaSub">Duas folgas por semana para cada um, domingo no rodízio e gente suficiente todo dia.</p>
@@ -932,7 +937,7 @@ body.ini-escuro{background:#0b1220}
 <div class="hide" id="telaApp">
   <header class="topo"><div class="topo-in">
     <button class="btn-menu" id="btnMenu" type="button" aria-label="Abrir o menu" aria-controls="lateral" aria-expanded="false"><span class="btn-menu-ico" aria-hidden="true"><i></i><i></i><i></i></span><span class="btn-menu-txt">Menu</span></button>
-    <span class="marca">SuaEscala<span>5x2</span></span>
+    <span class="marca"><picture><source media="(max-width:520px)" srcset="/img/logo-escuro-icone.webp?v=1" width="152" height="148"><img src="/img/logo-escuro-completo.webp?v=1" alt="Sua Escala 5x2" width="814" height="148"></picture></span>
     <select id="selUnidade" class="hide" aria-label="Unidade"></select>
     <span class="quem" id="topoQuem"></span>
     <div class="topo-sino"><button type="button" id="btnSino" class="btn-sino" aria-haspopup="dialog" aria-expanded="false" aria-controls="painelNot" aria-label="Notificações">
@@ -1161,13 +1166,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=25"></script>
-<script src="/cadastro.js?v=25"></script>
-<script src="/exportar.js?v=25"></script>
-<script src="/aula.js?v=25"></script>
-<script src="/extras.js?v=25"></script>
-<script src="/inicio.js?v=25"></script>
-<script src="/extras-materiais.js?v=25"></script>
-<script src="/app.js?v=25"></script>
+<script src="/scheduler.js?v=26"></script>
+<script src="/cadastro.js?v=26"></script>
+<script src="/exportar.js?v=26"></script>
+<script src="/aula.js?v=26"></script>
+<script src="/extras.js?v=26"></script>
+<script src="/inicio.js?v=26"></script>
+<script src="/extras-materiais.js?v=26"></script>
+<script src="/app.js?v=26"></script>
 </body>
 </html>

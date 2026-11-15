@@ -443,7 +443,7 @@ function pintaLateral() {
   const nav = itensMenu().map(x => Array.isArray(x) ? botaoMenu(x) : `<div class="lat-grupo ${abertos.has(x.g) ? 'aberto' : ''}" data-grupo="${x.g}">
       <button type="button" class="lat-g" aria-expanded="${abertos.has(x.g)}" aria-controls="lg-${x.g}"><span>${esc(x.t)}</span><i class="lat-chev" aria-hidden="true"></i></button>
       <div class="lat-sub" id="lg-${x.g}" role="group" aria-label="${esc(x.t)}" ${abertos.has(x.g) ? '' : 'inert'}><div class="lat-sub-in">${x.itens.map(i => botaoMenu(i, true)).join('')}</div></div></div>`).join('');
-  el.innerHTML = `<div class="lat-emp"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
+  el.innerHTML = `<div class="lat-emp"><img class="lat-logo" src="/img/logo-escuro-completo.webp?v=1" alt="" width="814" height="148"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
       <div class="lat-quem so-gaveta"><i aria-hidden="true">${esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
       <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
     <nav aria-label="Seções">${nav}</nav>
