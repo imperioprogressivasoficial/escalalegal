@@ -1,4 +1,4 @@
-# Sua Escala Blindada — gerador de escala 5x2
+# Sua Escala 5x2 — gerador de escala 5x2
 
 - `/`: página de vendas (R$ 97).
 - `/app`: o app. A empresa monta equipes e funcionários, gera a escala 5x2, ajusta com um clique, imprime e copia para o WhatsApp.

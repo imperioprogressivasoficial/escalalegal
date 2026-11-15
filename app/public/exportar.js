@@ -1,4 +1,4 @@
-// Sua Escala Blindada — a tabela pronta e as saídas: ver, PDF, Excel (.xlsx), imagem (JPG), WhatsApp e texto.
+// Sua Escala 5x2 — a tabela pronta e as saídas: ver, PDF, Excel (.xlsx), imagem (JPG), WhatsApp e texto.
 // Tudo é gerado no próprio aparelho, sem biblioteca de fora. Usa as variáveis do app.js (atual, conta, semana, semData...).
 
 // ---------- o período: 4 semanas a partir da semana aberta ----------
@@ -167,12 +167,12 @@ function textoDaEscala(sems) {
       t += `${w.funcionarios[f].nome}: ${folgas.length ? 'folga ' + folgas.join(' e ') : 'sem folga'}${fora.length ? ` (${fora.join(', ').toLowerCase()})` : ''}\n`;
     });
   }
-  return t + '\nFeita na Sua Escala Blindada, dentro da nova lei.';
+  return t + '\nFeita na Sua Escala 5x2, dentro da nova lei.';
 }
 function imprimirSems(sems) {
   $('#areaImpressao').innerHTML = sems.map(w => `<h2>${esc(atual.nome)} · semana de ${br(w.inicio)} a ${br(fimSemana(w))}</h2><table><thead><tr><th></th>${DIAS.map((d, i) => `<th>${d} ${dm(soma(w.inicio, i))}</th>`).join('')}</tr></thead><tbody>
     ${w.linhas.map((l, f) => `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${w.abertos[d] ? c : ''}">${!w.abertos[d] ? '–' : c === 'T' ? '' : c === 'F' ? 'FOLGA' : esc(COD[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')
-    + '<p style="font-size:.8rem">Trabalha = em branco. FOLGA = dia de folga. Feito na Sua Escala Blindada, dentro da nova lei.</p>';
+    + '<p style="font-size:.8rem">Trabalha = em branco. FOLGA = dia de folga. Feito na Sua Escala 5x2, dentro da nova lei.</p>';
   window.print();
 }
 
@@ -225,7 +225,7 @@ async function canvasDaEscala(sems, comLei = true) {
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#071d41'; ctx.fillRect(0, 0, W, 70);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '800 26px Archivo, Arial, sans-serif';
-  ctx.fillStyle = '#fff'; ctx.fillText('SuaEscala', M, 35); const lx = M + ctx.measureText('SuaEscala').width; ctx.fillStyle = '#7be08a'; ctx.fillText('Blindada', lx, 35);
+  ctx.fillStyle = '#fff'; ctx.fillText('SuaEscala', M, 35); const lx = M + ctx.measureText('SuaEscala').width; ctx.fillStyle = '#7be08a'; ctx.fillText('5x2', lx, 35);
   ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.font = '700 20px "Public Sans", Arial, sans-serif'; ctx.fillText(atual.nome, W - M, 35);
   let y = 90;
   sems.forEach((w, i) => { desenhaBloco(ctx, M, y, W - 2 * M, w); y += altBlocos[i]; });
@@ -236,7 +236,7 @@ async function canvasDaEscala(sems, comLei = true) {
     leiLinhas.forEach(l => { ctx.fillText(l, M, y); y += 26; });
   }
   ctx.textAlign = 'center'; ctx.fillStyle = '#6b778a'; ctx.font = '500 14px "Public Sans", Arial, sans-serif';
-  ctx.fillText(`Feita em ${br(hojeIso())} na Sua Escala Blindada · suaescalablindada.com.br`, W / 2, H - 22);
+  ctx.fillText(`Feita em ${br(hojeIso())} na Sua Escala 5x2 · suaescala5x2.com.br`, W / 2, H - 22);
   return cv;
 }
 const jpgBlob = cv => new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
@@ -300,7 +300,7 @@ function xlsxDaEscala(sems) {
   const linha = cels => { n++; linhas.push(`<row r="${n}">${cels.map((c, i) => c == null ? '' : typeof c.v === 'number' ? `<c r="${colL(i)}${n}" s="${c.s || 0}"><v>${c.v}</v></c>` : `<c r="${colL(i)}${n}" t="inlineStr" s="${c.s || 0}"><is><t xml:space="preserve">${xmlEsc(c.v)}</t></is></c>`).join('')}</row>`); };
   const t = (v, s) => ({v, s});
   linha([t(`${atual.nome} — Escala ${br(sems[0].inicio)} a ${br(fimSemana(sems[sems.length - 1]))}`, 2)]);
-  linha([t('Feita na Sua Escala Blindada, dentro da nova lei (Emenda 141/2026).', 0)]);
+  linha([t('Feita na Sua Escala 5x2, dentro da nova lei (Emenda 141/2026).', 0)]);
   for (const w of sems) {
     linha([]); linha([t(`Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}`, 1)]);
     linha([t('Pessoa', 6), ...DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return t(`${d} ${dm(data)}${f ? ' (feriado)' : ''}`, 6); })]);

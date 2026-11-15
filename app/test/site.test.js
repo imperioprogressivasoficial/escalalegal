@@ -33,7 +33,7 @@ test('site público pronto para busca, anúncios e LGPD', { skip: pular }, async
   assert.match(robots.txt, /Disallow: \/app/); assert.match(robots.txt, /Sitemap: .*\/sitemap\.xml/);
   const mapa = await get('/sitemap.xml');
   assert.match(mapa.tipo, /xml/); assert.match(mapa.txt, /<loc>[^<]*\/ajuda<\/loc>/); assert.ok(!mapa.txt.includes('/app'));
-  assert.match((await get('/llms.txt')).txt, /^# Sua Escala Blindada/);
+  assert.match((await get('/llms.txt')).txt, /^# Sua Escala 5x2/);
 
   // rastreio: Pixel e GA só depois do "Aceitar"; consentimento do Google começa negado
   const r = (await get('/rastreio.js')).txt;

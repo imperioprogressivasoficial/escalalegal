@@ -138,7 +138,7 @@ const rodapeSuporte = SUPORTE_WHATSAPP ? `Dúvidas? Fale com a gente no WhatsApp
 async function enviaBoasVindas(u) {
   const link = await criaLink(u.id, 24 * 30);
   const oi = primeiroNome(u.nome) ? `Olá, ${primeiroNome(u.nome)}!` : 'Olá!';
-  await fila.enfileirar(u.email, 'Sua Escala Blindada: seu acesso chegou', modelo({
+  await fila.enfileirar(u.email, 'Sua Escala 5x2: seu acesso chegou', modelo({
     titulo: 'Pagamento confirmado. Seu acesso está liberado.',
     paragrafos: [oi, 'Clique no botão abaixo para criar sua senha e montar a escala 5x2 da sua equipe.', 'Depois, é só entrar com este e-mail e a senha que você criar.'],
     botao: 'Criar minha senha', link, rodape: rodapeSuporte,
@@ -146,15 +146,15 @@ async function enviaBoasVindas(u) {
   return link;
 }
 async function enviaLiberado(u) {
-  await fila.enfileirar(u.email, 'Sua Escala Blindada: seu acesso foi liberado', modelo({
+  await fila.enfileirar(u.email, 'Sua Escala 5x2: seu acesso foi liberado', modelo({
     titulo: 'Pagamento confirmado. O gerador de escala já está liberado.',
     paragrafos: [primeiroNome(u.nome) ? `Olá, ${primeiroNome(u.nome)}!` : 'Olá!', 'Entre com seu e-mail e senha para gerar a escala 5x2.'],
-    botao: 'Entrar na Sua Escala Blindada', link: `${APP_URL}/app`, rodape: rodapeSuporte,
+    botao: 'Entrar na Sua Escala 5x2', link: `${APP_URL}/app`, rodape: rodapeSuporte,
   }));
 }
 async function enviaRedefinir(u) {
   const link = await criaLink(u.id, 24);
-  await fila.enfileirar(u.email, u.senha_hash ? 'Redefinir sua senha da Sua Escala Blindada' : 'Crie sua senha da Sua Escala Blindada', modelo({
+  await fila.enfileirar(u.email, u.senha_hash ? 'Redefinir sua senha da Sua Escala 5x2' : 'Crie sua senha da Sua Escala 5x2', modelo({
     titulo: u.senha_hash ? 'Vamos criar uma senha nova' : 'Crie sua senha',
     paragrafos: ['Recebemos um pedido para acessar sua conta. O link vale por 24 horas.', 'Se não foi você, ignore este e-mail. Nada muda na sua conta.'],
     botao: u.senha_hash ? 'Criar senha nova' : 'Criar minha senha', link, rodape: rodapeSuporte,
@@ -458,7 +458,7 @@ async function migrar() {
 process.on('unhandledRejection', e => console.error('unhandledRejection:', e));
 if (require.main === module) {
   migrar().then(() => {
-    const server = app.listen(PORT, () => console.log(`Sua Escala Blindada rodando na porta ${PORT} (${APP_URL})`));
+    const server = app.listen(PORT, () => console.log(`Sua Escala 5x2 rodando na porta ${PORT} (${APP_URL})`));
     server.keepAliveTimeout = 65_000; server.headersTimeout = 66_000;
     fila.processar();
     const parar = sinal => {

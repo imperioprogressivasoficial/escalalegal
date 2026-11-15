@@ -1,4 +1,4 @@
-// Sua Escala Blindada — colocar o app na tela inicial, indique e ganhe e outra empresa.
+// Sua Escala 5x2 — colocar o app na tela inicial, indique e ganhe e outra empresa.
 
 // ---------- app na tela inicial (PWA) ----------
 let pedidoInstalar = null;

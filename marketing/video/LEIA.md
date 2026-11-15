@@ -1,4 +1,4 @@
-# Vídeo da Sua Escala Blindada (motion, 1080x1920, 33 s)
+# Vídeo da Sua Escala 5x2 (motion, 1080x1920, 33 s)
 
 - `sua-escala-blindada-reels.mp4`: o vídeo pronto, vertical, para Reels, Stories e anúncio. Sem som: coloque a música ou a narração por cima.
 - `video.html`: as 7 cenas. Cada cena tem `--s` (início em ms) e `--l` (duração). Troque textos e imagens aqui.

@@ -664,7 +664,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   app.get('/api/publico/planilha/:token', limite(120), erro(async (req, res) => {
     const r = await escalaPublica(String(req.params.token || '').replace(/\.csv$/, ''));
     res.set('Content-Type', 'text/csv; charset=utf-8').set('Cache-Control', 'no-store');
-    if (!r) return res.status(404).send('"Link desligado. Gere um novo na Sua Escala Blindada."\n');
+    if (!r) return res.status(404).send('"Link desligado. Gere um novo na Sua Escala 5x2."\n');
     const c = v => `"${String(v ?? '').replace(/"/g, '""')}"`, dm = d => d.slice(8, 10) + '/' + d.slice(5, 7);
     const L = [[`${r.equipe} — escala (atualiza sozinha)`], []];
     for (let s = 0; s < 4; s++) {
@@ -674,7 +674,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       for (const p of r.pessoas) L.push([p.nome, ...p.dias.slice(s * 7, s * 7 + 7).map((x, i) => !ds[i].aberto ? 'Fechado' : x === 'T' ? 'Trabalha' : x === 'F' ? 'FOLGA' : COD_NOME[x] || '')]);
       L.push([]);
     }
-    L.push(['Feita na Sua Escala Blindada, dentro da nova lei. Feriado trabalhado: pague em dobro ou dê outra folga.']);
+    L.push(['Feita na Sua Escala 5x2, dentro da nova lei. Feriado trabalhado: pague em dobro ou dê outra folga.']);
     res.send(L.map(l => l.map(c).join(',')).join('\n') + '\n');
   }));
 
@@ -708,11 +708,11 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     await fila.enfileirar(email, `${req.u.nome} liberou seu acesso à escala da ${empresa}`, modelo({
       titulo: `Você tem acesso à escala da ${empresa}`,
       paragrafos: [
-        `${req.u.nome} liberou seu acesso como ${PAPEL_NOME[papel].toLowerCase()} na Sua Escala Blindada.`,
+        `${req.u.nome} liberou seu acesso como ${PAPEL_NOME[papel].toLowerCase()} na Sua Escala 5x2.`,
         papel === 'contador' ? 'Você pode ver as escalas, folgas, férias, atestados e baixar o fechamento do mês em planilha.' : 'Você pode montar e ajustar escalas, lançar férias, atestados e faltas.',
         u.senha_hash ? 'Entre com o seu e-mail e senha de sempre e escolha a empresa no menu.' : 'Clique no botão para criar sua senha. O link vale 14 dias.',
       ],
-      botao: u.senha_hash ? 'Entrar na Sua Escala Blindada' : 'Criar minha senha', link, rodape: rodapeSuporte,
+      botao: u.senha_hash ? 'Entrar na Sua Escala 5x2' : 'Criar minha senha', link, rodape: rodapeSuporte,
     }));
     auditar(req, `Deu acesso de ${PAPEL_NOME[papel].toLowerCase()} para ${email}`);
     res.json({ ok: true, link: u.senha_hash ? null : link });

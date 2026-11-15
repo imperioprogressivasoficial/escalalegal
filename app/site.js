@@ -1,4 +1,4 @@
-// Sua Escala Blindada — o site público: metas de busca e compartilhamento, robots.txt, sitemap.xml, llms.txt,
+// Sua Escala 5x2 — o site público: metas de busca e compartilhamento, robots.txt, sitemap.xml, llms.txt,
 // rastreio (Meta Pixel, Google Analytics 4, Google Tag Manager) com aviso de cookies (LGPD), página 404
 // e a compra enviada direto do servidor para a Meta (API de Conversões), que não depende do navegador.
 const fs = require('fs');
@@ -17,7 +17,7 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
 
   // dados da empresa no rodapé e nas políticas (preencha no .env)
   const empresa = {
-    nome: E.EMPRESA_RAZAO_SOCIAL || 'Sua Escala Blindada',
+    nome: E.EMPRESA_RAZAO_SOCIAL || 'Sua Escala 5x2',
     cnpj: E.EMPRESA_CNPJ || '',
     email: E.EMPRESA_EMAIL || '',
     cidade: E.EMPRESA_CIDADE || '',
@@ -32,16 +32,16 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
   function render(arq, rota) {
     if (PRODUCAO && cache.has(arq)) return cache.get(arq);
     let h = fs.readFileSync(path.join(PUB, arq), 'utf8');
-    const titulo = (/<title>([^<]*)<\/title>/.exec(h) || [])[1] || 'Sua Escala Blindada';
+    const titulo = (/<title>([^<]*)<\/title>/.exec(h) || [])[1] || 'Sua Escala 5x2';
     const desc = (/<meta name="description" content="([^"]*)"/.exec(h) || [])[1] || '';
     const indexavel = !/name="robots" content="noindex"/.test(h);
     const url = APP_URL + (rota === '/' ? '/' : rota);
     let head = `
 <link rel="icon" href="/img/icone-192.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="Sua Escala Blindada">
+<meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="Sua Escala 5x2">
 <meta property="og:title" content="${titulo}"><meta property="og:description" content="${desc}">
 <meta property="og:image" content="${APP_URL}/img/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Sua Escala Blindada: responda umas perguntas e a escala 5x2 sai pronta, dentro da lei.">
+<meta property="og:image:alt" content="Sua Escala 5x2: responda umas perguntas e a escala 5x2 sai pronta, dentro da lei.">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${titulo}"><meta name="twitter:description" content="${desc}"><meta name="twitter:image" content="${APP_URL}/img/og.png">`;
     if (indexavel) head += `\n<link rel="canonical" href="${url}"><meta property="og:url" content="${url}">`;
     if (E.GOOGLE_SITE_VERIFICATION) head += `\n<meta name="google-site-verification" content="${esc(E.GOOGLE_SITE_VERIFICATION)}">`;
@@ -59,7 +59,7 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
     const faq = [...h.matchAll(/<details[^>]*><summary>([\s\S]*?)<\/summary><p>([\s\S]*?)<\/p><\/details>/g)]
       .map(m => ({ '@type': 'Question', name: m[1].replace(/<[^>]+>/g, '').trim(), acceptedAnswer: { '@type': 'Answer', text: m[2].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() } }));
     return [
-      { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Sua Escala Blindada', url: APP_URL + '/',
+      { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Sua Escala 5x2', url: APP_URL + '/',
         applicationCategory: 'BusinessApplication', operatingSystem: 'Web, Android, iOS', inLanguage: 'pt-BR',
         description: 'Responda umas perguntas e receba a escala 5x2 da sua empresa dentro da nova lei (EC 141/2026), em PDF, Excel, CSV, Google Planilhas ou no WhatsApp.',
         image: APP_URL + '/img/og.png', offers: { '@type': 'Offer', price: PRECO.toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/InStock' } },
@@ -86,9 +86,9 @@ module.exports = function site({ app, APP_URL, PRODUCAO }) {
     }).join('\n');
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xml}\n</urlset>\n`);
   });
-  app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(`# Sua Escala Blindada
+  app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(`# Sua Escala 5x2
 
-> Sistema brasileiro que monta a escala de trabalho 5x2 das empresas dentro da nova lei (Emenda Constitucional 141/2026, que acabou com a escala 6x1). A pessoa responde umas perguntas (tipo de negócio, dias que abre, quantas pessoas precisa e quem trabalha) e a escala sai pronta. Pagamento único de R$ ${PRECO.toFixed(2).replace('.', ',')}.
+> Sistema brasileiro que monta a escala de trabalho 5x2 das empresas dentro da nova lei (Emenda Constitucional 141/2026, que acabou com a escala 6x1). A pessoa responde umas perguntas (tipo de negócio, dias que abre, quantas pessoas precisa e quem trabalha) e a escala sai pronta. Pagamento único de R$ ${PRECO.toFixed(2).replace('.', ',')}, com acesso vitalício.
 
 ## O que faz
 - Monta a escala 5x2: 2 folgas por semana para cada pessoa, nenhum dia abaixo do mínimo de pessoas, rodízio de domingo (no comércio, 1 domingo de folga a cada 3 semanas, Lei 10.101) e aviso de feriado trabalhado (pago em dobro ou com outra folga, Lei 605/49).
@@ -146,7 +146,7 @@ if(v==='sim')carrega();else if(v!=='nao')aviso();
     const corpo = { data: [{ event_name: 'Purchase', event_time: Math.floor(Date.now() / 1000), action_source: 'website',
       event_id: 'compra_' + (transacao || h256(email)).toString().slice(0, 60), event_source_url: APP_URL + '/obrigado',
       user_data: { em: [h256(email)], ...(fone && { ph: [h256(fone.length <= 11 ? '55' + fone : fone)] }), ...(nome && { fn: [h256(String(nome).split(' ')[0])] }) },
-      custom_data: { value: PRECO, currency: 'BRL', content_name: 'Sua Escala Blindada' } }],
+      custom_data: { value: PRECO, currency: 'BRL', content_name: 'Sua Escala 5x2' } }],
       ...(E.META_TEST_EVENT_CODE && { test_event_code: E.META_TEST_EVENT_CODE }) };
     const r = await fetch(`https://graph.facebook.com/v21.0/${PIXEL}/events?access_token=${encodeURIComponent(CAPI)}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(8000) });

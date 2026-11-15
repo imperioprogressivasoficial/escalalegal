@@ -1,4 +1,4 @@
-// Sua Escala Blindada — app (JS puro). Um mecanismo só: abriu, vê a semana. Quem trabalha, quem folga.
+// Sua Escala 5x2 — app (JS puro). Um mecanismo só: abriu, vê a semana. Quem trabalha, quem folga.
 // Toca no nome para trocar a folga ou lançar falta. A escala se monta e se ajusta sozinha.
 const DIAS = Escala.DIAS, SETORES = Escala.SETORES, COD = Escala.COD_NOME;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -775,7 +775,7 @@ async function telaContador() {
   $('#contSub').textContent = r.empresas.length ? `${plural(r.empresas.length, 'empresa liberou', 'empresas liberaram')} acesso para você.` : '';
   if (!r.empresas.length) {
     $('#contEmpresas').innerHTML = `<div class="cartao vazio"><img src="/img/mascote.svg" alt=""><h2>Nenhuma empresa ainda</h2>
-      <p>Peça para o seu cliente abrir a Sua Escala Blindada, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
+      <p>Peça para o seu cliente abrir a Sua Escala 5x2, ir em <b>Mais › Dar acesso ao contador</b> e colocar o e-mail <b>${esc(eu.email)}</b>.</p>
       <p class="dica">Assim que ele liberar, a empresa aparece aqui.</p></div>`;
     return;
   }

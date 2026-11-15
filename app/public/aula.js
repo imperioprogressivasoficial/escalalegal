@@ -1,4 +1,4 @@
-// Sua Escala Blindada — a aula da nova lei, uma lição por tela (igual ao quiz).
+// Sua Escala 5x2 — a aula da nova lei, uma lição por tela (igual ao quiz).
 // Cada lição: o que diz a lei, um exemplo que se vê, o que muda no seu negócio e uma pergunta rápida para fixar.
 let aulaI = 0;
 const miniLinha = (nome, dias) => `<div class="ml"><b>${nome}</b>${dias.map((c, i) => `<i class="${c}">${['S', 'T', 'Q', 'Q', 'S', 'S', 'D'][i]}</i>`).join('')}</div>`;
@@ -31,7 +31,7 @@ function licoes() {
       exp: s.comercio ? 'Não. No comércio, a cada 3 semanas a folga tem que cair no domingo.' : `Precisa. Pelo menos 1 domingo de folga a cada ${ds} semanas.`},
     {tit: 'Feriado', texto: 'Quem trabalha no feriado <b>recebe o dia em dobro ou ganha outra folga</b> na semana (Lei 605/49). No comércio, abrir no feriado depende da convenção coletiva e da lei da cidade.',
       exemplo: `<div class="ex-fer"><b>20/11</b><span>Consciência Negra</span><p>4 pessoas trabalham no feriado = <b>4 dias para pagar em dobro</b> ou 4 folgas para dar.</p></div>`,
-      pratica: 'É aqui que mais se perde dinheiro sem perceber. A Sua Escala Blindada marca os feriados e conta quantos dias foram trabalhados neles.',
+      pratica: 'É aqui que mais se perde dinheiro sem perceber. A Sua Escala 5x2 marca os feriados e conta quantos dias foram trabalhados neles.',
       p: 'Trabalhou no feriado e não ganhou folga. O que a empresa deve?', op: ['Nada', 'O dia em dobro'], certa: 1,
       exp: 'O dia em dobro. Ou, no lugar disso, uma folga em outro dia.'},
     {tit: 'Descanso entre um dia e outro', texto: 'Entre o fim de um dia de trabalho e o começo do outro, a pessoa descansa <b>pelo menos 11 horas</b> (CLT, art. 66). Em jornada de mais de 6h, o almoço tem de 1 a 2 horas (art. 71).',
@@ -41,7 +41,7 @@ function licoes() {
       exp: 'Não pode: são só 9 horas de descanso. O mínimo é 11.'},
     {tit: 'MEI, micro e pequena empresa', texto: 'A regra vale para <b>todos os tamanhos de empresa</b>. A emenda permite uma lei com transição para micro e pequenas empresas, mas ela ainda não existe. Até lá, vale a regra geral.',
       exemplo: '<div class="ex-fer"><b>MEI</b><span>só 1 funcionário</span><p>Ele folga 2 dias por semana. Nesses dias, quem cobre é o dono.</p></div>',
-      pratica: 'Se sair uma regra especial para o seu porte, a Sua Escala Blindada avisa.',
+      pratica: 'Se sair uma regra especial para o seu porte, a Sua Escala 5x2 avisa.',
       p: 'Microempresa está fora da nova regra?', op: ['Está fora', 'Vale também'], certa: 1,
       exp: 'Vale também. A transição para micro e pequena empresa ainda não existe.'},
     {tit: 'Onde a empresa perde dinheiro', texto: 'Quase sempre é no detalhe: <b>feriado trabalhado sem pagar em dobro</b>, <b>hora extra todo dia</b>, alguém <b>sem domingo de folga</b> por semanas e <b>escala que não existe no papel</b>. Isso vira multa e processo trabalhista.',
@@ -55,7 +55,7 @@ function telaAula() {
   const L = licoes(), total = L.length;
   if (aulaI >= total) {
     $('#v-aula').innerHTML = `<div class="quiz"><div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Pronto! Você já sabe o principal.</h1>
-      <p>A Sua Escala Blindada já monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
+      <p>A Sua Escala 5x2 já monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
       <button class="btn cheio" data-ir="escala">Ver minha escala</button>
       <p style="text-align:center;margin-top:14px"><a class="link" href="/ajuda">Ler a ajuda completa</a> · <button class="link" id="aulaDeNovo">Ver a aula de novo</button></p></div>`;
     $('#aulaDeNovo').onclick = () => { aulaI = 0; telaAula(); };

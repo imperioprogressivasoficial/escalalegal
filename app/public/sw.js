@@ -1,4 +1,4 @@
-// Service worker mínimo: deixa a Sua Escala Blindada ser instalada na tela inicial.
+// Service worker mínimo: deixa a Sua Escala 5x2 ser instalada na tela inicial.
 // Nada fica guardado no aparelho (a escala sempre vem do servidor). Sem internet, mostra um aviso simples.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));

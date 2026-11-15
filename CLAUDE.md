@@ -1,4 +1,4 @@
-# Sua Escala Blindada
+# Sua Escala 5x2
 
 SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por R$ 97, pagamento único, com tráfego pago.
 
