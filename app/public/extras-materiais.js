@@ -6,7 +6,7 @@
 .mat{display:grid;gap:16px}
 .mat-topo h1{margin:0 0 4px;font:800 1.6rem/1.15 var(--display,"Archivo",Arial,sans-serif);color:var(--tinta,#0c1b33)}
 .mat-topo p{margin:0;color:var(--mut,#566173)}
-.mat-card{background:#fff;border:1px solid var(--linha,#dfe3ea);border-radius:14px;overflow:hidden}
+.mat-card{background:var(--sup,#fff);border:1px solid var(--linha,#dfe3ea);border-radius:14px;overflow:hidden}
 .mat-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
 .mat-grade{display:grid;gap:16px}@media (min-width:900px){.mat-grade{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .mat-cab{display:flex;gap:14px;align-items:flex-start;padding:18px 18px 14px}

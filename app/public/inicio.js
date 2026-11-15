@@ -406,7 +406,7 @@ function itensMenu() {
   const colab = ['colaboradores', 'Colaboradores', [['colaboradores', 'Lista'], ['colaboradores/ausencias', 'Ausências e férias']]];
   const fech = ['fechamento', 'Fechamento', [['fechamento', 'Fechar competência'], ...(dono ? [['fechamento/contabilidade', 'Acesso da contabilidade'], ['empresa/historico', 'Histórico']] : [])]];
   const config = ['configuracoes', 'Configurações', [...(!mc && ed ? [['funcionamento', 'Funcionamento']] : []), ['unidades', 'Unidades e empresas'], ...(dono ? [['empresa', 'Dados da empresa']] : []),
-    ['conta', 'Minha conta'], ['instalar', 'Tela inicial']]];
+    ['configuracoes/aparencia', 'Aparência'], ['conta', 'Minha conta'], ['instalar', 'Tela inicial']]];
   const principal = mc ? [['contador', 'Suas empresas']] : cont ? [fech, escala, colab] : [['inicio', 'Início'], escala, colab, fech];
   const recursos = [['aula', 'Aulas'], ['materiais', 'Seus materiais'], ...(mc || cont ? [] : [['indique', 'Indique para empresários']])];
   return { principal, recursos, config };

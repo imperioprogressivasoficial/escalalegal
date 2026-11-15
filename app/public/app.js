@@ -175,12 +175,15 @@ const ALIAS = { resultado: 'escala', personalizar: 'escala', tabela: 'escala/mes
   loja: 'funcionamento', lojas: 'unidades', mais: 'configuracoes' };
 // rota -> seção da página
 const VISTA = { configuracoes: () => 'mais', colaboradores: x => x === 'ausencias' ? 'ocorrencias' : 'pessoas', fechamento: x => x === 'contabilidade' ? 'acessos' : 'fechamento' };
+let rotaAtual = '';
 async function rota() {
   if (!conta) return;
   let h = location.hash.slice(1) || '';
   const al = ALIAS[h] || ALIAS[h.split('/')[0]];
   if (al) { h = ALIAS[h] || al; history.replaceState(null, '', '#' + h); }
   let [v, extra] = h.split('/');
+  // #ajuda é do suporte (suporte.js abre o painel pelo próprio evento): a tela atual fica onde está
+  if (v === 'ajuda') { if (rotaAtual) { history.replaceState(null, '', '#' + rotaAtual); return; } history.replaceState(null, '', location.pathname + location.search); h = ''; [v, extra] = []; }
   const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
   if (mc && !['contador', 'conta', 'configuracoes', 'aula', 'instalar', 'materiais', 'unidades'].includes(v)) v = 'contador';
   if (!v) v = cont ? 'fechamento' : 'inicio';
@@ -196,6 +199,7 @@ async function rota() {
   fechaGaveta();
   ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
+  rotaAtual = extra ? `${v}/${extra}` : v;
   pintaLateral(); marcaLateral(v, extra);
   pintaAbas(v, extra);
   $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'inicio'].includes(v) || (v === 'escala' && ['mes', 'semana', 'agenda'].includes(extra)));
@@ -216,7 +220,7 @@ async function rota() {
     else if (v === 'materiais') await renderizarMateriais($('#v-materiais'));
     else if (v === 'instalar') telaInstalar();
     else if (v === 'indique') await telaIndique();
-    else if (v === 'configuracoes') telaConfig();
+    else if (v === 'configuracoes') { telaConfig(); if (extra === 'aparencia') $('#aparencia')?.scrollIntoView({ block: 'start' }); }
     else if (v === 'unidades') telaUnidades();
     else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'contador') await telaContador();
@@ -861,6 +865,30 @@ async function sair() {
 }
 
 // ================= mais =================
+// ===== aparência: claro, escuro ou automático (segue o aparelho). A escolha fica no aparelho. =====
+const TEMAS = [['claro', 'Claro', 'Fundo branco'], ['escuro', 'Escuro', 'Fundo escuro, cansa menos a vista à noite'], ['auto', 'Automático', 'Segue o celular ou o computador']];
+const temaAtual = () => { const t = ler('tema'); return TEMAS.some(x => x[0] === t) ? t : 'claro'; };
+const temaEscuro = () => { const t = temaAtual(); return t === 'escuro' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); };
+const SOL = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>';
+const LUA = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+function aplicaTema(t) {
+  gravar('tema', t);
+  if (t === 'claro') delete document.documentElement.dataset.tema; else document.documentElement.dataset.tema = t;
+  pintaTemaUI();
+}
+function pintaTemaUI() {
+  const b = $('#muTema');
+  if (b) b.innerHTML = temaEscuro() ? `${SOL}<span>Modo claro</span>` : `${LUA}<span>Modo escuro</span>`;
+  $$('[data-escolhe-tema]').forEach(x => x.setAttribute('aria-checked', String(x.dataset.escolheTema === temaAtual())));
+}
+document.addEventListener('click', e => {
+  const op = e.target.closest('[data-escolhe-tema]');
+  if (op) { aplicaTema(op.dataset.escolheTema); return; }
+  if (e.target.closest('#muTema')) aplicaTema(temaEscuro() ? 'claro' : 'escuro');
+});
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', pintaTemaUI); } catch {}
+document.addEventListener('DOMContentLoaded', pintaTemaUI);
+
 function telaConfig() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
   const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
@@ -872,6 +900,8 @@ function telaConfig() {
   h += item('conta', 'Minha conta e foto de perfil', esc(eu.email));
   if (!naTelaInicial()) h += item('instalar', 'Colocar na tela inicial', 'Abre como aplicativo no celular');
   h += '</ul>';
+  h += `<h2 class="cfg-tit" id="aparencia">Aparência</h2><div class="tema-op" role="radiogroup" aria-label="Aparência">${TEMAS.map(([v, t, d]) =>
+    `<button type="button" role="radio" data-escolhe-tema="${v}" aria-checked="${v === temaAtual()}"><i class="tema-mini ${v}" aria-hidden="true"></i><b>${t}</b><small>${d}</small></button>`).join('')}</div>`;
   $('#maisTit').textContent = 'Configurações';
   $('#maisCorpo').innerHTML = h;
 }
