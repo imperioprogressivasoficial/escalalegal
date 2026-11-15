@@ -5,12 +5,24 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-module.exports = function site({ app, APP_URL, PRODUCAO, seg }) {
+module.exports = function site({ app, APP_URL, PRODUCAO, seg, q, limite }) {
   const E = process.env;
   const PIXEL = /^\d+$/.test(E.META_PIXEL_ID || '') ? E.META_PIXEL_ID : '';
   const GA = /^G-[A-Z0-9]+$/i.test(E.GA_ID || '') ? E.GA_ID : '';
   const GTM = /^GTM-[A-Z0-9]+$/i.test(E.GTM_ID || '') ? E.GTM_ID : '';
-  const CAPI = PIXEL && E.META_CAPI_TOKEN ? E.META_CAPI_TOKEN : '';
+  // token da API de Conversões: vem do .env ou do /admin (tabela config); guardado em cache por 1 minuto
+  let capiCache = { t: '', em: 0 };
+  async function tokenMeta() {
+    if (!PIXEL) return '';
+    if (E.META_CAPI_TOKEN) return E.META_CAPI_TOKEN;
+    if (!q) return '';
+    if (Date.now() - capiCache.em < 60000) return capiCache.t;
+    try { const { rows } = await q("select valor from config where chave='meta_capi_token'"); capiCache = { t: rows[0]?.valor || '', em: Date.now() }; }
+    catch { capiCache = { t: '', em: Date.now() }; }
+    return capiCache.t;
+  }
+  const limpaCacheMeta = () => { capiCache = { t: '', em: 0 }; };
+  const CAPI = PIXEL; // o navegador sempre manda o evento também para o servidor; o servidor só repassa se houver token
   const PRECO = +String(E.PRECO || '97').replace(',', '.') || 97;
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const zap = String(E.SUPORTE_WHATSAPP || '').replace(/\D/g, '');
@@ -125,14 +137,17 @@ window.rastrear=function(ev,d){if(!ativo)return;if(ok)envia(ev,d);else fila.push
 window.preferenciasCookies=function(){try{localStorage.removeItem(K)}catch(e){}aviso()};
 if(ativo)gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});
 function s(src){var t=document.createElement('script');t.async=true;t.src=src;document.head.appendChild(t)}
+function eid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,10)}
+function ck(n){var r=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return r?decodeURIComponent(r[1]):''}
+function srv(ev,id,d){if(!C.pixel)return;var go=function(){try{var u=new URLSearchParams(location.search),fb=u.get('fbclid'),fbc=ck('_fbc')||(fb?'fb.1.'+Date.now()+'.'+fb:'');fetch('/api/evento',{method:'POST',keepalive:true,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({ev:ev,id:id,url:location.href,fbp:ck('_fbp'),fbc:fbc,value:d&&d.value,currency:d&&d.currency})}).catch(function(){})}catch(e){}};ev==='PageView'?setTimeout(go,1500):go()}
 function carrega(){if(ok||!ativo)return;ok=true;
 gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});
 if(C.gtm){dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});s('https://www.googletagmanager.com/gtm.js?id='+C.gtm)}
 if(C.ga){s('https://www.googletagmanager.com/gtag/js?id='+C.ga);gtag('js',new Date());gtag('config',C.ga)}
-if(C.pixel){!function(f,b,e,v,n,t,x){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;x=b.getElementsByTagName(e)[0];x.parentNode.insertBefore(t,x)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',C.pixel);fbq('track','PageView')}
+if(C.pixel){!function(f,b,e,v,n,t,x){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;x=b.getElementsByTagName(e)[0];x.parentNode.insertBefore(t,x)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',C.pixel);var pv=eid();fbq('track','PageView',{},{eventID:pv});srv('PageView',pv)}
 fila.forEach(function(e){envia(e[0],e[1])});fila=[]}
 var GA4={Lead:'generate_lead',InitiateCheckout:'begin_checkout',Purchase:'purchase',CompleteRegistration:'sign_up',ViewContent:'view_item'};
-function envia(ev,d){d=d||{};if(window.fbq&&!(ev==='Purchase'&&C.capi))fbq('track',ev,d);if(C.ga||C.gtm)gtag('event',GA4[ev]||ev,{value:d.value,currency:d.currency});dataLayer.push({event:'escala_'+ev})}
+function envia(ev,d){d=d||{};var id=eid();if(window.fbq)fbq('track',ev,d,{eventID:id});if(ev!=='Purchase')srv(ev,id,d);if(C.ga||C.gtm)gtag('event',GA4[ev]||ev,{value:d.value,currency:d.currency});dataLayer.push({event:'escala_'+ev})}
 function aviso(){if(document.getElementById('avisoCookies'))return;var a=document.createElement('div');a.id='avisoCookies';a.setAttribute('role','dialog');a.setAttribute('aria-label','Cookies');
 a.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:520px;margin:0 auto;background:rgba(12,27,51,.97);backdrop-filter:blur(10px);color:#e6edf7;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 20px;font:500 15px/1.5 system-ui,sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.45);transform:translateY(30px);opacity:0;transition:transform .5s cubic-bezier(.16,1,.3,1),opacity .5s';
 a.innerHTML='<b style="display:block;font-size:16px;color:#fff;margin-bottom:4px">Este site usa cookies</b>Eles ajudam a medir as visitas e melhorar os anúncios. Você escolhe. <a href="/privacidade#cookies" style="color:#9fc2ff">Saiba mais</a><div style="display:flex;gap:8px;margin-top:14px"><button data-c="sim" style="flex:1.4;border:0;border-radius:12px;padding:12px;font:700 15px system-ui;background:linear-gradient(135deg,#2bc443,#168821);color:#fff;cursor:pointer">Aceitar cookies</button><button data-c="nao" style="flex:1;border:1px solid #5a6a85;border-radius:12px;padding:12px;font:700 15px system-ui;background:transparent;color:#e6edf7;cursor:pointer">Só os necessários</button></div>';
@@ -147,7 +162,8 @@ if(v==='sim')carrega();else if(v!=='nao')aviso();
   // ---------- compra direto do servidor para a Meta (não perde venda por bloqueador de anúncio) ----------
   const h256 = v => crypto.createHash('sha256').update(String(v).trim().toLowerCase()).digest('hex');
   async function compraMeta({ email, nome, whatsapp, transacao }) {
-    if (!CAPI) return;
+    if (E.META_COMPRA_SERVIDOR !== '1') return;
+    const CAPI = await tokenMeta(); if (!CAPI) return;
     const fone = String(whatsapp || '').replace(/\D/g, '');
     const corpo = { data: [{ event_name: 'Purchase', event_time: Math.floor(Date.now() / 1000), action_source: 'website',
       event_id: 'compra_' + (transacao || h256(email)).toString().slice(0, 60), event_source_url: APP_URL + '/obrigado',
@@ -164,5 +180,38 @@ if(v==='sim')carrega();else if(v!=='nao')aviso();
     if (req.method !== 'GET' || req.path.startsWith('/api/')) return res.status(404).json({ erro: 'Rota não encontrada.' });
     res.status(404).type('html').send(fs.readFileSync(path.join(PUB, '404.html'), 'utf8'));
   }
-  return { compraMeta, naoEncontrado };
+  // ---------- eventos do navegador repassados pelo servidor (API de Conversões) ----------
+  // só chegam aqui depois do "Aceitar cookies" (o rastreio só começa depois do aceite)
+  const EVENTOS = new Set(['PageView', 'ViewContent', 'Lead', 'InitiateCheckout', 'CompleteRegistration', 'AddPaymentInfo', 'Contact']);
+  const ip = req => String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+  async function eventoMeta(req, b) {
+    const tk = await tokenMeta(); if (!tk) return;
+    const url = String(b.url || '').slice(0, 500);
+    if (url && !url.startsWith(APP_URL)) return; // só eventos do nosso domínio
+    const user_data = { client_ip_address: ip(req), client_user_agent: String(req.headers['user-agent'] || '').slice(0, 400) };
+    if (/^fb\.\d\.\d+\.[\w.-]+$/.test(b.fbp || '')) user_data.fbp = b.fbp;
+    if (/^fb\.\d\.\d+\.[\w.-]+$/.test(b.fbc || '')) user_data.fbc = b.fbc;
+    if (req.emailLogado) user_data.em = [h256(req.emailLogado)];
+    const ev = { event_name: b.ev, event_time: Math.floor(Date.now() / 1000), event_id: String(b.id || '').slice(0, 60), action_source: 'website', event_source_url: url || APP_URL, user_data };
+    if (b.value) ev.custom_data = { value: +b.value || PRECO, currency: b.currency || 'BRL', content_name: 'Sua Escala 5x2' };
+    const r = await fetch(`https://graph.facebook.com/v21.0/${PIXEL}/events?access_token=${encodeURIComponent(tk)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [ev], ...(E.META_TEST_EVENT_CODE && { test_event_code: E.META_TEST_EVENT_CODE }) }), signal: AbortSignal.timeout(8000) });
+    if (!r.ok) console.error('Meta (API de Conversões):', r.status, (await r.text()).slice(0, 200));
+  }
+  app.post('/api/evento', ...(limite ? [limite(240)] : []), (req, res) => {
+    res.status(204).end();
+    const b = req.body || {};
+    if (!PIXEL || !EVENTOS.has(b.ev)) return;
+    eventoMeta(req, b).catch(e => console.error('Meta:', e.message));
+  });
+  // teste do /admin: manda um PageView com o código de teste do Gerenciador de Eventos
+  async function testeMeta(codigo) {
+    const tk = await tokenMeta(); if (!tk) return { ok: false, erro: 'Token não configurado.' };
+    const r = await fetch(`https://graph.facebook.com/v21.0/${PIXEL}/events?access_token=${encodeURIComponent(tk)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [{ event_name: 'PageView', event_time: Math.floor(Date.now() / 1000), event_id: 'teste_' + Date.now(), action_source: 'website', event_source_url: APP_URL + '/',
+        user_data: { client_ip_address: '200.200.200.200', client_user_agent: 'Mozilla/5.0 (teste do painel)' } }], ...(codigo && { test_event_code: codigo }) }), signal: AbortSignal.timeout(8000) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? { ok: true, recebidos: j.events_received } : { ok: false, erro: j.error?.message || ('HTTP ' + r.status) };
+  }
+  return { compraMeta, naoEncontrado, tokenMeta, limpaCacheMeta, testeMeta, PIXEL };
 };

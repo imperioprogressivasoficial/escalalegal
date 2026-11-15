@@ -15,6 +15,23 @@ input{padding:9px;border:1px solid #c9d0db;border-radius:8px;font:inherit}.barra
 <h2>Indique e ganhe: comissões</h2>
 <p class="mut" id="indInfo"></p>
 <div class="rol"><table><thead><tr><th>Afiliado</th><th>E-mail</th><th>WhatsApp</th><th>Chave Pix</th><th>Vendas</th><th>Liberado para pagar</th><th>Na garantia (7 dias)</th><th>Já pago</th><th></th></tr></thead><tbody id="ind"></tbody></table></div>
+<h2>Meta: Pixel e API de Conversões</h2>
+<div id="metaBox" style="background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:16px;margin-bottom:24px">
+  <p id="metaStatus">Carregando…</p>
+  <label style="display:block;margin-top:10px;font-weight:700">Token da API de Conversões (Gerenciador de Eventos › Configurações › Gerar token)</label>
+  <input id="metaToken" type="password" autocomplete="off" placeholder="Cole o token aqui" style="width:100%;padding:10px;margin-top:6px">
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="metaSalvar">Salvar token</button>
+  <input id="metaCodigo" placeholder="Código de teste (TEST1234)" style="padding:8px"><button id="metaTestar">Enviar evento de teste</button></div>
+  <p id="metaMsg" style="margin-top:8px"></p>
+</div>
+<script>
+(function(){
+  const st = () => fetch('/api/admin/meta').then(r => r.json()).then(j => { document.getElementById('metaStatus').innerHTML = 'Pixel: <b>' + (j.pixel || 'não configurado') + '</b> · API de Conversões: <b>' + (j.token_configurado ? 'ligada' : 'falta o token') + '</b>'; });
+  st();
+  document.getElementById('metaSalvar').onclick = async () => { const r = await fetch('/api/admin/meta', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({token: document.getElementById('metaToken').value})}); const j = await r.json(); document.getElementById('metaMsg').textContent = j.erro || 'Token salvo.'; document.getElementById('metaToken').value = ''; st(); };
+  document.getElementById('metaTestar').onclick = async () => { const r = await fetch('/api/admin/meta/teste', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({codigo: document.getElementById('metaCodigo').value})}); const j = await r.json(); document.getElementById('metaMsg').textContent = j.ok ? 'A Meta recebeu o evento de teste (' + j.recebidos + '). Confira em Eventos de teste.' : 'Erro: ' + j.erro; };
+})();
+</script>
 <h2>Últimos eventos de pagamento</h2>
 <p class="mut" id="wh"></p>
 <div class="rol"><table><thead><tr><th>Quando</th><th>E-mail</th><th>Ação</th><th>Evento</th><th>Plataforma</th></tr></thead><tbody id="ev"></tbody></table></div>

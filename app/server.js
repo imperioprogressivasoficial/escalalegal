@@ -48,8 +48,16 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '300kb' }));
+// ---------- limite por IP ----------
+const hits = new Map();
+const limite = (max = 20, janela = 60_000) => (req, res, next) => {
+  const k = req.ip + ' ' + req.baseUrl + req.route?.path, now = Date.now();
+  const h = (hits.get(k) || []).filter(t => now - t < janela);
+  if (h.length >= max) return res.status(429).json({ erro: 'Muitas tentativas. Aguarde um pouco e tente de novo.' });
+  h.push(now); hits.set(k, h); next();
+};
 // site público (metas, robots, sitemap, llms, rastreio, 404) antes dos arquivos estáticos
-const site = require('./site.js')({ app, APP_URL, PRODUCAO, seg });
+const site = require('./site.js')({ app, APP_URL, PRODUCAO, seg, q, limite });
 app.use('/img', express.static(path.join(__dirname, 'public', 'img'), { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: PRODUCAO ? '10m' : 0 }));
 
@@ -63,14 +71,6 @@ const erro = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch
   if (!res.headersSent) res.status(500).json({ erro: 'Erro inesperado. Tente de novo.' });
 });
 
-// ---------- limite por IP ----------
-const hits = new Map();
-const limite = (max = 20, janela = 60_000) => (req, res, next) => {
-  const k = req.ip + ' ' + req.baseUrl + req.route?.path, now = Date.now();
-  const h = (hits.get(k) || []).filter(t => now - t < janela);
-  if (h.length >= max) return res.status(429).json({ erro: 'Muitas tentativas. Aguarde um pouco e tente de novo.' });
-  h.push(now); hits.set(k, h); next();
-};
 // ---------- tentativas erradas (senha do login, troca de senha e /admin) ----------
 // Conta só as falhas: depois de N erros em 15 minutos, bloqueia aquela chave (e-mail ou IP) por 15 minutos.
 const falhas = new Map();
@@ -427,6 +427,20 @@ function adminAuth(req, res, next) {
   res.set('WWW-Authenticate', 'Basic realm="admin", charset="UTF-8"').status(401).send('Acesso restrito');
 }
 const admin = [limite(120), adminAuth];
+// API de Conversões da Meta: o token fica guardado no banco (nunca volta para a tela)
+app.get('/api/admin/meta', admin, erro(async (_req, res) => {
+  const t = await site.tokenMeta();
+  res.json({ pixel: site.PIXEL, token_configurado: !!t, pelo_env: !!process.env.META_CAPI_TOKEN });
+}));
+app.put('/api/admin/meta', admin, erro(async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  if (token && !/^[A-Za-z0-9_-]{40,600}$/.test(token)) return res.status(400).json({ erro: 'Esse token não parece um token da Meta.' });
+  if (token) await q(`insert into config (chave, valor) values ('meta_capi_token', $1) on conflict (chave) do update set valor=$1, atualizado_em=now()`, [token]);
+  else await q("delete from config where chave='meta_capi_token'");
+  site.limpaCacheMeta();
+  res.json({ ok: true, token_configurado: !!token });
+}));
+app.post('/api/admin/meta/teste', admin, erro(async (req, res) => res.json(await site.testeMeta(String(req.body?.codigo || '').replace(/[^\w]/g, '').slice(0, 40)))));
 app.get('/admin', admin, (_req, res) => res.sendFile(path.join(__dirname, 'views', 'admin.html')));
 app.get('/api/admin/clientes', admin, erro(async (_req, res) => {
   const { rows } = await q(`select u.id, u.criado_em, u.nome, u.empresa, u.email, u.whatsapp, u.acesso_liberado, u.liberado_em,

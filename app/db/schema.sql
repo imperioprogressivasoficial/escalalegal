@@ -222,3 +222,10 @@ alter table empresa_config add column if not exists como_conheceu_outro text;
 alter table empresa_config add column if not exists cadastro_em timestamptz;
 alter table empresa_config add column if not exists escala_enviada_em timestamptz;
 alter table compras add column if not exists whatsapp text;
+
+-- configurações feitas no /admin (ex.: token da API de Conversões da Meta)
+create table if not exists config (
+  chave text primary key,
+  valor text,
+  atualizado_em timestamptz not null default now()
+);
