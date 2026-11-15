@@ -373,8 +373,9 @@ async function telaInicio() {
       <div class="prox-txt"><em class="nf-etq">Próximo passo</em><h2 id="tProx">${ps.tit}</h2><p>${ps.txt}</p><button class="btn" data-ir="${ps.ir}">${ps.btn} <span aria-hidden="true">→</span></button></div></section>` : '';
   // Aulas: o vídeo do app e as 8 da nova lei
   const lic = typeof licoes === 'function' ? licoes() : [];
-  const aulas = [cartaoImg({ ir: 'aula/app', img: capa('aula-01'), tit: 'Aula 1: Como usar o app', sub: 'Vídeo · 1 min' }),
-    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: capa('aula-' + String(i + 2).padStart(2, '0')), tit: `Aula ${i + 2}: ${l.tit.replace(/<[^>]+>/g, '')}`, sub: '1 min' }))];
+  const vistas = typeof aulasVistas === 'function' ? aulasVistas() : new Set(), sub = n => vistas.has(n) ? 'Assistida' : 'Vídeo · 1 min';
+  const aulas = [cartaoImg({ ir: 'aula/app', img: capa('aula-01'), tit: 'Aula 1: Como usar o app', sub: sub(1) }),
+    ...lic.map((l, i) => cartaoImg({ ir: `aula/${i}`, img: capa('aula-' + String(i + 2).padStart(2, '0')), tit: `Aula ${i + 2}: ${l.tit.replace(/<[^>]+>/g, '')}`, sub: sub(i + 2) }))];
   // Seus materiais (liberado: baixar; não liberado: preço)
   const mats = (Array.isArray(extras) ? extras : []).map(x => cartaoImg({
     ...(x.comprado ? { ir: 'materiais' } : { href: x.checkout, alvo: true }),

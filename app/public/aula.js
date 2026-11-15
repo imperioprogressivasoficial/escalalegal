@@ -52,12 +52,22 @@ function licoes() {
   ];
 }
 // Aulas e ajuda: a lista com as capas (estilo streaming). A 1 é o vídeo do app; da 2 à 9, a nova lei.
+const aulasVistas = () => { try { return new Set(JSON.parse(ler('aulasVistas') || '[]')); } catch { return new Set(); } };
+function marcaAssistida(n) { const s = aulasVistas(); s.add(n); gravar('aulasVistas', JSON.stringify([...s])); }
+// vídeo de cada aula: 1 = app; 2 a 9 = nova lei (video/aula-0N.mp4, com pôster e legenda)
+function videoAula(n) {
+  const base = n === 1 ? 'aula-app' : `aula-${String(n).padStart(2, '0')}`;
+  return `<video class="aula-video" controls preload="none" playsinline poster="/video/${base}.jpg?v=1" data-aula="${n}"><source src="/video/${base}.mp4?v=1" type="video/mp4">
+    <track kind="captions" src="/video/${base}.vtt?v=1" srclang="pt-BR" label="Português" default></video>`;
+}
 function telaAulas() {
-  const L = licoes();
-  const card = (ir, n, sub, tit) => `<button type="button" class="aula-card" data-ir="${ir}" aria-label="Aula ${n}: ${esc(tit)}"><img src="/img/capas/aula-${String(n).padStart(2, '0')}.webp?v=1" alt="" width="960" height="540" loading="lazy" decoding="async"><small>${sub}</small></button>`;
+  const L = licoes(), vistas = aulasVistas();
+  const card = (ir, n, sub, tit) => `<button type="button" class="aula-card ${vistas.has(n) ? 'vista' : ''}" data-ir="${ir}" aria-label="Aula ${n}: ${esc(tit)}${vistas.has(n) ? ' (assistida)' : ''}"><img src="/img/capas/aula-${String(n).padStart(2, '0')}.webp?v=1" alt="" width="960" height="540" loading="lazy" decoding="async"><small>${vistas.has(n) ? '<b>Assistida</b> · ' : ''}${sub}</small></button>`;
+  const feitas = [...vistas].filter(n => n >= 1 && n <= L.length + 1).length;
   $('#v-aula').innerHTML = `<h1>Aulas</h1>
-    <p class="sub">O vídeo de como usar o app e a nova lei em aulas de 1 minuto, com teste rápido.</p>
-    <div class="aulas-grade">${card('aula/app', 1, 'Vídeo · 1 min', 'Como usar o app')}${L.map((l, i) => card('aula/' + i, i + 2, '1 min · com teste rápido', l.tit.replace(/<[^>]+>/g, ''))).join('')}</div>
+    <p class="sub">Como usar o app e a nova lei, em vídeos curtos com legenda e teste rápido.</p>
+    <div class="aulas-prog"><span><b>${feitas}</b> de ${L.length + 1} assistidas</span><i style="--p:${Math.round(feitas / (L.length + 1) * 100)}%"></i></div>
+    <div class="aulas-grade">${card('aula/app', 1, 'Vídeo · 1 min', 'Como usar o app')}${L.map((l, i) => card('aula/' + i, i + 2, 'Vídeo · com teste rápido', l.tit.replace(/<[^>]+>/g, ''))).join('')}</div>
     <p style="margin-top:18px"><a class="link" href="/ajuda">Ajuda completa e a lei ›</a></p>`;
 }
 // Aula aberta: aulaI 0 = vídeo, aulaI k = lição k da lei.
@@ -77,9 +87,8 @@ function telaAula() {
   if (aulaI === 0) {
     $('#v-aula').innerHTML = `<div class="quiz">${topo}
       <div class="quiz-q aula"><p class="aula-etq">Aula 1 · Vídeo</p><h1>Como usar o app</h1>
-        <p class="aula-txt">Em 1 minuto, com legenda: a semana, trocar uma folga, lançar falta e mandar a escala para a equipe.</p>
-        <video class="aula-video" controls preload="none" playsinline poster="/video/aula-app.jpg?v=1"><source src="/video/aula-app.mp4?v=1" type="video/mp4">
-          <track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>
+        <p class="aula-txt">Em 1 minuto, com legenda: a semana, trocar uma folga, lançar uma ausência e publicar a escala.</p>
+        ${videoAula(1)}
         <p class="dica">Depois vêm as 8 aulas da nova lei, de 1 minuto cada.</p></div>
       ${proximo}</div>`;
   } else {
@@ -88,6 +97,7 @@ function telaAula() {
     <div class="quiz-q aula">
       <p class="aula-etq">Aula ${aulaI + 1} · A nova lei, sem juridiquês</p>
       <h1>${l.tit}</h1>
+      ${videoAula(aulaI + 1)}
       <p class="aula-txt">${l.texto}</p>
       <div class="aula-ex">${l.exemplo}</div>
       <div class="nota info"><b>Na prática:</b> ${l.pratica}</div>
@@ -102,5 +112,6 @@ function telaAula() {
   }
   $('#aulaVolta').onclick = () => { if (!aulaI) return ir('aula'); aulaI--; telaAula(); };
   $('#aulaProx').onclick = () => { $('#v-aula video')?.pause(); aulaI++; telaAula(); window.scrollTo(0, 0); };
+  $$('#v-aula video[data-aula]').forEach(v => v.addEventListener('ended', () => { marcaAssistida(+v.dataset.aula); toast('Aula assistida.'); }));
   window.scrollTo(0, 0);
 }
