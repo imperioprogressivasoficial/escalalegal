@@ -204,3 +204,8 @@ details p{margin-top:8px;font-size:.97rem}
 @media print{.topo,.rodape,.hero-g,.faixa,.recentes,.duvidas,.nao-imprime,#avisoCookies{display:none!important}body{font-size:12px}.resultado{width:100%;padding:0}.tabela-g{border:0}.tabela-g table{min-width:0}.c-t,.c-f,.c-x{-webkit-print-color-adjust:exact;print-color-adjust:exact}.marca-dagua{display:block!important}}
 .marca-dagua{display:none;text-align:right;font-size:11px;color:#5b6678;margin-top:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.g-feriados{margin-top:12px}.g-fer{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;border:1.5px solid #dde4ef;border-radius:12px;padding:10px 12px;margin-top:8px}
+.g-fer.removido b{text-decoration:line-through;color:#5b6678}.g-fer .ck{display:flex;align-items:center;gap:6px;font-weight:600}.g-fer .ck input{width:auto;margin:0}.g-fer .link{margin-left:auto}
+.g-feriados details{margin-top:10px}.g-feriados details .btn{margin-top:8px}
+.g-avaliador{border:2px solid #ffcd07;border-radius:14px;padding:14px 16px;margin:12px 0}.g-avaliador h3{margin:0 0 8px}.g-avaliador ul{margin:0;padding-left:18px}.g-avaliador .acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

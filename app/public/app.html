@@ -51,6 +51,17 @@ label{display:block;font-weight:700;font-size:.92rem;color:var(--tinta);margin:1
 @media(max-width:520px){.topo .marca img{height:26px}}
 @media(max-width:1023.98px){.lat-logo{display:block;height:24px;width:auto;margin-bottom:12px}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--toast-bg);color:var(--toast-tx);padding:12px 18px;border-radius:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:99;width:max-content;max-width:90vw;text-align:center}
+.toast.com-acao{display:flex;align-items:center;gap:14px;text-align:left}
+.toast-desfazer{background:none;border:0;color:var(--amarelo);font:800 .95rem var(--corpo);cursor:pointer;padding:6px 4px;white-space:nowrap}
+:root[data-tema="escuro"] .toast-desfazer{color:var(--azul)}
+.avaliador{border:2px solid var(--amarelo);margin-bottom:12px}.avaliador h3{margin:0 0 8px;font:800 1.05rem var(--display);color:var(--tinta)}
+.avaliador ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}.avaliador li b{display:block;color:var(--tinta)}.avaliador li span{font-size:.93rem;color:var(--texto)}
+.av-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.av-acoes .btn{flex:1 1 160px}
+.fer-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}.fer-nav .link{font-size:1.4rem;padding:4px 12px}
+.fer-lista{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:8px}.fer-lista li{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border:1.5px solid var(--linha);border-radius:12px;padding:10px 12px}
+.fer-lista li small{display:block;color:var(--mut)}.fer-lista li.removido b{text-decoration:line-through;color:var(--mut)}
+.fer-lista .ck{display:flex;gap:8px;align-items:center;font-weight:600;margin-top:6px}.fer-lista .ck input{width:auto;margin:0}
+.fer-add{margin-top:10px}
 
 /* ===== entrada ===== */
 .entrada{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
@@ -1180,6 +1191,7 @@ body:not(.modo-foco) .btn-menu{height:46px}.btn-sino{width:46px;height:46px}
         <label>Dias abertos e pessoas no mínimo em cada dia</label>
         <div class="dias-conf" id="cfDias"></div>
         <div id="cfCriticas"></div>
+        <div id="cfFeriados"></div>
         <button class="btn cheio edita" id="btnSalvarCfg" style="margin-top:18px">Salvar</button>
       </div>
       <p style="text-align:center;margin-top:18px" class="edita"><button class="link perigo" id="btnExcluir">Excluir esta unidade</button></p>
@@ -1341,15 +1353,15 @@ body:not(.modo-foco) .btn-menu{height:46px}.btn-sino{width:46px;height:46px}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=36"></script>
+<script src="/scheduler.js?v=37"></script>
 <script src="/cadastro.js?v=36"></script>
 <script src="/ooxml.js?v=36"></script>
-<script src="/exportar.js?v=36"></script>
+<script src="/exportar.js?v=37"></script>
 <script src="/aula.js?v=36"></script>
 <script src="/extras.js?v=36"></script>
 <script src="/inicio.js?v=36"></script>
 <script src="/extras-materiais.js?v=36"></script>
-<script src="/app.js?v=37"></script>
+<script src="/app.js?v=38"></script>
 <script src="/suporte.js?v=1" defer></script>
 </body>
 </html>

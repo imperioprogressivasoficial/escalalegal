@@ -64,7 +64,7 @@ test('farmácia pelo primeiro acesso: farmacêutico garantido todo dia', { skip:
   assert.equal(r.json.equipe.abre, '07:00'); assert.equal(r.json.equipe.criticas[0].chave, 'farmac');
   const esc = r.json.escala, membros = esc.funcionarios.map((f, i) => /Farmac/.test(f.cargo) ? i : -1).filter(i => i >= 0);
   assert.equal(membros.length, 3);
-  for (const sem of esc.dados) for (let d = 0; d < 7; d++) assert.ok(membros.filter(i => sem[i][d] === 'T').length >= 2, `dia ${d}`);
+  esc.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) if (!(esc.feriados || []).includes(E.somaDias(esc.inicio, s * 7 + d))) assert.ok(membros.filter(i => sem[i][d] === 'T').length >= 2, `dia ${d}`); });
   // unidade sem crítica informada pega a do segmento
   const r2 = await chama('/api/onboarding', { method: 'POST', cookie: s, body: { unidade: { nome: 'Drogaria Bairro', setor: 'farmacia' }, pessoas: [{ nome: 'Zé', cargo: 'Farmacêutico' }] } });
   assert.equal(r2.json.equipe.criticas[0].nome, 'Farmacêutico(a)');
@@ -84,10 +84,10 @@ test('farmácia pelo primeiro acesso: farmacêutico garantido todo dia', { skip:
   const acou = (await pool.query("select dias_semana, entrada, saida, intervalo_min from funcionarios where equipe_id=$1 and cargo='Açougue'", [r3.json.equipe.id])).rows[0];
   assert.deepEqual(acou, { dias_semana: 4, entrada: '07:00', saida: '16:00', intervalo_min: 60 });
   const iA = r3.json.escala.funcionarios.findIndex(f => f.cargo === 'Açougue');
-  for (const sem of r3.json.escala.dados) assert.equal(sem[iA].filter(c => c === 'F').length, 3, 'açougue trabalha 4 dias');
+  const e3 = r3.json.escala; e3.dados.forEach((sem, s) => assert.equal(sem[iA].filter((c, d) => c === 'F' && !(e3.feriados || []).includes(E.somaDias(e3.inicio, s * 7 + d))).length, 3, 'açougue trabalha 4 dias'));
   assert.ok(Array.isArray(r3.json.escala.ajustes)); assert.ok(fsMer.some(f => f.nome === 'Repositor 2' && f.cargo === 'Repositor(a)'));
   const caixas = r3.json.escala.funcionarios.map((f, i) => f.cargo === 'Caixa' ? i : -1).filter(i => i >= 0);
   assert.equal(caixas.length, 3);
-  for (const sem of r3.json.escala.dados) for (let d = 0; d < 7; d++) assert.ok(caixas.some(i => sem[i][d] === 'T'), `caixa no dia ${d}`);
+  e3.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) if (!(e3.feriados || []).includes(E.somaDias(e3.inicio, s * 7 + d))) assert.ok(caixas.some(i => sem[i][d] === 'T'), `caixa no dia ${d}`); });
   await pool.query('delete from usuarios where email=$1', [email]);
 });

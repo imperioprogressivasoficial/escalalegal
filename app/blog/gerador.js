@@ -59,14 +59,16 @@
     });
     var soma = funcoes.reduce(function (a, f) { return a + f.minimo; }, 0);
     var minimo = abertos.map(function (a) { return a ? Math.max(1, soma) : 0; });
-    var r = Escala.gerarEscala({ funcionarios: funcionarios, abertos: abertos, minimo: minimo, semanas: LIMITES.semanas, grupos: grupos, domingoSemanas: domingoSemanas });
+    // feriados da semana: sem marcar, a empresa fecha e todos folgam; o: feriados { abre, removidos, extras }
+    var ctx = { uf: o.uf && Escala.UFS.indexOf(o.uf) >= 0 ? o.uf : null, config: o.feriados || {} };
+    var r = Escala.gerarEscala({ funcionarios: funcionarios, abertos: abertos, minimo: minimo, semanas: LIMITES.semanas, grupos: grupos, domingoSemanas: domingoSemanas,
+      feriadosFechados: Escala.diasFeriadoFechado(inicio, 1, ctx, abertos) });
     var semana = r.escala[0];
-    var ctx = o.uf && Escala.UFS.indexOf(o.uf) >= 0 ? { uf: o.uf } : null;
     var analise = Escala.analisar({ inicio: inicio, semanas: 1, funcionarios: funcionarios, abertos: abertos, minimo: minimo, dados: r.escala },
       { horasDia: horasDia, ctx: ctx, criticas: grupos, domingoSemanas: domingoSemanas, abre: o.abre, fecha: o.fecha });
     var dias = DIAS.map(function (nome, d) {
       var iso = Escala.somaDias(inicio, d);
-      return { nome: nome, iso: iso, br: br(iso), aberto: !!abertos[d], feriado: Escala.feriado(iso, ctx) };
+      return { nome: nome, iso: iso, br: br(iso), aberto: !!abertos[d], feriado: Escala.feriado(iso, ctx), ferFechado: !!abertos[d] && Escala.feriadoFechado(iso, ctx) };
     });
     var linhas = funcionarios.map(function (f, i) { return { nome: f.nome, cargo: f.cargo, dias: semana[i].map(function (c, d) { return abertos[d] ? c : 'F'; }) }; });
     var presentes = dias.map(function (_, d) { return semana.filter(function (x) { return x[d] === 'T'; }).length; });
@@ -83,7 +85,8 @@
       setor: setor, inicio: inicio, fim: Escala.somaDias(inicio, 6), semanas: 1, dias: dias, linhas: linhas, presentes: presentes, minimo: minimo,
       horasDia: horasDia, horasSemana: horasDia * 5, limite: limite, domingoSemanas: domingoSemanas, comercio: !!s.comercio,
       domingoFolgam: abertos[6] ? linhas.filter(function (l) { return l.dias[6] === 'F'; }).map(function (l) { return l.nome; }) : [],
-      analise: analise, avisos: avisos, alertas: r.alertas, funcoes: funcoes, limites: LIMITES,
+      analise: analise, avisos: avisos,
+      avaliador: Escala.avaliar({ inicio: inicio, funcionarios: funcionarios, abertos: abertos, minimo: minimo, dados: r.escala }, { ctx: ctx, criticas: grupos, domingoSemanas: domingoSemanas }), alertas: r.alertas, funcoes: funcoes, limites: LIMITES,
     };
   }
 
@@ -128,7 +131,36 @@
     }).join('');
     $('#gTotal').textContent = t;
   }
+  // feriados da semana escolhida: abre? remover? adicionar outro
+  var fer = { abre: [], removidos: [], extras: [] };
+  function desenhaFeriados() {
+    var el = $('#gFeriados'); if (!el) return;
+    var ini = $('#gSemana').value, lista = Escala.feriadosEntre(ini, Escala.somaDias(ini, 6), { uf: $('#gUf').value || null, config: fer });
+    el.innerHTML = '<p class="g-dica">' + (lista.length ? 'Feriados nesta semana. Sem marcar, a empresa fecha e todos folgam.' : 'Nenhum feriado nesta semana.') + '</p>'
+      + lista.map(function (f) {
+        return '<div class="g-fer' + (f.removido ? ' removido' : '') + '"><b>' + br(f.data) + ' · ' + esc(f.nome) + '</b>'
+          + (f.removido ? '<span> tratado como dia normal</span>' : '<label class="ck"><input type="checkbox" data-fabre="' + f.data + '"' + (f.abre ? ' checked' : '') + '> A empresa abre neste feriado</label>')
+          + '<button type="button" class="link" data-f' + (f.removido ? 'volta' : 'tira') + '="' + f.data + '">' + (f.removido ? 'Voltar' : 'Remover') + '</button></div>';
+      }).join('')
+      + (lista.some(function (f) { return f.abre && !f.removido; }) ? '<p class="g-dica">Quem trabalha no feriado recebe em dobro ou ganha outra folga (Lei 605/49).</p>' : '')
+      + '<details><summary class="link">Adicionar outro feriado</summary><div class="g-2"><div><label for="gFerData">Data</label><input id="gFerData" type="date" min="' + ini + '" max="' + Escala.somaDias(ini, 6) + '" value="' + ini + '"></div>'
+      + '<div><label for="gFerNome">Nome</label><input id="gFerNome" placeholder="Ex.: Padroeiro"></div></div><button type="button" class="btn btn-sec" id="gFerAdd">Adicionar</button></details>';
+  }
+  function tiraDe(l, d) { var i = l.indexOf(d); if (i >= 0) l.splice(i, 1); }
+  form.addEventListener('change', function (e) {
+    var c = e.target; if (!c.dataset || c.dataset.fabre == null) return;
+    tiraDe(fer.abre, c.dataset.fabre); if (c.checked) fer.abre.push(c.dataset.fabre); desenhaFeriados();
+  });
+  form.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.ftira) { var d = b.dataset.ftira; tiraDe(fer.abre, d); var ex = fer.extras.filter(function (x) { return x.data !== d; });
+      if (ex.length < fer.extras.length) fer.extras = ex; else fer.removidos.push(d); desenhaFeriados(); }
+    else if (b.dataset.fvolta) { tiraDe(fer.removidos, b.dataset.fvolta); desenhaFeriados(); }
+    else if (b.id === 'gFerAdd') { var dt = $('#gFerData').value; if (!dt) return; tiraDe(fer.removidos, dt);
+      fer.extras = fer.extras.filter(function (x) { return x.data !== dt; }); fer.extras.push({ data: dt, nome: $('#gFerNome').value.trim() || 'Feriado' }); desenhaFeriados(); }
+  });
   function desenhaLimite() {
+    desenhaFeriados();
     var ini = $('#gSemana').value, lim = Math.min(Escala.limiteSemanal(ini), Escala.limiteSemanal(Escala.somaDias(ini, 6))), h = +$('#gHoras').value;
     var ha = Escala.horasAberto($('#gAbre').value, $('#gFecha').value);
     $('#gLimite').textContent = 'Nesta semana o limite é ' + lim + 'h. Com ' + h + 'h por dia × 5 dias = ' + (h * 5) + 'h: dentro da lei.'
@@ -158,11 +190,11 @@
       return vaiPara(passo + 1);
     }
   });
-  ['gSemana', 'gHoras', 'gAbre', 'gFecha'].forEach(function (id) { $('#' + id).addEventListener('change', desenhaLimite); });
+  ['gSemana', 'gHoras', 'gAbre', 'gFecha', 'gUf'].forEach(function (id) { $('#' + id).addEventListener('change', desenhaLimite); });
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var r = montar({ setor: st.setor, abertos: st.abertos, funcoes: st.funcoes, abre: $('#gAbre').value, fecha: $('#gFecha').value,
-      horasDia: +$('#gHoras').value, inicio: $('#gSemana').value, uf: $('#gUf').value });
+      horasDia: +$('#gHoras').value, inicio: $('#gSemana').value, uf: $('#gUf').value, feriados: fer });
     if (r.erro) { $('#gErro').textContent = r.erro; return; }
     ultimo = r; mostra(r);
     rastrear('GerouEscala', { pessoas: r.linhas.length, setor: r.setor });
@@ -173,11 +205,12 @@
     var cab = r.dias.map(function (d) { return '<th scope="col"' + (d.feriado ? ' class="fer"' : '') + '>' + d.nome + '<small>' + d.br + (d.feriado ? ' · feriado' : '') + '</small></th>'; }).join('');
     var corpo = r.linhas.map(function (l) {
       return '<tr><th scope="row">' + esc(l.nome) + '</th>' + l.dias.map(function (c, d) {
-        return '<td>' + (!r.dias[d].aberto ? '<i class="c-x">Fechado</i>' : c === 'T' ? '<i class="c-t">Trabalha</i>' : '<i class="c-f">Folga</i>') + '</td>';
+        return '<td>' + (!r.dias[d].aberto || r.dias[d].ferFechado ? '<i class="c-x">' + (r.dias[d].ferFechado ? 'Feriado' : 'Fechado') + '</i>' : c === 'T' ? '<i class="c-t">Trabalha</i>' : '<i class="c-f">Folga</i>') + '</td>';
       }).join('') + '</tr>';
     }).join('');
     var pe = '<tr><th scope="row">Trabalhando</th>' + r.presentes.map(function (p, d) {
-      return '<td' + (r.dias[d].aberto && p < r.minimo[d] ? ' class="baixo"' : '') + '>' + (r.dias[d].aberto ? p + ' de ' + r.minimo[d] : '—') + '</td>';
+      var ab = r.dias[d].aberto && !r.dias[d].ferFechado;
+      return '<td' + (ab && p < r.minimo[d] ? ' class="baixo"' : '') + '>' + (ab ? p + ' de ' + r.minimo[d] : '—') + '</td>';
     }).join('') + '</tr>';
     var itens = r.analise.itens.filter(function (x) { return !/^Rodízio de domingo|^Domingo seguido/.test(x.titulo); }); // 1 semana: o domingo vai no item próprio
     var checks = r.avisos.concat(itens).map(function (x) {
@@ -186,10 +219,13 @@
     if (r.dias[6].aberto) checks.splice(1, 0, '<li class="info"><b>Domingo desta semana</b>' + (r.domingoFolgam.length
       ? 'Folgam no domingo: ' + esc(r.domingoFolgam.join(', ')) + '. Na semana seguinte, o domingo de folga passa para outras pessoas: '
       : 'Ninguém folga neste domingo. Nas próximas semanas, o domingo de folga precisa entrar em rodízio: ')
-      + (r.comercio ? 'no comércio, cada pessoa folga pelo menos 1 domingo a cada 3 semanas (Lei 10.101).' : 'nesta atividade, pelo menos 1 domingo a cada 7 semanas.') + '</li>');
+      + (r.comercio ? 'no comércio, cada pessoa folga pelo menos 1 domingo a cada 3 semanas (Lei 10.101).' : 'nesta atividade, pelo menos 1 domingo a cada 7 semanas.')
+      + ' Mulheres folgam no domingo pelo menos a cada 15 dias (CLT, art. 386): no app completo você marca quem é e a escala já faz isso.</li>');
+    var aval = (r.avaliador || []).length ? '<div class="g-avaliador"><h3>Por que a escala não fecha</h3><ul>' + r.avaliador.map(function (i) { return '<li><b>' + esc(i.titulo) + '</b> ' + esc(i.texto) + '</li>'; }).join('')
+      + '</ul><div class="acoes"><button type="button" class="btn" data-vai="2">Ajustar mínimo por dia</button><button type="button" class="btn btn-sec" data-vai="2">Adicionar colaborador</button><button type="button" class="btn btn-sec" data-vai="1">Ver funcionamento</button></div></div>' : '';
     sec.innerHTML = '<div class="res-cab"><div><h2>Sua escala 5x2 está pronta</h2><p>' + esc(s.nome) + ' · semana de ' + r.dias[0].br + ' a ' + r.dias[6].br + '/' + r.fim.slice(0, 4) + ' · ' + r.linhas.length + (r.linhas.length === 1 ? ' pessoa' : ' pessoas') + ' · ' + r.horasDia + 'h por dia</p></div>'
       + '<button type="button" class="link nao-imprime" id="gEditar">Mudar as respostas</button></div>'
-      + '<div class="tabela-g"><table><caption class="sr" style="position:absolute;left:-9999px">Escala 5x2 da semana</caption><thead><tr><th scope="col">Pessoa</th>' + cab + '</tr></thead><tbody>' + corpo + '</tbody><tfoot>' + pe + '</tfoot></table></div>'
+      + aval + '<div class="tabela-g"><table><caption class="sr" style="position:absolute;left:-9999px">Escala 5x2 da semana</caption><thead><tr><th scope="col">Pessoa</th>' + cab + '</tr></thead><tbody>' + corpo + '</tbody><tfoot>' + pe + '</tfoot></table></div>'
       + '<div class="legenda"><span><i class="c-t"></i>Trabalha</span><span><i class="c-f"></i>Folga</span><span><i class="c-x"></i>Fechado</span><span>' + r.horasSemana + 'h na semana por pessoa · limite ' + r.limite + 'h</span></div>'
       + '<p class="marca-dagua">Feito grátis em ' + esc(form.dataset.site) + ' · confira com seu contador</p>'
       + '<ul class="checks">' + checks.join('') + '</ul>'
@@ -208,6 +244,7 @@
     sec.hidden = false;
     sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     $('#gEditar').onclick = function () { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); vaiPara(1); };
+    [].forEach.call(sec.querySelectorAll('[data-vai]'), function (b) { b.onclick = function () { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); vaiPara(+b.dataset.vai); }; });
     $('#gImprimir').onclick = function () { window.print(); };
     $('#gPng').onclick = function () { png(r); };
     $('#gEmail').onsubmit = function (e) { e.preventDefault(); enviaEmail(r); };

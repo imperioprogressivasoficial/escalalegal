@@ -62,7 +62,8 @@ test('fluxo completo: compra → e-mail → senha → escala → reembolso', { s
   assert.equal(r.json.length, 6);
   r = await chama(`/api/equipes/${eq.id}/escalas`, { method: 'POST', cookie: sessao, body: { inicio: '2026-12-07', semanas: 4 } });
   assert.equal(r.status, 200); assert.equal(r.json.dados.length, 4);
-  for (const semana of r.json.dados) for (const f of semana) assert.equal(f.filter(c => c === 'F').length, 2);
+  const fer = (e, s, d) => (e.feriados || []).includes(require('../public/scheduler.js').somaDias(e.inicio, s * 7 + d));
+  r.json.dados.forEach((semana, s) => { for (const f of semana) assert.equal(f.filter((c, d) => c === 'F' && !fer(r.json, s, d)).length, 2); });
   const esc = r.json;
   r = await chama(`/api/escalas/${esc.id}`, { method: 'PATCH', cookie: sessao, body: { semana: 0, funcionario: 0, dia: 2 } });
   assert.equal(r.status, 200);

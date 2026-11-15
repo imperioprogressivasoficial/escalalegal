@@ -4,7 +4,7 @@
 // "Conta" = a empresa (o usuário dono). Quem entra pode ser o dono, um gestor (edita tudo)
 // ou o contador (só consulta e baixa relatórios). O front manda a conta escolhida no cabeçalho x-conta.
 const crypto = require('crypto');
-const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe } = require('./public/scheduler.js');
+const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe, diasFeriadoFechado } = require('./public/scheduler.js');
 
 const Cadastro = require('./public/cadastro.js');
 const TIPOS = Object.keys(OCORRENCIAS);
@@ -132,27 +132,38 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       entrada: hora(f?.entrada), saida: hora(f?.saida), intervalo: Math.max(0, Math.min(240, Math.round(+f?.intervalo) || 0)),
       folga: { modo: ['rodizio', 'preferidos', 'fixa'].includes(f?.folga?.modo) ? f.folga.modo : 'rodizio', dias: fixosDias(f?.folga?.dias) },
       minimo: Math.max(0, Math.min(50, Math.round(+f?.minimo) || 0)), critica: !!f?.critica })).filter(f => f.nome);
-    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes };
+    return { nome: limpa(b.nome, 80) || SETORES[setor].nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, funcoes, feriados_config: validaFeriados(b.feriados_config) };
+  }
+  // feriados da unidade: datas em que abre, datas tratadas como dia normal e feriados a mais (ex.: padroeiro do bairro)
+  function validaFeriados(v) {
+    v = v && typeof v === 'object' ? v : {};
+    const datas = l => [...new Set((Array.isArray(l) ? l : []).map(dataValida).filter(Boolean))].sort().slice(-400);
+    const extras = (Array.isArray(v.extras) ? v.extras : []).map(x => ({ data: dataValida(x?.data), nome: limpa(x?.nome, 60) || 'Feriado' }))
+      .filter(x => x.data).filter((x, i, l) => l.findIndex(y => y.data === x.data) === i).sort((a, b) => a.data < b.data ? -1 : 1).slice(-200);
+    return { abre: datas(v.abre), removidos: datas(v.removidos), extras };
   }
   const fixosDias = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 6);
   app.get('/api/equipes', L, erro(async (req, res) => {
     const { rows } = await q(`select e.*, (select count(*)::int from funcionarios f where f.equipe_id=e.id and f.ativo) total,
-      (select max(criado_em) from escalas s where s.equipe_id=e.id) ultima from equipes e where usuario_id=$1 order by e.id`, [req.conta.id]);
+      (select max(criado_em) from escalas s where s.equipe_id=e.id) ultima,
+      (e.link_token is not null or exists (select 1 from escalas s where s.equipe_id=e.id and s.inicio <= current_date)
+        or exists (select 1 from empresa_config c where c.conta_id=e.usuario_id and c.escala_enviada_em is not null)) publicada
+      from equipes e where usuario_id=$1 order by e.id`, [req.conta.id]);
     res.json(rows);
   }));
   app.post('/api/equipes', LE, erro(async (req, res) => {
     const e = validaEquipe(req.body || {});
     const { rows: n } = await q('select count(*)::int c from equipes where usuario_id=$1', [req.conta.id]);
     if (n[0].c >= 300) return res.status(400).json({ erro: 'Limite de 300 unidades por empresa. Crie outra empresa em Mais.' });
-    const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *',
-      [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas)]);
+    const { rows } = await q('insert into equipes (usuario_id, nome, setor, abertos, minimo, horas_dia, abre, fecha, criticas, feriados_config) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *',
+      [req.conta.id, e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), JSON.stringify(e.feriados_config)]);
     auditar(req, `Criou a unidade ${e.nome}`);
     res.json(rows[0]);
   }));
   app.put('/api/equipes/:id', LE, minhaEquipe, erro(async (req, res) => {
     const e = validaEquipe({ ...req.equipe, ...req.body });
-    const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4, horas_dia=$5, abre=$6, fecha=$7, criticas=$8 where id=$9 returning *',
-      [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), req.equipe.id]);
+    const { rows } = await q('update equipes set nome=$1, setor=$2, abertos=$3, minimo=$4, horas_dia=$5, abre=$6, fecha=$7, criticas=$8, feriados_config=$9 where id=$10 returning *',
+      [e.nome, e.setor, JSON.stringify(e.abertos), JSON.stringify(e.minimo), e.horas_dia, e.abre, e.fecha, JSON.stringify(e.criticas), JSON.stringify(e.feriados_config), req.equipe.id]);
     auditar(req, `Alterou o funcionamento da unidade ${e.nome}`);
     res.json(rows[0]);
   }));
@@ -164,9 +175,12 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
 
   // ---------- funcionários ----------
   const fixos = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 2);
+  const sexoValido = v => (['F', 'M'].includes(String(v || '').toUpperCase()) ? String(v).toUpperCase() : null);
+  const horaFunc = v => (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : null);
   const dadosFunc = f => ({
     nome: limpa(f.nome, 60), cargo: limpa(f.cargo, 60), folga_fixa: fixos(f.folga_fixa),
     matricula: limpa(f.matricula, 30) || null, admissao: dataValida(f.admissao), telefone: limpa(f.telefone, 20).replace(/\D/g, '') || null,
+    sexo: sexoValido(f.sexo), entrada: horaFunc(f.entrada), saida: horaFunc(f.saida),
   });
   app.get('/api/equipes/:id/funcionarios', L, minhaEquipe, erro(async (req, res) => {
     const { rows } = await q('select * from funcionarios where equipe_id=$1 and ativo order by nome', [req.equipe.id]);
@@ -182,9 +196,9 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     if (!lista.length) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
     const { rows: n } = await q('select count(*)::int c from funcionarios where equipe_id=$1 and ativo', [req.equipe.id]);
     if (n[0].c + lista.length > 200) return res.status(400).json({ erro: 'Limite de 200 funcionários por equipe.' });
-    const { rows } = await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa, matricula, admissao, telefone)
-      select $1, x.nome, x.cargo, x.folga_fixa, x.matricula, x.admissao, x.telefone
-      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, matricula text, admissao date, telefone text) returning *`,
+    const { rows } = await q(`insert into funcionarios (equipe_id, nome, cargo, folga_fixa, matricula, admissao, telefone, sexo)
+      select $1, x.nome, x.cargo, x.folga_fixa, x.matricula, x.admissao, x.telefone, x.sexo
+      from jsonb_to_recordset($2::jsonb) as x(nome text, cargo text, folga_fixa jsonb, matricula text, admissao date, telefone text, sexo text) returning *`,
     [req.equipe.id, JSON.stringify(lista.map(dadosFunc))]);
     auditar(req, `Cadastrou ${rows.length === 1 ? rows[0].nome : rows.length + ' funcionários'} em ${req.equipe.nome}`);
     res.json(rows);
@@ -193,9 +207,12 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const b = req.body || {};
     if (!limpa(b.nome)) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
     const f = dadosFunc(b);
-    const { rows } = await q(`update funcionarios f set nome=$1, cargo=$2, folga_fixa=$3, matricula=$4, admissao=$5, telefone=$6 from equipes e
-      where f.id=$7 and f.equipe_id=e.id and e.usuario_id=$8 returning f.*`,
-    [f.nome, f.cargo, JSON.stringify(f.folga_fixa), f.matricula, f.admissao, f.telefone, +req.params.fid || 0, req.conta.id]);
+    // sexo e horário só mudam quando vêm no pedido (quem não manda, não apaga)
+    const { rows } = await q(`update funcionarios f set nome=$1, cargo=$2, folga_fixa=$3, matricula=$4, admissao=$5, telefone=$6,
+      sexo=case when $9 then $10 else f.sexo end, entrada=case when $11 then $12 else f.entrada end, saida=case when $11 then $13 else f.saida end
+      from equipes e where f.id=$7 and f.equipe_id=e.id and e.usuario_id=$8 returning f.*`,
+    [f.nome, f.cargo, JSON.stringify(f.folga_fixa), f.matricula, f.admissao, f.telefone, +req.params.fid || 0, req.conta.id,
+      'sexo' in b, f.sexo, 'entrada' in b || 'saida' in b, f.entrada, f.saida]);
     if (!rows[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
     auditar(req, `Editou o cadastro de ${f.nome}`);
     res.json(rows[0]);
@@ -206,13 +223,21 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     if (rows[0]) auditar(req, `Removeu ${rows[0].nome}`);
     res.json({ ok: true });
   }));
+  // desfazer a remoção: o colaborador volta para a equipe
+  app.post('/api/funcionarios/:fid/reativar', LE, erro(async (req, res) => {
+    const { rows } = await q(`update funcionarios f set ativo=true from equipes e where f.id=$1 and f.equipe_id=e.id and e.usuario_id=$2
+      returning f.*`, [+req.params.fid || 0, req.conta.id]);
+    if (!rows[0]) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+    auditar(req, `Desfez a remoção de ${rows[0].nome}`);
+    res.json(rows[0]);
+  }));
 
   // ---------- escalas ----------
   const proximaSegunda = () => { const h = hojeBR(), dow = (new Date(h + 'T12:00:00Z').getUTCDay() + 6) % 7; return somaDias(h, dow === 0 ? 0 : 7 - dow); };
   // gera e salva a escala da unidade (férias, atestados etc. já lançados entram no cálculo)
   async function gerarParaEquipe(req, equipe, inicio, semanas) {
     const sets = await setores.daEquipe(equipe.id);
-    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana, setor_id from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
+    const { rows: fs } = await q('select id, nome, cargo, folga_fixa, folga_pref, dias_semana, setor_id, sexo from funcionarios where equipe_id=$1 and ativo order by nome', [equipe.id]);
     if (!fs.length) { const e = new Error('Cadastre pelo menos uma pessoa antes de gerar a escala.'); e.status = 400; throw e; }
     const travado = await mesFechadoEntre(req.conta.id, inicio, somaDias(inicio, semanas * 7 - 1));
     if (travado) { const e = new Error(erroFechado(travado)); e.status = 409; throw e; }
@@ -220,17 +245,22 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const ausencias = Array.from({ length: semanas }, (_, s) => fs.map(f => Array.from({ length: 7 }, (_, d) =>
       mapa.get(f.id + '|' + somaDias(inicio, s * 7 + d)) || null)));
     const grupos = [...gruposDaUnidade(fs, equipe.criticas || []), ...Setores.gruposDosSetores(fs, sets)];
-    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa, pref: f.folga_pref || [], dias: f.dias_semana || 5 })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
-      grupos, domingoSemanas: domingoSemanasDe(equipe.setor) });
-    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes, setores)
-      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
-    [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo, setor_id: f.setor_id }))),
+    const fechadosFer = await feriadosFechadosDe(req.conta.id, equipe, inicio, semanas);
+    const r = gerarEscala({ funcionarios: fs.map(f => ({ nome: f.nome, fixo: f.folga_fixa, pref: f.folga_pref || [], dias: f.dias_semana || 5, sexo: f.sexo })), abertos: equipe.abertos, minimo: equipe.minimo, semanas, ausencias,
+      grupos, domingoSemanas: domingoSemanasDe(equipe.setor), feriadosFechados: fechadosFer });
+    const { rows } = await q(`insert into escalas (equipe_id, inicio, semanas, funcionarios, abertos, minimo, dados, alertas, ajustes, setores, feriados)
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
+    [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo, setor_id: f.setor_id, ...(f.sexo && { sexo: f.sexo }) }))),
       JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || []),
-      JSON.stringify(Setores.assinatura(sets))]);
+      JSON.stringify(Setores.assinatura(sets)), JSON.stringify(fechadosFer.map(i => somaDias(inicio, i)))]);
     auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
     await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} gerada`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
       link: 'escala', chave: `escala:${equipe.id}:${hojeBR()}` });
     return (await escalasComOcorrencias(rows))[0];
+  }
+  // feriados em que a unidade fecha no período (dias contados a partir do início)
+  async function feriadosFechadosDe(contaId, equipe, inicio, semanas) {
+    return diasFeriadoFechado(inicio, semanas, { ...(await ctxDe(contaId)), config: equipe.feriados_config || {} }, equipe.abertos);
   }
   app.post('/api/equipes/:id/escalas', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
     const semanas = Math.max(1, Math.min(8, Math.round(+req.body?.semanas) || 4));
@@ -249,14 +279,17 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const hoje = hojeBR(), seg = segundaDe(dataValida(req.query.data) || hoje), dom = somaDias(seg, 6);
     const eq = req.equipe;
     const sets = await setores.daEquipe(eq.id);
-    const { rows: fs } = await q('select id, setor_id from funcionarios where equipe_id=$1 and ativo', [eq.id]);
+    const { rows: fs } = await q('select id, setor_id, sexo from funcionarios where equipe_id=$1 and ativo', [eq.id]);
     const { rows: cand } = await q(`select * from escalas where equipe_id=$1 and inicio <= $2 and inicio + semanas * 7 > $3::date
       order by criado_em desc limit 10`, [eq.id, seg, dom]);
     let escala = cand.find(e => diasEntre(e.inicio, seg) % 7 === 0) || null;
     const podeMontar = req.conta.papel !== 'contador' && req.conta.liberado && fs.length > 0;
     const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    // feriados fechados: escala antiga (sem a coluna) só fica velha se o período tiver feriado fechado
+    const ferEsperado = escala ? (await feriadosFechadosDe(req.conta.id, eq, escala.inicio, escala.semanas)).map(i => somaDias(escala.inicio, i)) : [];
     const desatualizada = escala && (
-      !igual(escala.funcionarios.map(f => [f.id, f.setor_id ?? null]).sort((a, b) => a[0] - b[0]), fs.map(f => [f.id, f.setor_id ?? null]).sort((a, b) => a[0] - b[0]))
+      !igual(escala.funcionarios.map(f => [f.id, f.setor_id ?? null, f.sexo || null]).sort((a, b) => a[0] - b[0]), fs.map(f => [f.id, f.setor_id ?? null, f.sexo || null]).sort((a, b) => a[0] - b[0]))
+      || !igual(escala.feriados || [], ferEsperado)
       || !igual(escala.setores || [], Setores.assinatura(sets))
       || !igual(escala.abertos, eq.abertos) || !igual(escala.minimo, eq.minimo));
     let montada = false;
@@ -402,7 +435,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
         const data = somaDias(hoje, i), dow = (new Date(data + 'T12:00:00Z').getUTCDay() + 6) % 7;
         const tem = cob.has(e.id + '|' + data);
         const presentes = fe.filter(f => (cel.get(f.id + '|' + data) || (tem ? '' : null)) === 'T').length;
-        return { data, dia: DIAS[dow], aberto: !!e.abertos[dow], minimo: e.minimo[dow], presentes: tem ? presentes : null, feriado: feriado(data, ctx) };
+        return { data, dia: DIAS[dow], aberto: !!e.abertos[dow], minimo: e.minimo[dow], presentes: tem ? presentes : null, feriado: feriado(data, { ...ctx, config: e.feriados_config || {} }) };
       });
       const st = f => cel.get(f.id + '|' + hoje) || mapaOc.get(f.id + '|' + hoje) || null;
       const semEscala = [7, 8, 9, 10, 11, 12, 13].filter(i => !cob.has(e.id + '|' + somaDias(hoje, i))).length;
@@ -444,11 +477,14 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const bancoDe = Object.fromEntries(banco.map(b => [b.funcionario_id, b]));
     const ctx = await ctxDe(contaId);
     const dias = []; for (let d = de; d <= ate; d = somaDias(d, 1)) dias.push({ data: d, dia: DIAS[(new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7], feriado: feriado(d, ctx) });
+    // feriado trabalhado conta pelos feriados de cada unidade (a unidade pode ter tirado ou somado um feriado)
+    const { rows: cfgs } = await q('select id, feriados_config from equipes where usuario_id=$1', [contaId]);
+    const ctxEq = Object.fromEntries(cfgs.map(e => [e.id, { ...ctx, config: e.feriados_config || {} }]));
     const linhas = funcs.map(f => {
       const c = { trabalhados: 0, folgas: 0, domingos: 0, feriados: 0, faltas: 0, atestado: 0, ferias: 0, afastamento: 0, folga_extra: 0, sem_escala: 0 };
-      const codigos = dias.map(({ data, dia, feriado: fer }) => {
+      const codigos = dias.map(({ data, dia }) => {
         const v = cel.get(f.id + '|' + data) || mapaOc.get(f.id + '|' + data) || '';
-        if (v === 'T') { c.trabalhados++; if (dia === 'Dom') c.domingos++; if (fer) c.feriados++; }
+        if (v === 'T') { c.trabalhados++; if (dia === 'Dom') c.domingos++; if (feriado(data, ctxEq[f.equipe_id] || ctx)) c.feriados++; }
         else if (v === 'F') c.folgas++;
         else if (v === 'X') c.faltas++;
         else if (v === 'M') c.atestado++;
@@ -742,7 +778,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const hoje = hojeBR(), dow = (new Date(hoje + 'T12:00:00Z').getUTCDay() + 6) % 7, de = somaDias(hoje, -dow), ate = somaDias(de, 27);
     const { rows: fs } = await q('select id, nome, cargo from funcionarios where equipe_id=$1 and ativo order by nome', [e.id]);
     const { cel } = await vigentes(e.usuario_id, de, ate, e.id);
-    const ctx = await ctxDe(e.usuario_id);
+    const ctx = { ...(await ctxDe(e.usuario_id)), config: e.feriados_config || {} };
     const dias = Array.from({ length: 28 }, (_, i) => { const d = somaDias(de, i); return { data: d, dia: DIAS[i % 7], aberto: !!e.abertos[i % 7], feriado: feriado(d, ctx) }; });
     return { empresa: e.empresa, equipe: e.nome, hoje, dias,
       pessoas: fs.map(f => ({ nome: f.nome, cargo: f.cargo, dias: dias.map(d => cel.get(f.id + '|' + d.data) || '') })) };

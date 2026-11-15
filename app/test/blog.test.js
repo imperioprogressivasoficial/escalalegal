@@ -41,7 +41,7 @@ test('gerador grátis: limites claros e a lei respeitada', () => {
         assert.ok(l.dias.filter(c => c === 'T').length <= 5);
         assert.match(l.nome, / \d+$/, 'sem nomes: "Caixa 1", "Caixa 2"...');
       }
-      r.presentes.forEach((pr, d) => { if (r.dias[d].aberto) assert.ok(pr >= r.minimo[d], `${setor} dia ${d}: ${pr} < ${r.minimo[d]}`); });
+      r.presentes.forEach((pr, d) => { if (r.dias[d].aberto && !r.dias[d].ferFechado) assert.ok(pr >= r.minimo[d], `${setor} dia ${d}: ${pr} < ${r.minimo[d]}`); });
     }
   }
   // rodízio de domingo: no comércio, com 3 ou mais pessoas, alguém já folga no domingo na primeira semana

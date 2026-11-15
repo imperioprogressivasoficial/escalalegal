@@ -23,13 +23,13 @@ function resumoPeriodo(sems) {
   const pessoas = new Map(); let ferTrab = 0;
   const feriados = [];
   for (const w of sems) {
-    for (let d = 0; d < 7; d++) { const f = Escala.feriado(soma(w.inicio, d), conta.ctx); if (f && w.abertos[d]) feriados.push({data: soma(w.inicio, d), nome: f}); }
+    for (let d = 0; d < 7; d++) { const f = Escala.feriado(soma(w.inicio, d), ctxU()); if (f && w.abertos[d]) feriados.push({data: soma(w.inicio, d), nome: f}); }
     w.funcionarios.forEach((f, i) => {
       const p = pessoas.get(f.id) || {nome: f.nome, folgas: 0, dom: 0, fer: 0, dias: 0};
       w.linhas[i].forEach((c, d) => {
         if (!w.abertos[d]) return;
         if (c === 'F') p.folgas++;
-        if (c === 'T') { p.dias++; if (d === 6) p.dom++; if (Escala.feriado(soma(w.inicio, d), conta.ctx)) { p.fer++; ferTrab++; } }
+        if (c === 'T') { p.dias++; if (d === 6) p.dom++; if (Escala.feriado(soma(w.inicio, d), ctxU())) { p.fer++; ferTrab++; } }
       });
       pessoas.set(f.id, p);
     });
@@ -56,7 +56,7 @@ function htmlPrejuizo(r) {
     <div class="diag-topo ${r.ok ? 'ok' : 'ruim'}"><img src="/img/mascote.svg?v=20261115b" alt=""><div><b>${r.ok ? 'Essa escala está dentro da lei' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção`}</b>Como ela funciona para você não ter prejuízo</div></div>
     ${r.problemas.length ? `<ul class="diag">${r.problemas.map(i => `<li><span class="ic ruim">!</span><div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>` : ''}
     <ul class="diag" style="margin-top:8px">${r.regras.map(t => `<li><span class="ic ok">✓</span><div><span>${esc(t)}</span></div></li>`).join('')}</ul>
-    ${r.feriados.length ? `<div class="nota" style="margin-top:12px"><b>Feriados no período:</b> ${r.feriados.map(f => `${dm(f.data)} (${esc(f.nome)})`).join(', ')}. ${r.ferTrab ? `São ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado: pague em dobro ou dê outra folga.` : 'Ninguém trabalha nesses dias.'}</div>` : ''}
+    ${r.feriados.length ? `<div class="nota" style="margin-top:12px"><b>Feriados no período:</b> ${r.feriados.map(f => `${dm(f.data)} (${esc(f.nome)})`).join(', ')}. ${r.ferTrab ? `São ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado: pague em dobro ou dê outra folga (Lei 605/49).` : 'A unidade fecha: todos folgam.'}</div>` : ''}
     <h3 style="margin:16px 0 8px">Cada colaborador no período</h3>
     <div class="rolagem" tabindex="0" role="region" aria-label="Horas e folgas por colaborador"><table class="tab"><thead><tr><th>Colaborador</th><th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th></tr></thead>
     <tbody>${r.pessoas.map(p => `<tr><td><b>${esc(p.nome)}</b></td><td class="n">${p.dias}</td><td class="n">${p.folgas}</td><td class="n">${p.dom}</td><td class="n">${p.fer ? `<b style="color:#8a5a00">${p.fer}</b>` : 0}</td></tr>`).join('')}</tbody></table></div>
@@ -150,7 +150,7 @@ function dadosOoxml(sems) {
   return {empresa: conta.empresa || atual.nome, unidade: nomeVisao(), semanas: sems.map(w => ({
     titulo: `Semana de ${br(w.inicio)} a ${br(fimSemana(w))}`,
     dias: DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}`),
-    feriados: DIAS.map((_, i) => !!Escala.feriado(soma(w.inicio, i), conta.ctx)),
+    feriados: DIAS.map((_, i) => !!Escala.feriado(soma(w.inicio, i), ctxU())),
     linhas: w.linhas.map((l, f) => ({nome: w.funcionarios[f].nome, cels: l.map((c, d) => ({txt: rotuloCel(c, w.abertos[d]), tipo: !w.abertos[d] ? 'X' : COD[c] ? 'A' : c}))})),
     total: DIAS.map((_, d) => w.abertos[d] ? `${w.linhas.filter(x => x[d] === 'T').length} (mín. ${w.minimo[d]})` : '–'),
   }))};
@@ -196,7 +196,7 @@ function desenhaBloco(ctx, x0, y0, W, w) {
   ctx.fillText(`Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}`, x0, y + 18); y += 48;
   ctx.font = '700 17px "Public Sans", Arial, sans-serif'; ctx.textAlign = 'center';
   DIAS.forEach((d, i) => {
-    const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx), cx = x0 + nomeW + colW * i + colW / 2;
+    const data = soma(w.inicio, i), f = Escala.feriado(data, ctxU()), cx = x0 + nomeW + colW * i + colW / 2;
     ctx.fillStyle = f ? '#8a5a00' : '#3d4a5c'; ctx.fillText(d, cx, y + 12);
     ctx.font = '500 14px "Public Sans", Arial, sans-serif'; ctx.fillText(dm(data) + (f ? ' feriado' : ''), cx, y + 32); ctx.font = '700 17px "Public Sans", Arial, sans-serif';
   });
@@ -228,7 +228,7 @@ async function canvasDaEscala(sems, comLei = true) {
   const W = 1240, M = 40, esc2 = 2, r = resumoPeriodo(sems);
   const medir = document.createElement('canvas').getContext('2d'); medir.font = '500 17px "Public Sans", Arial, sans-serif';
   const leiLinhas = comLei ? [...(r.problemas.length ? r.problemas.map(p => '! ' + p.titulo) : ['✓ Dentro da lei']), ...r.regras.map(t => '• ' + t),
-    ...(r.ferTrab ? [`• Neste período: ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado. Pague em dobro ou dê outra folga.`] : [])].flatMap(t => quebra(medir, t, W - 2 * M)) : [];
+    ...(r.ferTrab ? [`• Neste período: ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado. Pague em dobro ou dê outra folga (Lei 605/49).`] : [])].flatMap(t => quebra(medir, t, W - 2 * M)) : [];
   const altBlocos = sems.map(w => 48 + 48 + w.linhas.length * 46 + 40 + 30);
   const H = 90 + altBlocos.reduce((a, b) => a + b, 0) + (comLei ? 50 + leiLinhas.length * 26 : 0) + 50;
   const cv = document.createElement('canvas'); cv.width = W * esc2; cv.height = H * esc2;
@@ -314,7 +314,7 @@ function xlsxDaEscala(sems) {
   linha([t('Feita na Sua Escala 5x2, dentro da nova lei (Emenda 141/2026).', 0)]);
   for (const w of sems) {
     linha([]); linha([t(`Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}`, 1)]);
-    linha([t('Pessoa', 6), ...DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return t(`${d} ${dm(data)}${f ? ' (feriado)' : ''}`, 6); })]);
+    linha([t('Pessoa', 6), ...DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, ctxU()); return t(`${d} ${dm(data)}${f ? ' (feriado)' : ''}`, 6); })]);
     w.linhas.forEach((l, f) => linha([t(w.funcionarios[f].nome, 7), ...l.map((c, d) => t(rotuloCel(c, w.abertos[d]), !w.abertos[d] ? 8 : c === 'F' ? 3 : c === 'T' ? 4 : 5))]));
     linha([t('Trabalhando (mínimo)', 7), ...DIAS.map((_, d) => w.abertos[d] ? t(`${w.linhas.filter(x => x[d] === 'T').length} (mín. ${w.minimo[d]})`, 6) : t('–', 8))]);
   }
@@ -322,7 +322,7 @@ function xlsxDaEscala(sems) {
   linha([t(r.ok ? 'Essa escala está dentro da lei.' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção:`, 1)]);
   r.problemas.forEach(p => linha([t(`! ${p.titulo}: ${p.texto}`, 0)]));
   r.regras.forEach(x => linha([t('• ' + x, 0)]));
-  if (r.ferTrab) linha([t(`• Neste período: ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado. Pague em dobro ou dê outra folga.`, 0)]);
+  if (r.ferTrab) linha([t(`• Neste período: ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado. Pague em dobro ou dê outra folga (Lei 605/49).`, 0)]);
   linha([]); linha([t('Pessoa', 6), t('Dias trabalhados', 6), t('Folgas', 6), t('Domingos trabalhados', 6), t('Feriados trabalhados', 6)]);
   r.pessoas.forEach(p => linha([t(p.nome, 7), t(p.dias, 6), t(p.folgas, 6), t(p.dom, 6), t(p.fer, 6)]));
   const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -380,7 +380,7 @@ function zipar(arquivos, tipo) {
 function csvDaEscala(sems) {
   const c = v => `"${String(v ?? '').replace(/"/g, '""')}"`, L = [];
   for (const w of sems) {
-    L.push(['Semana', 'Pessoa', ...DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}${Escala.feriado(soma(w.inicio, i), conta.ctx) ? ' (feriado)' : ''}`)]);
+    L.push(['Semana', 'Pessoa', ...DIAS.map((d, i) => `${d} ${dm(soma(w.inicio, i))}${Escala.feriado(soma(w.inicio, i), ctxU()) ? ' (feriado)' : ''}`)]);
     w.linhas.forEach((l, f) => L.push([`${dm(w.inicio)} a ${dm(fimSemana(w))}`, w.funcionarios[f].nome, ...l.map((x, d) => rotuloCel(x, w.abertos[d]))]));
     L.push([]);
   }

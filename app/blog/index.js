@@ -45,7 +45,7 @@ module.exports = function blog({ APP_URL, BLOG_URL, BLOG_HOST, PRODUCAO, seg }) 
   const ehBlog = req => !!BLOG_HOST && String(req.hostname || '').toLowerCase() === BLOG_HOST;
   // link para o site pago (página de vendas, direto no preço). O script da página leva junto ind/utm/gclid de quem chegou.
   const pago = (meio, campanha) => `${APP_URL}/?utm_source=blog&amp;utm_medium=${meio}&amp;utm_campaign=${encodeURIComponent(campanha)}#preco`;
-  const v = PRODUCAO ? '20261115' : String(Date.now());
+  const v = PRODUCAO ? '20261115b' : String(Date.now());
 
   const CSS = fs.readFileSync(path.join(__dirname, 'blog.css'), 'utf8').replace(/\s*\n\s*/g, '\n');
   const JS_GERADOR = fs.readFileSync(path.join(__dirname, 'gerador.js'), 'utf8');
@@ -163,6 +163,7 @@ ${ATENDIMENTO}
       <select id="gHoras"><option value="8">8h por dia · 40h na semana (recomendado)</option><option value="7">7h por dia · 35h na semana</option><option value="6">6h por dia · 30h na semana</option><option value="5">5h por dia · 25h na semana</option><option value="4">4h por dia · 20h na semana</option></select>
       <div class="g-2"><div><label for="gSemana">Semana</label><select id="gSemana">${semanas.map((s, i) => `<option value="${s}"${i ? '' : ' selected'}>${br(s)} a ${br(Escala.somaDias(s, 6))}</option>`).join('')}</select></div>
         <div><label for="gUf">Estado <small>(feriados)</small></label><select id="gUf"><option value="">Só nacionais</option>${Escala.UFS.map(u => `<option>${u}</option>`).join('')}</select></div></div>
+      <div id="gFeriados" class="g-feriados"></div>
       <p class="g-dica" id="gLimite"></p>
       <div class="g-nav"><button type="button" class="link g-volta">Voltar</button><button type="submit" class="btn btn-gerar">Gerar minha escala grátis</button></div>
     </fieldset>

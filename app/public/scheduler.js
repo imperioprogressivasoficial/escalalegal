@@ -60,6 +60,8 @@
   // 8.4 -> "8h24", 42 -> "42h"
   const hm = h => { const m = Math.round((+h || 0) * 60); return `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`; };
   const domingoSemanasDe = setor => (SETORES[setor] || SETORES.outro).comercio ? 3 : 7;
+  // mulher: folga no domingo pelo menos a cada 2 semanas, em qualquer atividade (CLT, art. 386)
+  const domingoSemanasPessoa = (f, ds) => f?.sexo === 'F' ? Math.min(2, ds || 3) : (ds || 3);
   // horas que o local fica aberto por dia (ex.: '07:00' a '22:00' -> 15)
   function horasAberto(abre, fecha) {
     const m = t => { const [h, mi] = String(t || '').split(':').map(Number); return (h || 0) * 60 + (mi || 0); };
@@ -109,14 +111,43 @@
   };
   const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
   const cacheFer = {};
-  // ctx (opcional): { uf: 'BA', locais: ['06-24', '12-08'] }  -> soma feriados do estado e da cidade
+  // ctx (opcional): { uf: 'BA', locais: ['06-24', '12-08'], config } -> soma feriados do estado e da cidade.
+  // config = feriados da unidade: { abre: [datas em que a unidade abre], removidos: [datas tratadas como dia normal], extras: [{ data, nome }] }
   function feriado(dataIso, ctx) {
+    const cfg = ctx?.config;
+    if (cfg) {
+      if ((cfg.removidos || []).includes(dataIso)) return null;
+      const ex = (cfg.extras || []).find(x => x?.data === dataIso);
+      if (ex) return ex.nome || 'Feriado';
+    }
     const nac = (cacheFer[dataIso.slice(0, 4)] ||= feriados(+dataIso.slice(0, 4)))[dataIso];
     if (nac) return nac;
     const md = dataIso.slice(5);
     if (ctx?.uf && ESTADUAIS[ctx.uf]?.[md]) return ESTADUAIS[ctx.uf][md];
     if (ctx?.locais?.includes(md)) return 'Feriado municipal';
     return null;
+  }
+  // a unidade abre neste feriado? (sem marcar, fica fechada: todos folgam)
+  const feriadoAberto = (dataIso, ctx) => !!(ctx?.config?.abre || []).includes(dataIso);
+  const feriadoFechado = (dataIso, ctx) => !!feriado(dataIso, ctx) && !feriadoAberto(dataIso, ctx);
+  // feriados entre duas datas, com o tipo e a escolha da unidade (inclui os removidos, para poder voltar atrás)
+  function feriadosEntre(de, ate, ctx) {
+    const cfg = ctx?.config || {}, base = ctx ? { uf: ctx.uf, locais: ctx.locais } : null, out = [];
+    for (let d = de; d <= ate; d = somaDias(d, 1)) {
+      const ex = (cfg.extras || []).find(x => x?.data === d);
+      const nome = ex ? (ex.nome || 'Feriado') : feriado(d, base);
+      if (!nome) continue;
+      const md = d.slice(5), nac = (cacheFer[d.slice(0, 4)] ||= feriados(+d.slice(0, 4)))[d];
+      const tipo = ex ? 'extra' : nac ? 'nacional' : base?.uf && ESTADUAIS[base.uf]?.[md] ? 'estadual' : 'municipal';
+      out.push({ data: d, nome, tipo, abre: (cfg.abre || []).includes(d), removido: !ex && (cfg.removidos || []).includes(d) });
+    }
+    return out;
+  }
+  // dias (contados de 0 a partir do início) em que a unidade fecha por feriado
+  function diasFeriadoFechado(inicio, semanas, ctx, abertos) {
+    const out = [];
+    for (let i = 0; i < semanas * 7; i++) if ((!abertos || abertos[i % 7]) && feriadoFechado(somaDias(inicio, i), ctx)) out.push(i);
+    return out;
   }
   // Limite de horas por semana (EC 141/2026): 44h até 14/12/2026, 42h de 15/12/2026 a 14/12/2027, 40h a partir de 15/12/2027.
   function limiteSemanal(dataIso) { return dataIso < '2026-12-15' ? 44 : dataIso < '2027-12-15' ? 42 : 40; }
@@ -130,13 +161,18 @@
   // abertos: [7] 1/0 ; minimo: [7] pessoas por dia ; semanas: n
   // ausencias (opcional): ausencias[s][f][d] = código da ocorrência (férias, atestado...) ou null
   // grupos (opcional): [{ nome, membros: [índices], minimo: [7] }] -> função que não pode faltar no dia
-  // domingoSemanas: folga no domingo pelo menos 1 vez a cada N semanas (3 comércio, 7 demais)
-  function gerarEscala({ funcionarios, abertos, minimo, semanas = 4, ausencias, grupos = [], domingoSemanas = 3 }) {
+  // domingoSemanas: folga no domingo pelo menos 1 vez a cada N semanas (3 comércio, 7 demais).
+  //   Mulheres (sexo 'F'): a cada 2 semanas, qualquer que seja a atividade (CLT, art. 386).
+  // feriadosFechados (opcional): dias (0 = segunda da 1ª semana) em que a unidade fecha por feriado. Todos folgam,
+  //   e o feriado não conta como uma das 2 folgas da semana.
+  function gerarEscala({ funcionarios, abertos, minimo, semanas = 4, ausencias, grupos = [], domingoSemanas = 3, feriadosFechados = [] }) {
     const n = funcionarios.length;
     const alertas = [], ajustes = [];
     const escala = [];
+    const fechadoFer = new Set(feriadosFechados);
     const folgasDe = f => Math.max(2, Math.min(7, 7 - (Math.round(+funcionarios[f].dias) || 5))); // escala[s][f] = array 7 de 'T' | 'F'
-    const domingosTrabalhados = funcionarios.map((_, i) => i % domingoSemanas); // escalona o rodízio
+    const dsDe = f => domingoSemanasPessoa(funcionarios[f], domingoSemanas);
+    const domingosTrabalhados = funcionarios.map((_, i) => i % dsDe(i)); // escalona o rodízio
     const gruposDe = funcionarios.map((_, f) => grupos.map((g, gi) => g.membros.includes(f) ? gi : -1).filter(gi => gi >= 0));
 
     for (let s = 0; s < semanas; s++) {
@@ -146,6 +182,12 @@
       const folgaEm = (f, d) => { semana[f][d] = 'F'; presentes[d]--; gruposDe[f].forEach(gi => presG[gi][d]--); };
       // sobra no dia d se f folgar: o menor entre a sobra do dia e a sobra de cada função de f
       const sobra = (f, d) => Math.min(presentes[d] - 1 - minimo[d], ...gruposDe[f].map(gi => presG[gi][d] - 1 - (grupos[gi].minimo[d] || 0)));
+      // feriado com a unidade fechada: todo mundo folga (fora a folga da semana)
+      const fer = [];
+      for (let d = 0; d < 7; d++) if (abertos[d] && fechadoFer.has(s * 7 + d)) {
+        fer.push(d);
+        for (let f = 0; f < n; f++) if (semana[f][d] === 'T') folgaEm(f, d);
+      }
 
       // dias fechados: todos folgam (conta como folga)
       const fechados = [];
@@ -166,7 +208,7 @@
       for (const f of ordem) {
         let falta = folgasRestantes[f];
         if (falta <= 0) continue;
-        const precisaDomingo = abertos[6] && domingosTrabalhados[f] >= domingoSemanas - 1 && semana[f][6] === 'T';
+        const precisaDomingo = abertos[6] && domingosTrabalhados[f] >= dsDe(f) - 1 && semana[f][6] === 'T';
         let fixos = (funcionarios[f].fixo || []).filter(d => abertos[d] && semana[f][d] === 'T');
         // a lei do domingo passa na frente da folga fixa
         if (precisaDomingo && !fixos.includes(6) && fixos.length >= falta) {
@@ -209,11 +251,11 @@
 
       for (let f = 0; f < n; f++) {
         if (abertos[6] && semana[f][6] === 'T') domingosTrabalhados[f]++; else domingosTrabalhados[f] = 0;
-        if (domingosTrabalhados[f] >= domingoSemanas) alertas.push(`Semana ${s + 1}: ${funcionarios[f].nome} chega a ${domingoSemanas} domingos seguidos sem folga.`);
+        if (domingosTrabalhados[f] >= dsDe(f)) alertas.push(`Semana ${s + 1}: ${funcionarios[f].nome} chega a ${dsDe(f)} domingos seguidos sem folga.`);
       }
-      for (let d = 0; d < 7; d++) if (abertos[d] && presentes[d] < minimo[d])
+      for (let d = 0; d < 7; d++) if (abertos[d] && !fer.includes(d) && presentes[d] < minimo[d])
         alertas.push(`Semana ${s + 1}, ${DIAS[d]}: ${presentes[d]} pessoa(s) para mínimo de ${minimo[d]}.`);
-      grupos.forEach((g, gi) => { for (let d = 0; d < 7; d++) if (abertos[d] && presG[gi][d] < (g.minimo[d] || 0))
+      grupos.forEach((g, gi) => { for (let d = 0; d < 7; d++) if (abertos[d] && !fer.includes(d) && presG[gi][d] < (g.minimo[d] || 0))
         alertas.push(`Semana ${s + 1}, ${DIAS[d]}: ${presG[gi][d]} de ${g.minimo[d]} em ${g.nome}.`); });
       escala.push(semana);
     }
@@ -245,23 +287,28 @@
     else itens.push({ ok: false, titulo: `Falta${necessarios - n > 1 ? 'm' : ''} ${necessarios - n} pessoa${necessarios - n > 1 ? 's' : ''}`, texto: `Para cobrir o mínimo de todos os dias com folgas de 2 dias, são precisas ${necessarios} pessoas. Você tem ${n}. Reduza o mínimo de algum dia ou contrate.` });
     // 2. cobertura dia a dia
     const furos = [];
-    e.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) if (e.abertos[d]) { const p = sem.filter(x => x[d] === 'T').length; if (p < e.minimo[d]) furos.push({ data: somaDias(e.inicio, s * 7 + d), presentes: p, minimo: e.minimo[d] }); } });
+    const ferF = i => feriadoFechado(somaDias(e.inicio, i), opts.ctx); // unidade fechada no feriado: não conta
+    e.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) if (e.abertos[d] && !ferF(s * 7 + d)) { const p = sem.filter(x => x[d] === 'T').length; if (p < e.minimo[d]) furos.push({ data: somaDias(e.inicio, s * 7 + d), presentes: p, minimo: e.minimo[d] }); } });
     itens.push(furos.length
       ? { ok: false, titulo: `${pl(furos.length, 'dia', 'dias')} abaixo do mínimo`, texto: furos.slice(0, 4).map(f => `${f.data.slice(8)}/${f.data.slice(5, 7)}: ${f.presentes} de ${f.minimo}`).join(' · ') + (furos.length > 4 ? ' · …' : ''), dias: furos }
       : { ok: true, titulo: 'Todos os dias cobertos', texto: 'Nenhum dia fica com menos gente que o mínimo.' });
     // 3. duas folgas por semana
     const semDuas = [];
-    e.dados.forEach((sem, s) => sem.forEach((f, i) => { const livres = f.filter(c => c === 'F').length, fora = f.filter(c => COD_NOME[c]).length; if (livres < 2 && fora < 5) semDuas.push(`${e.funcionarios[i]?.nome} (semana ${s + 1})`); }));
+    e.dados.forEach((sem, s) => sem.forEach((f, i) => { const livres = f.filter((c, d) => c === 'F' && !(e.abertos[d] && ferF(s * 7 + d))).length, fora = f.filter(c => COD_NOME[c]).length; if (livres < 2 && fora < 5) semDuas.push(`${e.funcionarios[i]?.nome} (semana ${s + 1})`); }));
     itens.push(semDuas.length ? { ok: false, titulo: 'Folga faltando', texto: `Sem as 2 folgas da semana: ${semDuas.slice(0, 3).join(', ')}${semDuas.length > 3 ? '…' : ''}. Ajuste clicando no dia.` }
       : { ok: true, titulo: '2 folgas por semana para todos', texto: 'Ninguém trabalha mais de 5 dias na semana.' });
-    // 4. domingo (comércio: 1 a cada 3 semanas; demais: 1 a cada 7)
+    // 4. domingo (comércio: 1 a cada 3 semanas; demais: 1 a cada 7; mulheres: 1 a cada 2, CLT art. 386)
+    // opts.domingosAntes[i]: domingos seguidos que a pessoa já trabalhou antes do período analisado
     const ds = +opts.domingoSemanas || 3;
     if (e.abertos[6]) {
-      const seguidos = e.funcionarios.map((f, i) => { let max = 0, c = 0; e.dados.forEach(sem => { if (sem[i]?.[6] === 'T') { c++; max = Math.max(max, c); } else c = 0; }); return { nome: f.nome, max }; });
-      const ruim = seguidos.filter(x => x.max >= ds);
+      const seguidos = e.funcionarios.map((f, i) => { let c = +opts.domingosAntes?.[i] || 0, max = c; e.dados.forEach(sem => { if (sem[i]?.[6] === 'T') { c++; max = Math.max(max, c); } else c = 0; });
+        return { nome: f.nome, max, ds: domingoSemanasPessoa(f, ds), mulher: f.sexo === 'F' }; });
+      const ruimM = seguidos.filter(x => x.mulher && x.ds < ds && x.max >= x.ds), ruim = seguidos.filter(x => !ruimM.includes(x) && x.max >= x.ds);
       const regra = ds === 3 ? 'No comércio, a folga no domingo deve cair pelo menos 1 vez a cada 3 semanas (Lei 10.101).' : `Nesta atividade, a folga deve cair no domingo pelo menos 1 vez a cada ${ds} semanas (Portaria MTP 671/2021).`;
-      itens.push(ruim.length ? { ok: false, titulo: 'Domingo seguido demais', texto: `${ruim.map(x => x.nome).join(', ')} ${ruim.length === 1 ? 'trabalha' : 'trabalham'} ${ds} domingos seguidos. ${regra}` }
-        : { ok: true, titulo: 'Rodízio de domingo em dia', texto: regra.replace('deve cair', 'cai') });
+      const regraM = seguidos.some(x => x.mulher && x.ds < ds) ? ' Mulheres: folga no domingo a cada 15 dias (CLT, art. 386).' : '';
+      if (ruimM.length) itens.push({ ok: false, titulo: 'Domingo de folga das mulheres', texto: ruimM.map(x => `${x.nome}: domingo de folga a cada 15 dias (CLT, art. 386)`).join('. ') + '.' });
+      if (ruim.length) itens.push({ ok: false, titulo: 'Domingo seguido demais', texto: `${ruim.map(x => x.nome).join(', ')} ${ruim.length === 1 ? 'trabalha' : 'trabalham'} ${ds} domingos seguidos. ${regra}` });
+      if (!ruim.length && !ruimM.length) itens.push({ ok: true, titulo: 'Rodízio de domingo em dia', texto: regra.replace('deve cair', 'cai') + regraM });
     }
     // 4b. função que não pode faltar (farmacêutico, caixa, cozinha...)
     for (const c of opts.criticas || []) {
@@ -288,15 +335,74 @@
       const turnos = Math.ceil(ha / (horasDia + 1));
       itens.push({ ok: null, titulo: `Aberto ${hm(ha)} por dia: ${turnos} turnos`, texto: `Cada pessoa trabalha ${hm(horasDia)} mais o almoço, então ninguém cobre o dia todo. O mínimo de cada dia precisa somar as pessoas de todos os turnos, e entre um dia e outro cada um precisa de 11h de descanso (CLT, art. 66).` });
     }
-    // 6. feriados
+    // 6. feriados: fechado (todos folgam) ou aberto (quem trabalha recebe em dobro ou ganha outra folga)
     const fer = [];
-    for (let i = 0; i < e.semanas * 7; i++) { const data = somaDias(e.inicio, i), nome = feriado(data, opts.ctx); if (nome && e.abertos[i % 7]) fer.push({ data, nome, trabalham: e.dados[Math.floor(i / 7)].filter(x => x[i % 7] === 'T').length }); }
-    if (fer.length) itens.push({ ok: null, titulo: `${pl(fer.length, 'feriado', 'feriados')} no período`, texto: fer.map(f => `${f.data.slice(8)}/${f.data.slice(5, 7)} ${f.nome}: ${f.trabalham} trabalhando`).join(' · ') + '. Quem trabalha no feriado recebe em dobro ou ganha outra folga (Lei 605/49). No comércio, abrir em feriado depende da convenção coletiva.' });
+    for (let i = 0; i < e.semanas * 7; i++) { const data = somaDias(e.inicio, i), nome = feriado(data, opts.ctx); if (nome && e.abertos[i % 7]) fer.push({ data, nome, abre: feriadoAberto(data, opts.ctx), trabalham: e.dados[Math.floor(i / 7)].filter(x => x[i % 7] === 'T').length }); }
+    const abertosFer = fer.filter(f => f.abre && f.trabalham);
+    if (fer.length) itens.push({ ok: null, titulo: `${pl(fer.length, 'feriado', 'feriados')} no período`, texto: fer.map(f => `${f.data.slice(8)}/${f.data.slice(5, 7)} ${f.nome}: ${f.abre ? `abre, ${f.trabalham} trabalhando` : 'fechado, todos folgam'}`).join(' · ') + '.'
+      + (abertosFer.length ? ' Quem trabalha no feriado recebe em dobro ou ganha outra folga na semana (Lei 605/49). No comércio, abrir em feriado depende da convenção coletiva.' : '') });
     const problemas = itens.filter(x => x.ok === false).length;
     return { itens, problemas, necessarios, n, diasAbertos, horasSemana: semanais, limite: limMin,
       resumo: problemas ? `${pl(problemas, 'ponto', 'pontos')} para ajustar antes de publicar a escala.` : 'Escala dentro da regra: pode publicar para a equipe.' };
   }
 
-  const api = { DIAS, SETORES, OCORRENCIAS, COD_NOME, UFS, ESTADUAIS, gerarEscala, feriado, feriados, somaDias, limiteSemanal, analisar, casaFuncao, daFuncao, hm, domingoSemanasDe, horasAberto, gruposDaUnidade };
+  // Avaliador: quando a escala não fecha (mínimo, função que não pode faltar ou domingo da lei), explica a conta
+  // em palavras simples e diz onde corrigir. acoes: 'minimo' (ajustar o mínimo por dia), 'colaborador' (adicionar gente).
+  // e: { inicio, funcionarios:[{nome, dias?, sexo?, cargo?}], abertos, minimo, dados }, opts: { ctx, criticas, domingoSemanas }
+  function avaliar(e, opts = {}) {
+    const out = [], visto = new Set(), n = e.funcionarios.length;
+    const LONGO = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+    const dm = d => `${d.slice(8)}/${d.slice(5, 7)}`, pl = (k, um, varios) => `${k} ${k === 1 ? um : varios}`;
+    const diasDe = i => Math.max(1, Math.min(5, Math.round(+e.funcionarios[i]?.dias) || 5));
+    const add = (chave, item) => { if (!visto.has(chave)) { visto.add(chave); out.push(item); } };
+    const comFolgas = ids => ids.every(i => diasDe(i) === 5) ? '2 folgas cada' : 'as folgas de cada um';
+    // a conta da semana: dias de trabalho que a equipe tem x dias de trabalho que o mínimo pede
+    const conta = (sem, s, ids, minimo, quem) => {
+      const ini = somaDias(e.inicio, s * 7), util = [0, 1, 2, 3, 4, 5, 6].filter(d => e.abertos[d] && !feriadoFechado(somaDias(ini, d), opts.ctx));
+      const pode = (i, d) => !COD_NOME[sem[i]?.[d]];
+      const tem = ids.reduce((a, i) => a + Math.min(diasDe(i), util.filter(d => pode(i, d)).length), 0);
+      const pede = util.reduce((a, d) => a + (+minimo[d] || 0), 0);
+      const descontos = ids.some(i => util.some(d => !pode(i, d))) || util.length < e.abertos.filter(Boolean).length;
+      return { ini, util, pode, tem, pede, descontos };
+    };
+    e.dados.forEach((sem, s) => {
+      const todos = sem.map((_, i) => i), c = conta(sem, s, todos, e.minimo);
+      if (c.tem < c.pede) {
+        add('conta', { tipo: 'conta', titulo: `Faltam ${pl(c.pede - c.tem, 'dia', 'dias')} de trabalho`, acoes: ['minimo', 'colaborador'],
+          texto: `Faltam ${pl(c.pede - c.tem, 'dia', 'dias')} de trabalho para cobrir a semana de ${dm(c.ini)} a ${dm(somaDias(c.ini, 6))}: com ${pl(n, 'colaborador', 'colaboradores')} e ${comFolgas(todos)}, sobram ${pl(c.tem, 'dia', 'dias')} de trabalho, mas o mínimo pede ${c.pede}.${c.descontos ? ' Já contando férias, ausências e feriados.' : ''}` });
+      } else for (const d of c.util) {
+        const k = todos.filter(i => c.pode(i, d)).length;
+        if (k < e.minimo[d]) add('dia' + d, { tipo: 'dia', titulo: `${LONGO[d]}: mínimo maior que a equipe`, acoes: ['minimo', 'colaborador'],
+          texto: `${LONGO[d]} (${dm(somaDias(c.ini, d))}): o mínimo pede ${e.minimo[d]}, mas só ${pl(k, 'colaborador pode', 'colaboradores podem')} trabalhar nesse dia.` });
+      }
+      for (const g of opts.criticas || []) {
+        const ids = e.funcionarios.map((f, i) => daFuncao(f, g) ? i : -1).filter(i => i >= 0);
+        if (!ids.length) continue;
+        const cg = conta(sem, s, ids, g.minimo || []);
+        if (cg.tem < cg.pede) add('g' + g.nome, { tipo: 'funcao', titulo: `${g.nome}: faltam ${pl(cg.pede - cg.tem, 'dia', 'dias')} de trabalho`, acoes: ['minimo', 'colaborador'],
+          texto: `${g.nome}: com ${pl(ids.length, 'pessoa', 'pessoas')} e ${comFolgas(ids)}, sobram ${pl(cg.tem, 'dia', 'dias')} de trabalho na semana de ${dm(cg.ini)} a ${dm(somaDias(cg.ini, 6))}, mas o mínimo pede ${cg.pede}.` });
+      }
+    });
+    // domingo: quantos precisam folgar por domingo para todos cumprirem o rodízio da lei
+    const ds = +opts.domingoSemanas || 3;
+    if (e.abertos[6] && n) {
+      const precisa = Math.ceil(e.funcionarios.reduce((a, f) => a + 1 / domingoSemanasPessoa(f, ds), 0) - 1e-9), livres = n - (+e.minimo[6] || 0);
+      const mulheres = e.funcionarios.some(f => f.sexo === 'F') && ds > 2;
+      if (precisa > livres) add('dom', { tipo: 'domingo', titulo: 'O domingo não fecha', acoes: ['minimo', 'colaborador'],
+        texto: `Domingo: com ${pl(n, 'colaborador', 'colaboradores')} e mínimo de ${e.minimo[6]} no domingo, só ${pl(Math.max(0, livres), 'pode', 'podem')} folgar em cada domingo. Para todos folgarem um domingo a cada ${ds} semanas${mulheres ? ' (mulheres, a cada 15 dias)' : ''}, ${pl(precisa, 'precisa', 'precisam')} folgar por domingo.` });
+    }
+    // a conta fecha, mas sobrou dia abaixo do mínimo: as folgas fixas caíram juntas
+    if (!out.length) e.dados.forEach((sem, s) => { for (let d = 0; d < 7; d++) {
+      const data = somaDias(e.inicio, s * 7 + d);
+      if (!e.abertos[d] || feriadoFechado(data, opts.ctx)) continue;
+      const p = sem.filter(x => x[d] === 'T').length;
+      if (p < e.minimo[d]) add('encaixe', { tipo: 'encaixe', titulo: 'Folgas no mesmo dia', acoes: ['minimo'],
+        texto: `${LONGO[d]} (${dm(data)}): ${p} de ${e.minimo[d]} trabalhando. A equipe dá conta da semana, mas as folgas fixas ou combinadas caem nesse dia. Toque no nome para trocar a folga ou ajuste o mínimo.` });
+    } });
+    return out.slice(0, 4);
+  }
+
+  const api = { DIAS, SETORES, OCORRENCIAS, COD_NOME, UFS, ESTADUAIS, gerarEscala, feriado, feriados, somaDias, limiteSemanal, analisar, casaFuncao, daFuncao, hm, domingoSemanasDe, domingoSemanasPessoa, horasAberto, gruposDaUnidade,
+    feriadoAberto, feriadoFechado, feriadosEntre, diasFeriadoFechado, avaliar };
   if (typeof module !== 'undefined') module.exports = api; else root.Escala = api;
 })(this);

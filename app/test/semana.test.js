@@ -30,7 +30,8 @@ test('semana se monta sozinha e se ajusta quando a equipe muda', { skip: pular }
   const hoje = hojeBR(), seg = segundaDe(hoje);
   const s1 = (await chama(`/api/equipes/${eq.id}/semana?data=${hoje}`, { cookie: c })).json;
   assert.ok(s1.montada, 'montou sozinha'); assert.equal(s1.inicio, seg); assert.equal(s1.semana, 0);
-  for (const f of s1.escala.dados[0]) assert.equal(f.filter(x => x === 'F').length, 2);
+  const fer = (e, s, d) => (e.feriados || []).includes(require('../public/scheduler.js').somaDias(e.inicio, s * 7 + d));
+  for (const f of s1.escala.dados[s1.semana]) assert.equal(f.filter((x, d) => x === 'F' && !fer(s1.escala, s1.semana, d)).length, 2);
   // abrir de novo não monta outra
   const s1b = (await chama(`/api/equipes/${eq.id}/semana?data=${hoje}`, { cookie: c })).json;
   assert.ok(!s1b.montada); assert.equal(s1b.escala.id, s1.escala.id);

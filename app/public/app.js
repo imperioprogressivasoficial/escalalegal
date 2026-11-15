@@ -46,7 +46,28 @@ async function api(url, opts = {}) {
   }
   return j;
 }
-function toast(msg) { $$('.toast').forEach(t => t.remove()); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3600); }
+// toast(msg, desfazer?): com desfazer, mostra o botão "Desfazer" por 8 s e chama a ação inversa
+function toast(msg, desfazer) {
+  $$('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast' + (desfazer ? ' com-acao' : ''); t.setAttribute('role', 'status');
+  const sp = document.createElement('span'); sp.textContent = msg; t.append(sp);
+  if (desfazer) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-desfazer'; b.textContent = 'Desfazer';
+    b.onclick = async () => { b.disabled = true; t.remove(); try { await desfazer(); toast('Desfeito.'); } catch (err) { toast(err.message); } };
+    t.append(b);
+  }
+  document.body.append(t); setTimeout(() => t.remove(), desfazer ? 8000 : 3600);
+}
+// feriados da empresa (estado, cidade) + escolhas da unidade (abre, removidos, extras)
+const ctxU = () => ({...(conta?.ctx || {}), config: atual?.feriados_config || {}});
+// unidade já com escala publicada ou em uso: mudar horário ou folga de quem já trabalha pede cuidado (CLT, art. 468)
+function avisoArt468() {
+  return new Promise(ok => {
+    folha(`<h2>Antes de mudar</h2><div class="nota" style="margin-top:8px">Mudar um horário que o colaborador já pratica pode exigir acordo e não pode prejudicar o colaborador (CLT, art. 468). Confira o contrato e a convenção coletiva.</div>
+      <button class="btn cheio" id="a468Ok" style="margin-top:14px">Continuar</button><button class="btn cheio sec" id="a468Nao" style="margin-top:8px">Cancelar</button>`);
+    $('#a468Ok').onclick = () => ok(true); $('#a468Nao').onclick = () => { fechaFolha(); ok(false); };
+  });
+}
 async function copiar(texto, msg) { try { await navigator.clipboard.writeText(texto); toast(msg); } catch { prompt('Copie:', texto); } }
 function folha(html) { $('#folhaCorpo').innerHTML = html; const d = $('#folha'); if (!d.open) d.showModal(); d.scrollTop = 0; return d; }
 const fechaFolha = () => $('#folha').close();
@@ -234,7 +255,7 @@ $('#selUnidade').onchange = () => trocaUnidade(+$('#selUnidade').value);
 window.onhashchange = () => rota();
 const ir = h => { if (location.hash === '#' + h) rota(); else location.hash = h; };
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); if ($('#folha').open) fechaFolha(); ir(b.dataset.ir); }
+  const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); if ($('#folha').open) fechaFolha(); ir(b.dataset.ir); if (b.dataset.foco) setTimeout(() => { const x = document.getElementById(b.dataset.foco); if (x) { x.scrollIntoView({block: 'center'}); x.focus({preventScroll: true}); } }, 300); }
   if (e.target.closest('[data-faltar]')) folhaFaltar();
 });
 // endereços antigos (links salvos, avisos, e-mails) -> os de agora
@@ -689,7 +710,23 @@ function telaPagar(checkout) {
 }
 
 // ================= escala (tela principal) =================
-const opcoesAnalise = (eq, e) => ({horasDia: +eq.horas_dia || 8, ctx: conta.ctx, criticas: eq.criticas || [], domingoSemanas: Escala.domingoSemanasDe(eq.setor), abre: eq.abre, fecha: eq.fecha});
+const opcoesAnalise = (eq, e) => ({horasDia: +eq.horas_dia || 8, ctx: ctxU(), criticas: eq.criticas || [], domingoSemanas: Escala.domingoSemanasDe(eq.setor), abre: eq.abre, fecha: eq.fecha});
+// sexo vem do cadastro atual (escalas antigas não guardavam) e os domingos seguidos de antes da semana entram na conta
+const comSexo = fs => fs.map(f => ({...f, sexo: f.sexo || funcs.find(x => x.id === f.id)?.sexo || null}));
+function domingosAntes(e, s) {
+  return e.funcionarios.map((_, i) => { let c = 0; for (let k = s - 1; k >= 0 && e.abertos[6] && e.dados[k]?.[i]?.[6] === 'T'; k--) c++; return c; });
+}
+const fatiaSemana = () => { const e = semana.escala; return {...e, funcionarios: comSexo(e.funcionarios), inicio: semData, semanas: 1, dados: [semanaDados()]}; };
+const analiseSemana = () => Escala.analisar(fatiaSemana(), {...opcoesAnalise(atual), domingosAntes: domingosAntes(semana.escala, semana.semana)});
+// avaliador: quando a escala não fecha, a conta em palavras simples e onde corrigir
+function htmlAvaliador() {
+  if (!podeEditar()) return '';
+  const itens = Escala.avaliar(fatiaSemana(), opcoesAnalise(atual));
+  if (!itens.length) return '';
+  return `<div class="cartao avaliador" role="region" aria-label="Por que a escala não fecha"><h3>Por que a escala não fecha</h3>
+    <ul>${itens.map(i => `<li><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></li>`).join('')}</ul>
+    <div class="av-acoes"><button class="btn" data-ir="funcionamento" data-foco="cfDias">Ajustar mínimo por dia</button><button class="btn sec" data-ir="colaboradores" data-foco="addNome">Adicionar colaborador</button><button class="btn sec" data-ir="funcionamento">Ver funcionamento</button></div></div>`;
+}
 $('#semAnt').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? -28 : -7); diaSel = null; telaEscala(); };
 $('#semProx').onclick = () => { recem = false; semData = soma(semData, modoEsc === 'mes' ? 28 : 7); diaSel = null; telaEscala(); };
 function tituloSemana(seg) {
@@ -736,7 +773,7 @@ async function telaEscala() {
 // grade de uma semana (colaborador x dia); toque numa célula muda o dia daquela pessoa
 function gradeSemana(w, comToque = true) {
   return `<div class="cartao tab-sem"><div class="rolagem" tabindex="0" role="region" aria-label="Semana de ${dm(w.inicio)}"><table class="tabela-escala">
-    <thead><tr><th></th>${DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return `<th class="${f ? 'fer' : ''}">${d}<small>${dm(data)}${f ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead>
+    <thead><tr><th></th>${DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, ctxU()); return `<th class="${f ? 'fer' : ''}">${d}<small>${dm(data)}${f ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead>
     <tbody>${w.linhas.map((l, f) => !naVisao(w.funcionarios[f]) ? '' : `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${!w.abertos[d] ? 'fc' : COD[c] ? 'A' : c}" ${comToque && podeEditar() && w.abertos[d] ? `data-cel="${f}:${d}" role="button" tabindex="0"` : ''}>${esc(rotuloCel(c, w.abertos[d]))}</td>`).join('')}</tr>`).join('')}
     <tr class="tot"><td>Trabalhando (mínimo)</td>${DIAS.map((_, d) => { if (!w.abertos[d]) return '<td>–</td>'; const p = w.linhas.filter((x, f) => naVisao(w.funcionarios[f]) && x[d] === 'T').length; return `<td class="${p >= w.minimo[d] ? 'ok' : 'baixo'}">${p} (mín. ${w.minimo[d]})</td>`; }).join('')}</tr>
     </tbody></table></div></div>`;
@@ -754,15 +791,14 @@ function semanaDados() { const e = semana.escala; return e.dados[semana.semana];
 function desenhaSemana() {
   const e = semana.escala, s = semana.semana, sem = semanaDados(), hoje = hojeIso(), ed = podeEditar();
   // a lei nesta semana
-  const fatia = {...e, inicio: semData, semanas: 1, dados: [sem]};
-  const a = Escala.analisar(fatia, opcoesAnalise(atual));
+  const a = analiseSemana(), ferF = d => e.abertos[d] && Escala.feriadoFechado(soma(semData, d), ctxU());
   const minV = minVisto(e.minimo), vis = sem.map((_, f) => f).filter(f => naVisao(e.funcionarios[f])), trab = d => vis.filter(f => sem[f][d] === 'T').length;
-  const furos = DIAS.map((_, d) => e.abertos[d] && trab(d) < minV[d]).filter(Boolean).length;
+  const furos = DIAS.map((_, d) => e.abertos[d] && !ferF(d) && trab(d) < minV[d]).filter(Boolean).length;
   const status = !a.problemas ? `<button class="status ok" id="btnAnalise"><span class="ic">✓</span><span>Escala dentro da lei<small>Toque para ver os detalhes</small></span></button>`
     : `<button class="status ruim" id="btnAnalise"><span class="ic">!</span><span>${esc(a.resumo)}<small>${furos ? `${plural(furos, 'dia fica', 'dias ficam')} com menos gente. ` : ''}Toque para ver o que fazer</small></span></button>`;
   const pills = DIAS.map((d, i) => {
-    const data = soma(semData, i), p = trab(i), fer = Escala.feriado(data, conta.ctx);
-    const falta = e.abertos[i] && p < minV[i];
+    const data = soma(semData, i), p = trab(i), fer = Escala.feriado(data, ctxU());
+    const falta = e.abertos[i] && !ferF(i) && p < minV[i];
     return `<button data-dia="${i}" class="${i === diaSel ? 'on' : ''} ${data === hoje ? 'hoje' : ''} ${e.abertos[i] ? '' : 'fechado'}"><small>${d}</small><b>${data.slice(8)}</b>${falta ? '<i></i>' : fer ? '<i class="fer"></i>' : ''}</button>`;
   }).join('');
   let corpo;
@@ -777,21 +813,22 @@ function desenhaSemana() {
         <div class="sem">${dias.map((c, d) => `<span class="c-${e.abertos[d] ? c : '0'}">${DIAS[d].slice(0, 3)}<br>${!e.abertos[d] ? '–' : c === 'T' ? 'trab.' : c === 'F' ? 'folga' : CURTO[c]}</span>`).join('')}</div></li>`;
     }).join('')}</ul>`;
   } else {
-    const d = diaSel, data = soma(semData, d), fer = Escala.feriado(data, conta.ctx);
+    const d = diaSel, data = soma(semData, d), fer = Escala.feriado(data, ctxU());
     if (!e.abertos[d]) corpo = `<div class="dia-tit"><h2>${dataLonga(data)}</h2></div><div class="grupo"><p class="vazio-grupo">Fechado neste dia. Ninguém trabalha.</p></div>`;
     else {
       const grupo = cod => sem.map((x, f) => ({x: x[d], f})).filter(o => naVisao(e.funcionarios[o.f]) && (cod === 'A' ? COD[o.x] : o.x === cod));
       const T = grupo('T'), F = grupo('F'), A = grupo('A');
       const btn = (o, cls) => `<button class="nome ${cls}" data-f="${o.f}">${esc(e.funcionarios[o.f]?.nome)}${cls === 'A' ? `<small>${esc(COD[o.x])}</small>` : cargoVisivel(e.funcionarios[o.f]) ? `<small>${esc(cargoVisivel(e.funcionarios[o.f]))}</small>` : ''}</button>`;
       corpo = `<div class="dia-tit"><h2>${dataLonga(data)}</h2><span class="${T.length >= minV[d] ? 'ok' : 'baixo'}">${T.length} trabalhando · mínimo ${minV[d]}</span></div>
-        ${fer ? `<div class="nota" style="margin:0 0 10px">Feriado: <b>${esc(fer)}</b>. Quem trabalha hoje recebe em dobro ou ganha outra folga.</div>` : ''}
-        ${T.length < minV[d] ? `<div class="nota" style="margin:0 0 10px">Falta gente${setorVisto() ? ' em ' + esc(setorVisto().nome) : ''}: precisa de pelo menos ${minV[d]} trabalhando.${ed ? ' Toque em quem folga para trocar.' : ''}</div>` : ''}
+        ${fer ? (ferF(d) ? `<div class="nota info" style="margin:0 0 10px">Feriado: <b>${esc(fer)}</b>. A unidade fecha e todos folgam. Para abrir, marque em Funcionamento.</div>`
+          : `<div class="nota" style="margin:0 0 10px">Feriado: <b>${esc(fer)}</b>. A unidade abre: quem trabalha hoje recebe em dobro ou ganha outra folga (Lei 605/49).</div>`) : ''}
+        ${!ferF(d) && T.length < minV[d] ? `<div class="nota" style="margin:0 0 10px">Falta gente${setorVisto() ? ' em ' + esc(setorVisto().nome) : ''}: precisa de pelo menos ${minV[d]} trabalhando.${ed ? ' Toque em quem folga para trocar.' : ''}</div>` : ''}
         <div class="grupo T"><h3>Trabalham <em>${T.length}</em></h3><div class="nomes">${T.map(o => btn(o, 'T')).join('') || '<span class="vazio-grupo">Ninguém</span>'}</div></div>
         <div class="grupo F"><h3>Folgam <em>${F.length}</em></h3><div class="nomes">${F.map(o => btn(o, 'F')).join('') || '<span class="vazio-grupo">Ninguém</span>'}</div></div>
         ${A.length ? `<div class="grupo A"><h3>Não vêm <em>${A.length}</em></h3><div class="nomes">${A.map(o => btn(o, 'A')).join('')}</div></div>` : ''}`;
     }
   }
-  $('#escCorpo').innerHTML = `${status}${chipsSetor()}${modoEsc === 'dia' ? `<div class="dias">${pills}</div>` : ''}${corpo}
+  $('#escCorpo').innerHTML = `${status}${a.problemas ? htmlAvaliador() : ''}${chipsSetor()}${modoEsc === 'dia' ? `<div class="dias">${pills}</div>` : ''}${corpo}
     <div class="acoes-esc"><button class="btn" id="btnExportar">Publicar escala</button>${ed ? '<button class="btn sec" data-faltar>Lançar ausência</button>' : ''}</div>
     ${htmlComoMontada(e, s)}`;
   $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; desenhaSemana(); });
@@ -814,15 +851,18 @@ function htmlAnalise(a) {
     <ul class="diag">${a.itens.map(i => `<li>${ic(i)}<div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>`;
 }
 function folhaAnalise() {
-  const e = semana.escala, fatia = {...e, inicio: semData, semanas: 1, dados: [semanaDados()]};
-  folha(`<h2>Esta semana e a lei</h2>${htmlAnalise(Escala.analisar(fatia, opcoesAnalise(atual)))}
+  folha(`<h2>Esta semana e a lei</h2>${htmlAnalise(analiseSemana())}
     <button class="btn cheio sec" data-ir="aula/0" style="margin-top:12px">Ver as aulas da nova lei</button>`);
 }
-async function trocaCelulas(pares, msg) {
+async function trocaCelulas(pares, msg, desfazendo) {
+  const eid = semana.escala.id, sem = semana.semana;
+  const troca = async () => { let dados; for (const [f, d] of pares) dados = (await api(`/api/escalas/${eid}`, {method: 'PATCH', body: {semana: sem, funcionario: f, dia: d}})).dados; return dados; };
   try {
-    let dados;
-    for (const [f, d] of pares) dados = (await api(`/api/escalas/${semana.escala.id}`, {method: 'PATCH', body: {semana: semana.semana, funcionario: f, dia: d}})).dados;
-    semana.escala.dados = dados; $('#escAviso').innerHTML = ''; fechaFolha(); desenhaSemana(); toast(msg);
+    const dados = await troca();
+    if (semana?.escala?.id === eid) { semana.escala.dados = dados; $('#escAviso').innerHTML = ''; }
+    fechaFolha(); if (location.hash.startsWith('#escala')) desenhaSemana();
+    // a troca é o próprio inverso: trocar de novo as mesmas células volta como estava
+    if (!desfazendo) toast(msg, async () => { const d = await troca(); if (semana?.escala?.id === eid) { semana.escala.dados = d; desenhaSemana(); } });
   } catch (err) { toast(err.message); }
 }
 function folhaPessoaDia(f, d) {
@@ -887,17 +927,21 @@ function folhaDatas(fid, nome, tipo, data) {
   $('#odSalvar').onclick = () => salvaOcorrencia({funcionario_id: fid, tipo, inicio: $('#odIni').value, fim: banco ? $('#odIni').value : $('#odFim').value, horas: banco ? $('#odHoras').value : undefined},
     `${ROTULO[tipo]} de ${n1} lançad${['falta', 'ferias'].includes(tipo) ? 'a' : 'o'}.`, $('#odErro'));
 }
+// férias e afastamento mudam as próximas semanas: refaz (também ao desfazer)
+async function refazPorOcorrencia(o) {
+  if (!['ferias', 'afastamento'].includes(o.tipo)) return {};
+  const f = funcs.find(x => x.id === o.funcionario_id), eqId = o.equipe_id || f?.equipe_id || atual.id;
+  return api(`/api/equipes/${eqId}/refazer`, {method: 'POST', body: {de: o.inicio, ate: o.fim}}).catch(() => ({}));
+}
+const recarregaOcorrencia = () => { semana = null; if (location.hash.startsWith('#colaboradores/ausencias')) telaOcorrencias(); else if (location.hash.startsWith('#escala') || !location.hash) telaEscala(); };
 async function salvaOcorrencia(body, msg, elErro) {
   try {
-    await api('/api/ocorrencias', {method: 'POST', body});
-    let extra = '';
-    if (['ferias', 'afastamento'].includes(body.tipo)) {
-      const f = funcs.find(x => x.id === body.funcionario_id), eqId = f?.equipe_id || atual.id;
-      const r = await api(`/api/equipes/${eqId}/refazer`, {method: 'POST', body: {de: body.inicio, ate: body.fim}}).catch(() => ({}));
-      if (r.refeito) extra = ' A escala das próximas semanas foi refeita.';
-    }
-    fechaFolha(); toast(msg + extra);
-    if (location.hash.startsWith('#colaboradores/ausencias')) telaOcorrencias(); else telaEscala();
+    const oc = await api('/api/ocorrencias', {method: 'POST', body});
+    const r = await refazPorOcorrencia(body);
+    fechaFolha(); toast(msg + (r.refeito ? ' A escala das próximas semanas foi refeita.' : ''), async () => {
+      await api(`/api/ocorrencias/${oc.id}`, {method: 'DELETE'}); await refazPorOcorrencia(body); recarregaOcorrencia();
+    });
+    recarregaOcorrencia();
   } catch (err) { if (elErro) elErro.textContent = err.message; else toast(err.message); }
 }
 
@@ -918,9 +962,11 @@ $('#formAdd').onsubmit = async e => {
   e.preventDefault();
   const nome = $('#addNome').value.trim(); if (!nome) return $('#addNome').focus();
   try {
-    await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: [{nome, cargo: ''}]});
+    const [novo] = await api(`/api/equipes/${atual.id}/funcionarios`, {method: 'POST', body: [{nome, cargo: ''}]});
     $('#addNome').value = ''; funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas();
-    toast(`${nomeCurto(nome)} entrou na equipe. Aparece na escala a partir de ${br(soma(segundaDe(hojeIso()), 7))}.`);
+    toast(`${nomeCurto(nome)} entrou na equipe. Aparece na escala a partir de ${br(soma(segundaDe(hojeIso()), 7))}.`, async () => {
+      await api(`/api/funcionarios/${novo.id}`, {method: 'DELETE'}); funcs = funcs.filter(x => x.id !== novo.id); semana = null; telaPessoas();
+    });
   } catch (err) { toast(err.message); }
 };
 function folhaFunc(f) {
@@ -929,6 +975,9 @@ function folhaFunc(f) {
     <label for="efNome">Nome</label><input id="efNome" value="${esc(f.nome)}">
     <label for="efCargo">Função</label>${fs.length ? `<select id="efCargo"><option value="">—</option>${[...new Set([...fs, f.cargo].filter(Boolean))].map(x => `<option ${x === f.cargo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input id="efCargo" value="${esc(f.cargo || '')}" placeholder="Ex.: Atendente">`}
     ${setoresU.length ? `<label for="efSetor">Setor</label><select id="efSetor"><option value="">Sem setor</option>${setoresU.map(s => `<option value="${s.id}" ${s.id === f.setor_id ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select>` : ''}
+    <label for="efSexo">Sexo</label><select id="efSexo"><option value="">Não informar</option><option value="F" ${f.sexo === 'F' ? 'selected' : ''}>Feminino</option><option value="M" ${f.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>
+    <p class="dica" style="margin-top:4px">Usado só para o revezamento de domingo previsto em lei.</p>
+    <div class="lado"><div><label for="efEnt">Entrada</label><input id="efEnt" type="time" value="${esc(f.entrada || '')}"></div><div><label for="efSai">Saída</label><input id="efSai" type="time" value="${esc(f.saida || '')}"></div></div>
     <label>Folga fixa (só se vocês combinaram)</label><div class="dias-chip" id="efFixa"></div>
     <details style="margin-top:14px"><summary class="link">Mais dados (para a contabilidade)</summary>
       <label for="efMat">Matrícula</label><input id="efMat" value="${esc(f.matricula || '')}">
@@ -943,16 +992,27 @@ function folhaFunc(f) {
   };
   chips();
   $('#efSalvar').onclick = async () => {
+    const body = {nome: $('#efNome').value, cargo: $('#efCargo').value, matricula: $('#efMat').value, admissao: $('#efAdm').value, telefone: $('#efTel').value, folga_fixa: fixa,
+      sexo: $('#efSexo').value || null, entrada: $('#efEnt').value || null, saida: $('#efSai').value || null};
+    // quem já trabalha com a escala publicada: mudar horário ou folga fixa pede cuidado (CLT, art. 468). No primeiro cadastro, não avisa.
+    const mudou = (f.entrada && body.entrada !== f.entrada) || (f.saida && body.saida !== f.saida) || [...f.folga_fixa].sort().join() !== [...fixa].sort().join();
+    if (mudou && atual.publicada && !await avisoArt468()) return;
+    const setorNovo = $('#efSetor') ? +$('#efSetor').value || null : f.setor_id ?? null, setorAntes = f.setor_id ?? null;
     try {
-      await api(`/api/funcionarios/${f.id}`, {method: 'PUT', body: {nome: $('#efNome').value, cargo: $('#efCargo').value, matricula: $('#efMat').value, admissao: $('#efAdm').value, telefone: $('#efTel').value, folga_fixa: fixa}});
-      if ($('#efSetor') && (+$('#efSetor').value || null) !== (f.setor_id ?? null)) { await api(`/api/funcionarios/${f.id}/setor`, {method: 'PUT', body: {setor_id: +$('#efSetor').value || null}}); await carregaSetores(); semana = null; }
-      fechaFolha(); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas(); toast('Salvo.');
-    } catch (err) { $('#efErro').textContent = err.message; }
+      await api(`/api/funcionarios/${f.id}`, {method: 'PUT', body});
+      if (setorNovo !== setorAntes) { await api(`/api/funcionarios/${f.id}/setor`, {method: 'PUT', body: {setor_id: setorNovo}}); await carregaSetores(); semana = null; }
+      fechaFolha(); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas();
+      if (setorNovo !== setorAntes) toast(`${nomeCurto(body.nome)} mudou de setor.`, async () => {
+        await api(`/api/funcionarios/${f.id}/setor`, {method: 'PUT', body: {setor_id: setorAntes}}); await carregaSetores(); semana = null; funcs = await api(`/api/equipes/${atual.id}/funcionarios`); telaPessoas();
+      });
+      else toast('Salvo.');
+    } catch (err) { if ($('#efErro')) $('#efErro').textContent = err.message; else toast(err.message); }
   };
   $('#efTirar').onclick = async () => {
-    if (!confirm(`Tirar ${f.nome} da equipe? Sai da escala a partir da semana que vem.`)) return;
-    try { await api(`/api/funcionarios/${f.id}`, {method: 'DELETE'}); fechaFolha(); funcs = funcs.filter(x => x.id !== f.id); telaPessoas(); toast(`${nomeCurto(f.nome)} saiu da equipe.`); }
-    catch (err) { $('#efErro').textContent = err.message; }
+    try {
+      await api(`/api/funcionarios/${f.id}`, {method: 'DELETE'}); fechaFolha(); funcs = funcs.filter(x => x.id !== f.id); semana = null; telaPessoas();
+      toast(`${nomeCurto(f.nome)} saiu da equipe.`, async () => { await api(`/api/funcionarios/${f.id}/reativar`, {method: 'POST'}); funcs = await api(`/api/equipes/${atual.id}/funcionarios`); semana = null; telaPessoas(); });
+    } catch (err) { $('#efErro').textContent = err.message; }
   };
 }
 
@@ -1008,7 +1068,10 @@ function telaConfig() {
 let cfg = null;
 function desenhaConfig() {
   if (!atual) return ir('comecar');
-  cfg = {abertos: [...atual.abertos], minimo: [...atual.minimo], criticas: (atual.criticas || []).map(c => ({...c, minimo: [...c.minimo]}))};
+  const fc = atual.feriados_config || {};
+  cfg = {abertos: [...atual.abertos], minimo: [...atual.minimo], criticas: (atual.criticas || []).map(c => ({...c, minimo: [...c.minimo]})),
+    feriados_config: {abre: [...(fc.abre || [])], removidos: [...(fc.removidos || [])], extras: (fc.extras || []).map(x => ({...x}))}};
+  ferMes = hojeIso().slice(0, 7);
   $('#cfSetor').innerHTML = SEG_ORDEM.map(k => `<option value="${k}">${esc(seg(k).nome)}</option>`).join('');
   $('#cfNome').value = atual.nome; $('#cfSetor').value = atual.setor; $('#cfHoras').value = +atual.horas_dia || 8;
   $('#cfAbre').value = atual.abre || seg(atual.setor).abre; $('#cfFecha').value = atual.fecha || seg(atual.setor).fecha;
@@ -1020,9 +1083,45 @@ function diasConfig() {
   $$('#cfDias input').forEach(inp => inp.oninput = () => cfg.minimo[+inp.dataset.m] = +inp.value || 0);
   $('#cfCriticas').innerHTML = cfg.criticas.map((c, ci) => `<label>Mínimo de ${esc(c.nome.toLowerCase())} em cada dia</label><div class="dias-conf">${DIAS.map((d, i) => `<div><span class="dia-rot">${d}</span><input type="number" min="0" max="50" value="${c.minimo[i]}" data-cc="${ci}" data-ci="${i}" aria-label="${DIA_LONGO[i]}: mínimo de ${esc(c.nome.toLowerCase())}" ${cfg.abertos[i] ? '' : 'disabled'}></div>`).join('')}</div><p class="dica" style="margin-top:6px">${esc(c.explica || '')}</p>`).join('');
   $$('[data-cc]').forEach(inp => inp.oninput = () => cfg.criticas[+inp.dataset.cc].minimo[+inp.dataset.ci] = +inp.value || 0);
+  feriadosConfig();
+}
+// feriados do mês: cada um com "A empresa abre neste feriado" (sem marcar = fechada, todos folgam), Remover e Adicionar outro
+let ferMes = null;
+const TIPO_FER = {nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal', extra: 'Adicionado por você'};
+function feriadosConfig() {
+  const el = $('#cfFeriados'); if (!el) return;
+  const fc = cfg.feriados_config, ctx = {...conta.ctx, config: fc}, de = ferMes + '-01', ate = soma(soma(de, 32).slice(0, 7) + '-01', -1);
+  const lista = Escala.feriadosEntre(de, ate, ctx), [a, m] = ferMes.split('-').map(Number);
+  const diaSem = d => DIA_LONGO[(new Date(d + 'T12:00:00').getDay() + 6) % 7].toLowerCase();
+  el.innerHTML = `<label style="margin-top:18px">Feriados</label>
+    <div class="fer-nav"><button type="button" class="link" id="ferAnt" aria-label="Mês anterior">‹</button><b>${MES[m - 1]} de ${a}</b><button type="button" class="link" id="ferProx" aria-label="Próximo mês">›</button></div>
+    <p class="dica" style="margin-top:4px">Sem marcar, a unidade fecha no feriado e todos folgam.</p>
+    <ul class="fer-lista">${lista.map(f => `<li class="${f.removido ? 'removido' : ''}"><div><b>${dm(f.data)} · ${esc(f.nome)}</b><small>${diaSem(f.data)} · ${TIPO_FER[f.tipo]}${f.removido ? ' · tratado como dia normal' : ''}</small>
+      ${f.removido ? '' : `<label class="ck"><input type="checkbox" data-fer-abre="${f.data}" ${f.abre ? 'checked' : ''}> A empresa abre neste feriado</label>`}</div>
+      <button type="button" class="link ${f.removido ? '' : 'perigo'}" data-fer-${f.removido ? 'volta' : 'tira'}="${f.data}">${f.removido ? 'Voltar' : 'Remover'}</button></li>`).join('') || '<li><span class="dica">Nenhum feriado neste mês.</span></li>'}</ul>
+    ${lista.some(f => f.abre && !f.removido) ? '<div class="nota" style="margin-top:8px">Quem trabalha no feriado recebe em dobro ou ganha outra folga (Lei 605/49).</div>' : ''}
+    <details class="fer-add"><summary class="link">Adicionar outro feriado</summary>
+      <div class="lado"><div><label for="ferData">Data</label><input id="ferData" type="date" value="${de}"></div><div><label for="ferNome">Nome</label><input id="ferNome" placeholder="Ex.: Padroeiro da cidade"></div></div>
+      <button type="button" class="btn sec" id="ferAdd" style="margin-top:8px">Adicionar</button></details>`;
+  const tira = (l, d) => { const i = l.indexOf(d); if (i >= 0) l.splice(i, 1); };
+  $('#ferAnt').onclick = () => { ferMes = soma(de, -1).slice(0, 7); feriadosConfig(); };
+  $('#ferProx').onclick = () => { ferMes = soma(de, 32).slice(0, 7); feriadosConfig(); };
+  $$('[data-fer-abre]').forEach(c => c.onchange = () => { const d = c.dataset.ferAbre; tira(fc.abre, d); if (c.checked) fc.abre.push(d); feriadosConfig(); });
+  $$('[data-fer-tira]').forEach(b => b.onclick = () => { const d = b.dataset.ferTira, ex = fc.extras.findIndex(x => x.data === d); tira(fc.abre, d);
+    if (ex >= 0) fc.extras.splice(ex, 1); else fc.removidos.push(d); feriadosConfig(); });
+  $$('[data-fer-volta]').forEach(b => b.onclick = () => { tira(fc.removidos, b.dataset.ferVolta); feriadosConfig(); });
+  $('#ferAdd').onclick = () => {
+    const d = $('#ferData').value, nome = $('#ferNome').value.trim();
+    if (!d) return $('#ferData').focus();
+    tira(fc.removidos, d); fc.extras = fc.extras.filter(x => x.data !== d); fc.extras.push({data: d, nome: nome || 'Feriado'});
+    ferMes = d.slice(0, 7); feriadosConfig();
+  };
 }
 $('#cfSetor').onchange = () => { const s = seg($('#cfSetor').value); cfg = {abertos: [...s.abertos], minimo: [...s.minimo], criticas: s.criticas.map(c => ({...c, minimo: [...c.minimo]}))}; $('#cfAbre').value = s.abre; $('#cfFecha').value = s.fecha; diasConfig(); };
 $('#btnSalvarCfg').onclick = async () => {
+  // mudar as horas de quem já trabalha com a escala publicada: aviso do art. 468 da CLT
+  if (atual.publicada && Math.abs((+$('#cfHoras').value || 8) - (+atual.horas_dia || 8)) > 0.01 && !await avisoArt468()) return;
+  if ($('#folha').open) fechaFolha();
   try {
     const e = await api(`/api/equipes/${atual.id}`, {method: 'PUT', body: {...cfg, nome: $('#cfNome').value, setor: $('#cfSetor').value, horas_dia: $('#cfHoras').value, abre: $('#cfAbre').value, fecha: $('#cfFecha').value}});
     await carregaEquipes(); atual = equipes.find(x => x.id === e.id) || atual; pintaTopo(); semana = null;
@@ -1047,8 +1146,12 @@ async function telaOcorrencias() {
       ${podeEditar() ? `<button class="link perigo" data-del-oc="${o.id}">Apagar</button>` : ''}</li>`).join('')
     : '<li><span class="dica">Nada lançado neste mês.</span></li>';
   $$('[data-del-oc]').forEach(b => b.onclick = async () => {
-    if (!confirm('Apagar? A pessoa volta para a escala nesses dias.')) return;
-    try { await api(`/api/ocorrencias/${b.dataset.delOc}`, {method: 'DELETE'}); toast('Apagado.'); telaOcorrencias(); } catch (err) { toast(err.message); }
+    const o = lista.find(x => String(x.id) === b.dataset.delOc);
+    try {
+      await api(`/api/ocorrencias/${o.id}`, {method: 'DELETE'}); await refazPorOcorrencia(o); telaOcorrencias();
+      const volta = {funcionario_id: o.funcionario_id, equipe_id: o.equipe_id, tipo: o.tipo, inicio: String(o.inicio).slice(0, 10), fim: String(o.fim).slice(0, 10), horas: o.horas ?? undefined, obs: o.obs || undefined};
+      toast(`${ROTULO[o.tipo]} de ${nomeCurto(o.funcionario)} apagad${['falta', 'ferias'].includes(o.tipo) ? 'a' : 'o'}.`, async () => { await api('/api/ocorrencias', {method: 'POST', body: volta}); await refazPorOcorrencia(volta); telaOcorrencias(); });
+    } catch (err) { toast(err.message); }
   });
 }
 
@@ -1233,7 +1336,7 @@ function htmlAgenda(e, sem) {
   const eixo = [];
   for (let m = h0; m < h1; m += 60) eixo.push(`<span style="top:${y(m)}px">${hhmm(m)}</span>`);
   const colunas = DIAS.map((d, k) => {
-    const data = soma(semData, k), fer = Escala.feriado(data, conta.ctx);
+    const data = soma(semData, k), fer = Escala.feriado(data, ctxU());
     const cab = `<div class="ag-cab ${data === hoje ? 'hoje' : ''}"><small>${d}</small><b>${Number(data.slice(8))}</b>${fer ? `<em title="${esc(fer)}">feriado</em>` : ''}</div>`;
     if (!e.abertos[k]) return { cab, dia: '<p class="ag-folgas">Fechado</p>', blocos: '<div class="ag-fechado">Fechado</div>' };
     const folgas = turnos.filter(t => sem[t.i][k] === 'F').map(t => esc(t.nome));

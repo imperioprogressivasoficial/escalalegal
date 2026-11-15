@@ -64,7 +64,8 @@ test('jornada completa do cliente e do contador', { skip: pular }, async t => {
   assert.equal(r.json.liberado, true);
   const esc = r.json.escala;
   assert.equal(esc.dados.length, 4); assert.equal(esc.funcionarios.length, 6);
-  for (const sem of esc.dados) for (const f of sem) assert.equal(f.filter(c => c === 'F').length, 2);
+  const fer = (e, s, d) => (e.feriados || []).includes(require('../public/scheduler.js').somaDias(e.inicio, s * 7 + d));
+  esc.dados.forEach((sem, s) => { for (const f of sem) assert.equal(f.filter((c, d) => c === 'F' && !fer(esc, s, d)).length, 2); });
   const eq = r.json.equipe;
   assert.equal(+eq.horas_dia, 8);
   // dados da empresa ficaram salvos, com feriados da Bahia e de Salvador

@@ -298,3 +298,11 @@ create index if not exists suporte_chamados_status_idx on suporte_chamados (stat
 alter table suporte_chamados alter column usuario_id drop not null;
 alter table suporte_chamados drop constraint if exists suporte_chamados_status_check;
 alter table suporte_chamados add constraint suporte_chamados_status_check check (status in ('aberto', 'fechado'));
+
+-- ---------- v10: sexo do colaborador (domingo das mulheres, CLT art. 386) e feriados por unidade ----------
+-- sexo: 'F', 'M' ou vazio (não informado). Usado só para o revezamento de domingo.
+alter table funcionarios add column if not exists sexo text;
+-- feriados da unidade: { abre: [datas em que abre], removidos: [datas tratadas como dia normal], extras: [{data, nome}] }
+alter table equipes add column if not exists feriados_config jsonb not null default '{}'::jsonb;
+-- feriados com a unidade fechada que entraram na escala (para refazer as semanas futuras quando mudar)
+alter table escalas add column if not exists feriados jsonb;
