@@ -4,3 +4,4 @@ node_modules/
 backup*.sql
 backups/
 docker-compose.override.yml
+marketing/video/quadros/
