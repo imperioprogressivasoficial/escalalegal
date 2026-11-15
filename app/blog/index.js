@@ -13,7 +13,7 @@ const slugDe = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const dataBr = d => `${+d.slice(8)} de ${MESES[+d.slice(5, 7) - 1]} de ${d.slice(0, 4)}`;
 // atendimento (widget "Fale com a gente"): carrega depois da página, para não pesar no carregamento
-const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=2';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
+const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=3';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
 const palavras = h => String(h).replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
 
 // Títulos do gerador que acompanham a palavra-chave do anúncio (?utm_term= ou ?kw=). Só textos fixos: nada do endereço vai para a página.

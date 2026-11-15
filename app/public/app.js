@@ -1085,27 +1085,34 @@ function diasConfig() {
   $$('[data-cc]').forEach(inp => inp.oninput = () => cfg.criticas[+inp.dataset.cc].minimo[+inp.dataset.ci] = +inp.value || 0);
   feriadosConfig();
 }
-// feriados do mês: cada um com "A empresa abre neste feriado" (sem marcar = fechada, todos folgam), Remover e Adicionar outro
+// feriados do ano (do ano atual até 2030): "A empresa abre neste feriado", Remover, pontos facultativos e Adicionar outro
 let ferMes = null;
-const TIPO_FER = {nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal', extra: 'Adicionado por você'};
+const FER_ATE = 2030;
+const TIPO_FER = {nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal', extra: 'Adicionado por você', facultativo: 'Ponto facultativo'};
 function feriadosConfig() {
   const el = $('#cfFeriados'); if (!el) return;
-  const fc = cfg.feriados_config, padrao = !!cfg.abertos[6], ctx = {...conta.ctx, config: Escala.configFeriados(fc, cfg.abertos)}, de = ferMes + '-01', ate = soma(soma(de, 32).slice(0, 7) + '-01', -1);
-  const lista = Escala.feriadosEntre(de, ate, ctx), [a, m] = ferMes.split('-').map(Number);
+  const fc = cfg.feriados_config, padrao = !!cfg.abertos[6], ctx = {...conta.ctx, config: Escala.configFeriados(fc, cfg.abertos)}, a = +ferMes.slice(0, 4), a0 = +hojeIso().slice(0, 4), de = a === a0 ? hojeIso() : a + '-01-01', ate = a + '-12-31';
+  const lista = Escala.feriadosEntre(de, ate, ctx);
   const diaSem = d => DIA_LONGO[(new Date(d + 'T12:00:00').getDay() + 6) % 7].toLowerCase();
   el.innerHTML = `<label style="margin-top:18px">Feriados</label>
-    <div class="fer-nav"><button type="button" class="link" id="ferAnt" aria-label="Mês anterior">‹</button><b>${MES[m - 1]} de ${a}</b><button type="button" class="link" id="ferProx" aria-label="Próximo mês">›</button></div>
+    <div class="fer-nav"><button type="button" class="link" id="ferAnt" aria-label="Ano anterior" ${a <= a0 ? 'disabled' : ''}>‹</button><b>${a === a0 ? 'Próximos feriados de ' + a : 'Feriados de ' + a}</b><button type="button" class="link" id="ferProx" aria-label="Próximo ano" ${a >= FER_ATE ? 'disabled' : ''}>›</button></div>
     <p class="dica" style="margin-top:4px">${padrao ? 'Como a unidade abre no domingo, ela abre nos feriados. Desmarque o feriado em que fecha: nele todos folgam.' : 'Sem marcar, a unidade fecha no feriado e todos folgam.'}</p>
-    <ul class="fer-lista">${lista.map(f => `<li class="${f.removido ? 'removido' : ''}"><div><b>${dm(f.data)} · ${esc(f.nome)}</b><small>${diaSem(f.data)} · ${TIPO_FER[f.tipo]}${f.removido ? ' · tratado como dia normal' : ''}</small>
+    <ul class="fer-lista">${lista.map(f => f.tipo === 'facultativo'
+      ? `<li class="removido"><div><b>${dm(f.data)} · ${esc(f.nome)}</b><small>${diaSem(f.data)} · Ponto facultativo · dia normal</small></div>
+      <button type="button" class="link" data-fer-vira="${f.data}" data-nome="${esc(f.nome)}">Fechar neste dia</button></li>`
+      : `<li class="${f.removido ? 'removido' : ''}"><div><b>${dm(f.data)} · ${esc(f.nome)}</b><small>${diaSem(f.data)} · ${TIPO_FER[f.tipo]}${f.removido ? ' · tratado como dia normal' : ''}</small>
       ${f.removido ? '' : `<label class="ck"><input type="checkbox" data-fer-abre="${f.data}" ${f.abre ? 'checked' : ''}> A empresa abre neste feriado</label>`}</div>
-      <button type="button" class="link ${f.removido ? '' : 'perigo'}" data-fer-${f.removido ? 'volta' : 'tira'}="${f.data}">${f.removido ? 'Voltar' : 'Remover'}</button></li>`).join('') || '<li><span class="dica">Nenhum feriado neste mês.</span></li>'}</ul>
+      <button type="button" class="link ${f.removido ? '' : 'perigo'}" data-fer-${f.removido ? 'volta' : 'tira'}="${f.data}">${f.removido ? 'Voltar' : 'Remover'}</button></li>`).join('') || '<li><span class="dica">Nenhum feriado.</span></li>'}</ul>
     ${lista.some(f => f.abre && !f.removido) ? '<div class="nota" style="margin-top:8px">Quem trabalha no feriado recebe em dobro ou ganha outra folga (Lei 605/49).</div>' : ''}
     <details class="fer-add"><summary class="link">Adicionar outro feriado</summary>
       <div class="lado"><div><label for="ferData">Data</label><input id="ferData" type="date" value="${de}"></div><div><label for="ferNome">Nome</label><input id="ferNome" placeholder="Ex.: Padroeiro da cidade"></div></div>
       <button type="button" class="btn sec" id="ferAdd" style="margin-top:8px">Adicionar</button></details>`;
   const tira = (l, d) => { const i = l.indexOf(d); if (i >= 0) l.splice(i, 1); };
-  $('#ferAnt').onclick = () => { ferMes = soma(de, -1).slice(0, 7); feriadosConfig(); };
-  $('#ferProx').onclick = () => { ferMes = soma(de, 32).slice(0, 7); feriadosConfig(); };
+  $('#ferAnt').onclick = () => { if (a > a0) { ferMes = (a - 1) + '-01'; feriadosConfig(); } };
+  $('#ferProx').onclick = () => { if (a < FER_ATE) { ferMes = (a + 1) + '-01'; feriadosConfig(); } };
+  // ponto facultativo: vira feriado da unidade (fechada, todos folgam)
+  $$('[data-fer-vira]').forEach(b => b.onclick = () => { const d = b.dataset.ferVira; fc.fecha ||= []; tira(fc.removidos, d); fc.extras = fc.extras.filter(x => x.data !== d);
+    fc.extras.push({data: d, nome: b.dataset.nome}); tira(fc.abre, d); if (padrao) fc.fecha.push(d); feriadosConfig(); });
   $$('[data-fer-abre]').forEach(c => c.onchange = () => { const d = c.dataset.ferAbre; fc.fecha ||= []; tira(fc.abre, d); tira(fc.fecha, d); if (c.checked !== padrao) (c.checked ? fc.abre : fc.fecha).push(d); feriadosConfig(); });
   $$('[data-fer-tira]').forEach(b => b.onclick = () => { const d = b.dataset.ferTira, ex = fc.extras.findIndex(x => x.data === d); tira(fc.abre, d);
     if (ex >= 0) fc.extras.splice(ex, 1); else fc.removidos.push(d); feriadosConfig(); });

@@ -99,6 +99,13 @@
       [`${ano}-12-25`]: 'Natal',
     };
   }
+  // pontos facultativos nacionais (não são feriado por lei; muitas cidades e empresas fecham): a empresa pode virar feriado
+  const facultCache = {};
+  function facultativos(ano) {
+    if (facultCache[ano]) return facultCache[ano];
+    const p = pascoa(ano), d = n => { const x = new Date(p); x.setUTCDate(x.getUTCDate() + n); return iso(x); };
+    return (facultCache[ano] = { [d(-48)]: 'Carnaval (segunda)', [d(-47)]: 'Carnaval (terça)', [d(60)]: 'Corpus Christi' });
+  }
   // Feriados estaduais (data magna / leis estaduais). Feriados municipais a empresa informa.
   const ESTADUAIS = {
     AC: { '06-15': 'Aniversário do Acre' }, AL: { '09-16': 'Emancipação de Alagoas' }, AP: { '09-13': 'Criação do Amapá' },
@@ -141,7 +148,7 @@
     for (let d = de; d <= ate; d = somaDias(d, 1)) {
       const ex = (cfg.extras || []).find(x => x?.data === d);
       const nome = ex ? (ex.nome || 'Feriado') : feriado(d, base);
-      if (!nome) continue;
+      if (!nome) { const fa = facultativos(+d.slice(0, 4))[d]; if (fa) out.push({ data: d, nome: fa, tipo: 'facultativo', abre: true, removido: false }); continue; }
       const md = d.slice(5), nac = (cacheFer[d.slice(0, 4)] ||= feriados(+d.slice(0, 4)))[d];
       const tipo = ex ? 'extra' : nac ? 'nacional' : base?.uf && ESTADUAIS[base.uf]?.[md] ? 'estadual' : 'municipal';
       out.push({ data: d, nome, tipo, abre: feriadoAberto(d, { config: cfg }), removido: !ex && (cfg.removidos || []).includes(d) });

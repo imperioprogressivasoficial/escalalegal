@@ -30,12 +30,15 @@
   const gravarSessao = (k, v) => { try { sessionStorage.setItem(k, v); } catch {} };
   const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^\w-]/g, '');
 
+  // ícone do app (o Zé Folga) no botão de ajuda, embutido para funcionar no site, no blog e no app
+  const ICONE = 'data:image/webp;base64,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';
+
   // ---------- estilo (cores e fontes da marca) ----------
   const css = `
 .sp-fab{position:fixed;right:18px;bottom:calc(18px + var(--sp-baixo,0px) + env(safe-area-inset-bottom));z-index:70;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;background:#1351b4;color:#fff;font:700 15px/1 'Public Sans',system-ui,sans-serif;padding:12px 18px 12px 12px;box-shadow:0 10px 26px -8px rgba(7,29,65,.55);cursor:pointer;transition:transform .15s ease,background .15s ease}
 .sp-fab:hover{background:#0f449a}.sp-fab:active{transform:scale(.97)}
 .sp-fab:focus-visible,.sp-p button:focus-visible,.sp-p input:focus-visible,.sp-p textarea:focus-visible,.sp-p a:focus-visible{outline:3px solid #ffcd07;outline-offset:2px}
-.sp-fab b{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#ffcd07;color:#071d41;font:800 16px/1 'Archivo',system-ui,sans-serif}
+.sp-fab img{display:block;width:30px;height:30px;border-radius:9px;flex:none}
 .sp-fab[hidden],.sp-aberto .sp-fab,body:has(dialog[open]) .sp-fab{display:none}
 .sp-fundo{position:fixed;inset:0;z-index:2147483100;background:rgba(7,29,65,.45);opacity:0;transition:opacity .2s ease}
 .sp-aberto .sp-fundo{opacity:1}
@@ -93,7 +96,8 @@
 .sp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-width:640px){
   .sp-fab{padding:0;width:52px;height:52px;justify-content:center;right:14px;bottom:calc(14px + var(--sp-baixo,0px) + env(safe-area-inset-bottom))}
-  .sp-fab b{width:auto;height:auto;background:none;color:#fff;font-size:22px}
+  .sp-fab{background:transparent;width:58px;height:58px;border-radius:17px}.sp-fab:hover{background:transparent}
+  .sp-fab img{width:58px;height:58px;border-radius:17px}
   .sp-fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   body.modo-foco .sp-fab{bottom:calc(96px + var(--sp-baixo,0px) + env(safe-area-inset-bottom))}
   .sp-p{left:0;right:0;bottom:0;width:auto;max-width:none;height:min(88vh,calc(100dvh - 40px));border-radius:22px 22px 0 0;transform:translateY(40px)}
@@ -158,7 +162,7 @@
     const fab = d.createElement('button');
     fab.type = 'button'; fab.className = 'sp-fab'; fab.id = 'spFab';
     fab.setAttribute('aria-haspopup', 'dialog'); fab.setAttribute('aria-controls', 'spPainel');
-    fab.innerHTML = `<b aria-hidden="true">?</b><span>${M.fab}</span>`;
+    fab.innerHTML = `<img src="${ICONE}" alt="" width="30" height="30"><span>${M.fab}</span>`;
     fab.setAttribute('aria-label', M.fabAria);
     fab.onclick = () => abrir();
     d.body.appendChild(fab);

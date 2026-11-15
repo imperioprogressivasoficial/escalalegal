@@ -100,7 +100,7 @@
   var fetchOriginal = window.fetch;
   window.fetch = function (url, opts) {
     var u = typeof url === 'string' ? url : (url && url.url) || '';
-    var conta = /^\/api\//.test(u) && !/\/api\/(evento|suporte|notificacoes|atendimento)/.test(u);
+    var conta = /^\/api\//.test(u) && !/\/api\/(evento|suporte|notificacoes|atendimento|cookies)/.test(u);
     if (!conta) return fetchOriginal.apply(this, arguments);
     pendentes++; if (!timer && !abertura) timer = setTimeout(mostra, 500);
     var acaba = function () { if (--pendentes <= 0) { pendentes = 0; esconde(); if (window.__zePronto) setTimeout(window.__zePronto, 120); } };

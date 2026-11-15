@@ -287,6 +287,23 @@ app.post('/api/login', limite(10), erro(async (req, res) => {
 }));
 
 app.post('/api/sair', (_req, res) => { res.setHeader('Set-Cookie', `sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${PRODUCAO ? '; Secure' : ''}`); res.json({ ok: true }); });
+// escolha do aviso de cookies na conta (sem login: devolve vazio e o navegador guarda sozinho)
+async function usuarioDaSessao(req) {
+  const s = leSessao(req); if (!s) return null;
+  const { rows } = await q('select id, sessao_v, cookies from usuarios where id=$1', [s.id]);
+  return rows[0] && rows[0].sessao_v === s.v ? rows[0] : null;
+}
+app.get('/api/cookies', erro(async (req, res) => {
+  const u = await usuarioDaSessao(req);
+  res.set('Cache-Control', 'no-store').json({ escolha: u?.cookies || null, logado: !!u });
+}));
+app.post('/api/cookies', erro(async (req, res) => {
+  const escolha = ['sim', 'nao'].includes(req.body?.escolha) ? req.body.escolha : null;
+  if (!escolha) return res.status(400).json({ erro: 'Escolha inválida.' });
+  const u = await usuarioDaSessao(req);
+  if (u) await q('update usuarios set cookies=$1 where id=$2', [escolha, u.id]);
+  res.json({ ok: true, salvo: !!u });
+}));
 app.get('/api/eu', logado, erro(async (req, res) => {
   const { sessao_v, ...u } = req.u;
   const { rows } = await q(`select m.conta_id id, coalesce(c.empresa, c.nome) empresa, m.papel from membros m

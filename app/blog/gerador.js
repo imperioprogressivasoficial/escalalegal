@@ -135,7 +135,7 @@
   var fer = { abre: [], removidos: [], extras: [] };
   function desenhaFeriados() {
     var el = $('#gFeriados'); if (!el) return;
-    var ini = $('#gSemana').value, lista = Escala.feriadosEntre(ini, Escala.somaDias(ini, 6), { uf: $('#gUf').value || null, config: fer });
+    var ini = $('#gSemana').value, lista = Escala.feriadosEntre(ini, Escala.somaDias(ini, 6), { uf: $('#gUf').value || null, config: fer }).filter(function (f) { return f.tipo !== 'facultativo'; });
     el.innerHTML = '<p class="g-dica">' + (lista.length ? 'Feriados nesta semana. Sem marcar, a empresa fecha e todos folgam.' : 'Nenhum feriado nesta semana.') + '</p>'
       + lista.map(function (f) {
         return '<div class="g-fer' + (f.removido ? ' removido' : '') + '"><b>' + br(f.data) + ' · ' + esc(f.nome) + '</b>'

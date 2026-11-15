@@ -306,3 +306,5 @@ alter table funcionarios add column if not exists sexo text;
 alter table equipes add column if not exists feriados_config jsonb not null default '{}'::jsonb;
 -- feriados com a unidade fechada que entraram na escala (para refazer as semanas futuras quando mudar)
 alter table escalas add column if not exists feriados jsonb;
+-- escolha do aviso de cookies guardada na conta: quem já respondeu não vê o aviso de novo (outro aparelho, app na tela inicial)
+alter table usuarios add column if not exists cookies text;
