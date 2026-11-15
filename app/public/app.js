@@ -163,21 +163,22 @@ async function rota() {
   if (!conta) return;
   let [v, extra] = (location.hash.slice(1) || '').split('/');
   const mc = ehModoContador();
-  if (mc && !['contador', 'conta', 'mais'].includes(v)) v = 'contador';
+  if (mc && !['contador', 'conta', 'mais', 'aula'].includes(v)) v = 'contador';
   if (!v) v = 'escala';
-  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos'].includes(v)) v = 'comecar';
+  if (conta.papel === 'dono' && !equipes.length && !['comecar', 'conta', 'mais', 'empresa', 'acessos', 'aula'].includes(v)) v = 'comecar';
   if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono')
     || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : 'escala';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
   $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (v === 'funcionamento' && b.dataset.ir === 'mais') || (v === 'tabela' && b.dataset.ir === 'escala')));
   $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela'].includes(v));
-  $('#barraBaixo').classList.toggle('hide', v === 'comecar' || mc);
+  $('#barraBaixo').classList.toggle('hide', v === 'comecar' || v === 'aula' || mc);
   window.scrollTo(0, 0);
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'escala') await telaEscala();
     else if (v === 'pessoas') telaPessoas();
     else if (v === 'tabela') await telaTabela();
+    else if (v === 'aula') { aulaI = 0; telaAula(); }
     else if (v === 'mais') telaMais();
     else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'ocorrencias') await telaOcorrencias();
@@ -374,7 +375,7 @@ async function telaEscala() {
   if (pedido !== semData) return; // trocou de semana enquanto carregava
   semana = r;
   let aviso = '';
-  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar".</div>`;
+  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar". <button class="link" data-ir="aula">Entenda a lei em 3 minutos ›</button></div>`;
   if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
   $('#escAviso').innerHTML = aviso;
   if (!r.escala) {
@@ -452,7 +453,7 @@ function htmlAnalise(a) {
 function folhaAnalise() {
   const e = semana.escala, fatia = {...e, inicio: semData, semanas: 1, dados: [semanaDados()]};
   folha(`<h2>Esta semana e a lei</h2>${htmlAnalise(Escala.analisar(fatia, opcoesAnalise(atual)))}
-    <p class="dica" style="margin-top:12px">Quer entender a lei? <a class="link" href="/ajuda">Abra a ajuda</a>.</p>`);
+    <button class="btn cheio sec" data-ir="aula" style="margin-top:12px">Entender a lei em 3 minutos</button>`);
 }
 async function trocaCelulas(pares, msg) {
   try {
@@ -628,7 +629,8 @@ function telaMais() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
   const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
   let h = '';
-  if (mc) h += `<ul class="menu">${item('contador', 'Suas empresas', 'Clientes que liberaram o acesso')}</ul>`;
+  h += `<ul class="menu"><li><button data-ir="aula" class="menu-aula"><span>Aprenda a nova lei em 3 minutos<small>Sem juridiquês, com exemplos e teste rápido</small></span><span class="seta">›</span></button></li></ul>`;
+  if (mc) h += `<ul class="menu" style="margin-top:8px">${item('contador', 'Suas empresas', 'Clientes que liberaram o acesso')}</ul>`;
   else {
     h += '<p class="menu-tit">Escala</p><ul class="menu">';
     if (ed) h += item('funcionamento', 'Horário e dias de funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · mínimo de pessoas por dia` : '');

@@ -93,7 +93,8 @@ const SAIDAS = {
   imprimir: ['IMPRIMIR', 'Imprimir', 'Para colar no mural'],
 };
 function botoesExportar() {
-  const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><span class="fmt fmt-${k}">${SAIDAS[k][0]}</span><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
+  const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
+  const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
   return `<p class="saida-tit">Mandar para a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
     <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
 }

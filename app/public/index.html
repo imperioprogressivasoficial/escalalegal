@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sua Escala Blindada — gerador de escala 5x2</title>
-<meta name="description" content="A escala 6x1 acaba em 16 de dezembro de 2026. A Sua Escala Blindada monta a escala 5x2 da sua empresa em 2 minutos, sem deixar nenhum dia descoberto. R$ 47, pagamento único.">
+<meta name="description" content="A escala 6x1 acaba em 16 de dezembro de 2026. Responda umas perguntas e a Sua Escala Blindada entrega a escala 5x2 da sua empresa dentro da lei, em PDF, Excel, Google Planilhas ou no WhatsApp. R$ 47, pagamento único.">
 <meta name="theme-color" content="#061533">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -267,6 +267,23 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .js [data-r]{transition:transform .9s cubic-bezier(.16,1,.3,1),opacity .9s;transition-delay:calc(var(--d,0)*90ms)}
 .js [data-r].fora{transform:translateY(40px);opacity:.15}
 
+.formatos-mini{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:24px}
+.formatos-mini span{font-weight:700;font-size:.92rem;color:#c9d8f0;margin-right:4px}
+.formatos-mini i{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#fff;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
+.formatos-mini img{width:34px;height:34px}
+.formatos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.formato{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px;transition:transform .3s,box-shadow .3s}
+.formato:hover{transform:translateY(-4px);box-shadow:0 22px 40px -24px rgba(12,27,51,.35)}
+.formato img{width:56px;height:56px;margin-bottom:14px}
+.formato h3{font-size:1.3rem;margin-bottom:6px}
+.formato p{font-size:.98rem}
+.pilar .n.num{font:900 1.7rem/1 var(--display);font-stretch:86%}
+.aula-chamada{display:flex;gap:16px;align-items:center;background:#fff;border:1px solid var(--linha);border-radius:18px;padding:18px;margin-top:22px}
+.aula-chamada img{width:64px;flex:0 0 64px}
+.aula-chamada b{font-family:var(--display);font-size:1.25rem;color:var(--tinta);font-stretch:88%}
+.aula-chamada p{font-size:1rem!important;margin-top:4px!important}
+@media(max-width:980px){.formatos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.formatos{gap:10px}.formato{padding:16px}.formato h3{font-size:1.1rem}.formato p{font-size:.9rem}.formatos-mini i{width:46px;height:46px}}
 @media(max-width:980px){
   .menu a:not(.btn){display:none}
   .heroi-grid,.app-grid,.lei-grid,.preco-grid,.faq-grid{grid-template-columns:minmax(0,1fr)}
@@ -299,7 +316,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <header class="topo" id="topo">
   <div class="wrap">
     <a class="marca" href="#"><img src="img/mascote.svg" alt="">SuaEscala<span>Blindada</span></a>
-    <nav class="menu" aria-label="Principal"><a href="#como">Como funciona</a><a href="#app">O sistema</a><a href="#lei">A lei</a><a href="#duvidas">Dúvidas</a><a href="/app">Entrar</a><a class="btn btn-p" href="#preco">Quero a Sua Escala Blindada</a></nav>
+    <nav class="menu" aria-label="Principal"><a href="#como">Como funciona</a><a href="#app">O sistema</a><a href="#formatos">Formatos</a><a href="#lei">A lei</a><a href="#duvidas">Dúvidas</a><a href="/app">Entrar</a><a class="btn btn-p" href="#preco">Quero a Sua Escala Blindada</a></nav>
   </div>
 </header>
 
@@ -308,19 +325,20 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
   <div class="wrap heroi-grid">
     <div>
       <p class="selo" data-e><i></i><span id="seloTxt">Nova regra da escala 5x2 em vigor em 16/12/2026</span></p>
-      <h1 data-e style="--d:1">A escala 6x1 acabou. <span class="g">Monte a 5x2 da sua empresa em 2 minutos.</span></h1>
-      <p class="lead" data-e style="--d:2">A Sua Escala Blindada é o sistema que distribui as duas folgas da sua equipe, garante gente suficiente em todos os dias e faz o rodízio de domingo. Sem planilha e sem dor de cabeça.</p>
+      <h1 data-e style="--d:1">A escala 6x1 acabou. <span class="g">Responda umas perguntas e sua escala sai pronta.</span></h1>
+      <p class="lead" data-e style="--d:2">Sem planilha e sem juridiquês. Você conta como é o seu negócio e quem trabalha com você. A Sua Escala Blindada entrega a escala 5x2 dentro da lei, com duas folgas para cada um e nenhum dia descoberto.</p>
       <div class="ctas" data-e style="--d:3">
         <a class="btn" href="#preco" data-comprar>Quero a Sua Escala Blindada <small>R$&nbsp;47</small></a>
         <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
       </div>
+      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><i title="WhatsApp"><img src="img/formatos/whatsapp.svg" alt="" width="40" height="40"></i><i title="PDF"><img src="img/formatos/pdf.svg" alt="" width="40" height="40"></i><i title="Excel"><img src="img/formatos/excel.svg" alt="" width="40" height="40"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg" alt="" width="40" height="40"></i><i title="Imagem JPG"><img src="img/formatos/jpg.svg" alt="" width="40" height="40"></i></div>
       <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único</span><span>7 dias de garantia</span></div>
     </div>
     <div class="vitrine" data-e style="--d:2">
       <img class="ze-espia" src="img/mascote.svg" alt="Zé Folga, o mascote da Sua Escala Blindada">
-      <div class="janela"><div class="janela-barra"><i></i><i></i><i></i><span>Sua Escala Blindada · Loja Shopping Norte</span></div><img src="img/app-escala.webp" width="1600" height="950" alt="Tela da Sua Escala Blindada com a escala de seis funcionários, duas folgas para cada um e a Trava de Cobertura confirmando todos os dias cobertos."></div>
-      <div class="celular"><img src="img/app-celular.webp" width="600" height="1298" alt="A Sua Escala Blindada aberta no celular."></div>
-      <div class="chip c1"><b>✓</b><div>Trava de Cobertura<small>todos os dias cobertos</small></div></div>
+      <div class="janela"><div class="janela-barra"><i></i><i></i><i></i><span>Sua Escala Blindada · Loja Shopping Norte</span></div><img src="img/app-escala.webp" width="1600" height="950" alt="A tabela pronta da Sua Escala Blindada: sete funcionários, duas folgas para cada um e quantas pessoas trabalham em cada dia."></div>
+      <div class="celular"><img src="img/app-celular.webp" width="600" height="1298" alt="A Sua Escala Blindada no celular: quem trabalha e quem folga no dia."></div>
+      <div class="chip c1"><b>✓</b><div>Dentro da lei<small>conferido antes de entregar</small></div></div>
       <div class="chip c2"><b>2</b><div>folgas por funcionário<small>como manda a nova lei</small></div></div>
     </div>
   </div>
@@ -357,9 +375,9 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <div class="lado bom" data-r style="--d:1">
         <span class="rotulo">Com a Sua Escala Blindada</span>
         <h3>Na Sua Escala Blindada</h3>
-        <p>Você informa a equipe. O sistema entrega a escala pronta e conferida.</p>
+        <p>Você responde umas perguntas. O sistema entrega a escala pronta e conferida.</p>
         <div class="mini-ok" aria-hidden="true"><i>4<small>Seg</small></i><i>4<small>Ter</small></i><i>4<small>Qua</small></i><i>4<small>Qui</small></i><i>5<small>Sex</small></i><i>5<small>Sáb</small></i><i>4<small>Dom</small></i></div>
-        <ul><li>Duas folgas para cada um, juntas sempre que a operação permite.</li><li>Nenhum dia fica abaixo do mínimo de pessoas que você definiu.</li><li>Domingo de folga em rodízio, justo para a equipe.</li><li>Escala pronta para imprimir ou mandar no grupo do WhatsApp.</li></ul>
+        <ul><li>Duas folgas para cada um, juntas sempre que a operação permite.</li><li>Nenhum dia fica abaixo do mínimo de pessoas que você definiu.</li><li>Domingo de folga em rodízio, justo para a equipe.</li><li>Escala pronta em PDF, Excel, Google Planilhas ou direto no grupo do WhatsApp.</li></ul>
       </div>
     </div>
   </div>
@@ -370,12 +388,12 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
   <div class="wrap">
     <div class="mec-cab">
       <img src="img/mascote.svg" alt="Zé Folga acenando">
-      <div><span class="etq">O método</span><h2>Três travas que deixam a escala certa de primeira</h2><p>A Sua Escala Blindada testa as combinações de folga e só entrega a escala que respeita a lei e a sua operação.</p></div>
+      <div><span class="etq">Um mecanismo só</span><h2>Responda. Receba. Envie.</h2><p>Você não precisa entender de lei nem de planilha. Funciona como um quiz: uma pergunta por vez, cada uma já com a resposta mais comum para o seu tipo de negócio.</p></div>
     </div>
     <div class="pilares">
-      <article class="pilar" data-r><span class="n"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span><h3>Trava de Cobertura</h3><p>Você define quantas pessoas precisa em cada dia. Nenhum dia fica abaixo disso. Se a equipe não for suficiente, o sistema avisa quantas pessoas faltam.</p></article>
-      <article class="pilar" data-r style="--d:1"><span class="n"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></span><h3>Rodízio de Domingo</h3><p>A folga de domingo gira entre a equipe. Ninguém passa do segundo domingo seguido trabalhando sem você ser avisado.</p></article>
-      <article class="pilar" data-r style="--d:2"><span class="n"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M9 15h2"/></svg></span><h3>Folga Fixa</h3><p>Quem só pode folgar em certo dia mantém o dia dele. O sistema encaixa o resto da equipe em volta.</p></article>
+      <article class="pilar" data-r><span class="n num">1</span><h3>Responda as perguntas</h3><p>Tipo de negócio, dias que abre, quantas pessoas precisa e quem trabalha. Quase tudo é um toque. Leva uns 2 minutos.</p></article>
+      <article class="pilar" data-r style="--d:1"><span class="n num">2</span><h3>Receba dentro da lei</h3><p>Duas folgas para cada um, nenhum dia descoberto, rodízio de domingo e aviso de feriado trabalhado. Se faltar gente, o sistema diz quantas pessoas.</p></article>
+      <article class="pilar" data-r style="--d:2"><span class="n num">3</span><h3>Baixe ou envie</h3><p>PDF, Excel, Google Planilhas, imagem ou direto no WhatsApp. Cada funcionário vê a própria folga pelo link, sem instalar nada.</p></article>
     </div>
   </div>
 </section>
@@ -384,25 +402,41 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
   <div class="wrap">
     <div class="cab-sec">
       <span class="etq">O sistema por dentro</span>
-      <h2>Um sistema de verdade, não uma planilha pronta</h2>
-      <p>Funciona no navegador do computador e do celular. Sua equipe fica salva e a escala é refeita sempre que alguém entra ou sai.</p>
+      <h2>Por dentro: simples como responder um quiz</h2>
+      <p>Funciona no celular e no computador, sem instalar nada. A equipe fica salva e a escala se ajusta sozinha quando alguém entra, sai ou tira férias.</p>
     </div>
     <div class="app-grid">
       <div class="abas" role="tablist">
-        <button class="aba on" role="tab" aria-selected="true" data-tela="0"><strong>Escala gerada em segundos</strong><span>Semanas com datas, folgas em amarelo e a contagem de presentes em cada dia.</span></button>
-        <button class="aba" role="tab" aria-selected="false" data-tela="1"><strong>Equipe cadastrada uma vez</strong><span>Nome, cargo e folga fixa de cada funcionário. Várias lojas na mesma conta.</span></button>
-        <button class="aba" role="tab" aria-selected="false" data-tela="2"><strong>Dias e cobertura do seu jeito</strong><span>Marque os dias em que abre e quantas pessoas precisa em cada um.</span></button>
+        <button class="aba on" role="tab" aria-selected="true" data-tela="0"><strong>1. Responda as perguntas</strong><span>Uma por tela, com a sugestão certa para o seu negócio. Cole a lista da equipe do WhatsApp.</span></button>
+        <button class="aba" role="tab" aria-selected="false" data-tela="1"><strong>2. A escala sai pronta</strong><span>As 4 semanas com as folgas em amarelo e quantas pessoas trabalham em cada dia.</span></button>
+        <button class="aba" role="tab" aria-selected="false" data-tela="2"><strong>3. Baixe ou envie do seu jeito</strong><span>WhatsApp, PDF, Excel, Google Planilhas, imagem ou o link para a equipe.</span></button>
       </div>
       <div class="fundo-app" data-r>
         <div class="tela">
-          <div class="janela-barra"><i></i><i></i><i></i><span id="telaNome">Escala</span></div>
+          <div class="janela-barra"><i></i><i></i><i></i><span id="telaNome">Perguntas</span></div>
           <div class="tela-img">
-            <img class="on" src="img/app-escala.webp" width="1600" height="950" alt="Escala gerada com folgas e presentes por dia.">
-            <img src="img/app-funcionarios.webp" width="1600" height="950" alt="Cadastro de funcionários com cargo e folga fixa." loading="lazy">
-            <img src="img/app-config.webp" width="1600" height="950" alt="Configuração dos dias abertos e do mínimo de pessoas por dia." loading="lazy">
+            <img class="on" src="img/app-quiz.webp" width="1600" height="950" alt="As perguntas do primeiro acesso: tipo de negócio, dias que abre e quem trabalha.">
+            <img src="img/app-escala.webp" width="1600" height="950" alt="A escala pronta com as folgas de cada funcionário." loading="lazy">
+            <img src="img/app-saidas.webp" width="1600" height="950" alt="As formas de baixar e enviar a escala, e o Google Planilhas." loading="lazy">
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="formatos">
+  <div class="wrap">
+    <div class="cab-sec centro" style="text-align:center"><span class="etq">Pronta para usar</span><h2>Sua escala no formato que você quiser</h2><p>Um toque e ela vai para onde você precisa. Sem copiar nada na mão.</p></div>
+    <div class="formatos">
+      <div class="formato" data-r><img src="img/formatos/whatsapp.svg" alt="" width="56" height="56"><h3>WhatsApp</h3><p>A tabela vai como imagem para o grupo da equipe.</p></div>
+      <div class="formato" data-r><img src="img/formatos/pdf.svg" alt="" width="56" height="56"><h3>PDF</h3><p>Para imprimir, colar no mural ou mandar para o contador.</p></div>
+      <div class="formato" data-r><img src="img/formatos/excel.svg" alt="" width="56" height="56"><h3>Excel</h3><p>Planilha .xlsx com as folgas em amarelo.</p></div>
+      <div class="formato" data-r><img src="img/formatos/sheets.svg" alt="" width="56" height="56"><h3>Google Planilhas</h3><p>Na sua planilha e se atualiza sozinha.</p></div>
+      <div class="formato" data-r><img src="img/formatos/jpg.svg" alt="" width="56" height="56"><h3>Imagem</h3><p>Uma foto da tabela, leve, para mandar onde quiser.</p></div>
+      <div class="formato" data-r><img src="img/formatos/link.svg" alt="" width="56" height="56"><h3>Link da equipe</h3><p>Cada funcionário toca no nome e vê a própria folga.</p></div>
+      <div class="formato" data-r><img src="img/formatos/texto.svg" alt="" width="56" height="56"><h3>Texto</h3><p>“Ana: folga quinta e sexta.” Para colar em qualquer lugar.</p></div>
+      <div class="formato" data-r><img src="img/formatos/imprimir.svg" alt="" width="56" height="56"><h3>Imprimir</h3><p>Direto da tela, sem instalar nada.</p></div>
     </div>
   </div>
 </section>
@@ -412,15 +446,15 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
     <div class="cab-sec centro" style="text-align:center"><span class="etq">Do pagamento à escala</span><h2>Pronto em 3 passos</h2></div>
     <ol class="passos">
       <li data-r><b>1</b><div><h3>Garanta o acesso</h3><p>Pagamento único de R$&nbsp;47. O acesso chega no seu e-mail.</p></div></li>
-      <li data-r style="--d:1"><b>2</b><div><h3>Cadastre a equipe</h3><p>Crie a loja ou o setor e informe os funcionários.</p></div></li>
-      <li data-r style="--d:2"><b>3</b><div><h3>Gere e envie</h3><p>A escala sai pronta. Imprima ou mande no grupo da equipe.</p></div></li>
+      <li data-r style="--d:1"><b>2</b><div><h3>Responda as perguntas</h3><p>Seu negócio, os dias que abre e quem trabalha. Uns 2 minutos.</p></div></li>
+      <li data-r style="--d:2"><b>3</b><div><h3>Baixe ou envie</h3><p>A escala sai pronta, dentro da lei. PDF, Excel, Google Planilhas ou WhatsApp.</p></div></li>
     </ol>
   </div>
 </section>
 
 <section class="sec">
   <div class="wrap">
-    <div class="cab-sec"><span class="etq">Para quem é</span><h2>Feito para quem abre as portas todo dia</h2><p>Seis setores já vêm configurados com os dias e a cobertura mais comuns. Você ajusta o que for diferente.</p></div>
+    <div class="cab-sec"><span class="etq">Para quem é</span><h2>Feito para quem abre as portas todo dia</h2><p>12 tipos de negócio já vêm configurados com os dias, o horário, o mínimo de pessoas e as regras de cada um. Na farmácia, por exemplo, o sistema garante farmacêutico todos os dias.</p></div>
     <div class="setores">
       <div class="setor" data-r><h3>Lojas e shopping</h3><p>Sábado e domingo cheios e equipe pedindo folga no fim de semana.</p><span class="tg">7 dias abertos</span></div>
       <div class="setor" data-r style="--d:1"><h3>Restaurantes e lanchonetes</h3><p>Pico no jantar e no fim de semana, cozinha e salão para cobrir.</p><span class="tg">Mais gente de quinta a domingo</span></div>
@@ -438,6 +472,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <span class="etq">A lei</span>
       <h2>Não é mais projeto. Está na Constituição.</h2>
       <p>A Emenda Constitucional 141/2026 foi publicada no Diário Oficial em 16 de outubro de 2026. Toda empresa com funcionário em 6x1 precisa refazer a escala.</p>
+      <div class="aula-chamada"><img src="img/mascote.svg" alt=""><div><b>Dentro do app: a lei explicada sem juridiquês</b><p>Uma aula curta, com exemplos de escala, mostra o que mudou, o que vale para domingo e feriado e onde a empresa costuma perder dinheiro.</p></div></div>
       <p class="fontes">Fontes: <a href="https://planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc141.htm" target="_blank" rel="noopener">texto da EC 141/2026 no Planalto</a> e <a href="https://agenciabrasil.ebc.com.br/politica/noticia/2026-10/saiba-quando-comeca-valer-o-fim-da-escala-6-por-1" target="_blank" rel="noopener">Agência Brasil</a>. Confirme as datas com o seu contador.</p>
     </div>
     <ol class="tempo">
@@ -468,7 +503,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <p class="oferta-nome">Sua Escala Blindada</p>
       <p class="valor"><span>R$</span>47</p>
       <p class="unico">à vista, acesso imediato</p>
-      <ul class="itens"><li>Escala 5x2 gerada em 2 minutos</li><li>Trava de Cobertura, Rodízio de Domingo e Folga Fixa</li><li>Várias lojas e setores na mesma conta</li><li>Até 200 funcionários por equipe</li><li>Ajuste de folga com um clique</li><li>Impressão e envio pelo WhatsApp</li></ul>
+      <ul class="itens"><li>Escala pronta respondendo perguntas simples</li><li>Dentro da lei: 2 folgas, domingo, feriado e cobertura conferidos</li><li>WhatsApp, PDF, Excel, Google Planilhas e imagem</li><li>Aula da nova lei, explicada sem juridiquês</li><li>Acesso grátis para o seu contador</li><li>Várias lojas na mesma conta</li></ul>
       <a class="btn" href="#preco" data-comprar>Quero meu acesso agora</a>
       <p class="oferta-pe">Compra segura. Acesso enviado para o seu e-mail.</p>
     </div>
@@ -483,7 +518,9 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <details data-r><summary>Vale para empresa pequena?</summary><p>Vale. A emenda permite que uma lei complementar crie regras de transição para MEI, micro e pequenas empresas. Enquanto ela não existir, vale a regra geral.</p></details>
       <details data-r><summary>Como recebo o acesso?</summary><p>Assim que o pagamento é confirmado, você recebe o link no e-mail da compra. É só criar a senha e começar. Funciona no navegador, sem instalar nada.</p></details>
       <details data-r><summary>Tem mensalidade?</summary><p>Não. São R$&nbsp;47 uma única vez.</p></details>
-      <details data-r><summary>Serve para mais de uma loja?</summary><p>Sim. Cada loja, setor ou turno vira uma equipe dentro da mesma conta.</p></details>
+      <details data-r><summary>Em que formatos recebo a escala?</summary><p>No celular ou no computador, você escolhe: manda direto no WhatsApp como imagem, baixa em PDF, em Excel ou como imagem, ou abre no seu Google Planilhas, que se atualiza sozinho. Cada funcionário também pode ver a própria folga por um link.</p></details>
+      <details data-r><summary>Preciso entender a lei?</summary><p>Não. Você só responde as perguntas e a escala já sai dentro da lei. Se quiser entender, dentro do app tem uma aula curta e sem juridiquês sobre o que mudou.</p></details>
+      <details data-r><summary>Serve para mais de uma loja?</summary><p>Sim. Cada loja, filial ou setor vira uma unidade dentro da mesma conta.</p></details>
       <details data-r><summary>O sistema calcula ponto ou folha de pagamento?</summary><p>Não. Ele organiza quem trabalha e quem folga em cada dia. Horários, banco de horas e folha seguem com o seu contador.</p></details>
       <details data-r><summary>E se não servir para mim?</summary><p>Você tem 7 dias para pedir o reembolso.</p></details>
     </div>
@@ -495,7 +532,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
     <div class="final-card" data-r>
       <div>
         <h2 id="finalTit">Deixe a escala nova pronta antes de 16 de dezembro</h2>
-        <p>Dois minutos para gerar. Nenhum dia descoberto. Equipe sabendo das folgas.</p>
+        <p>Responda as perguntas. Receba a escala dentro da lei. Mande no WhatsApp.</p>
         <a class="btn" href="#preco" data-comprar>Quero a Sua Escala Blindada <small>R$&nbsp;47</small></a>
       </div>
       <div class="ze-final"><p class="balao">Deixa que a escala eu monto. Você cuida da loja.</p><img src="img/mascote.svg" alt="Zé Folga, o mascote da Sua Escala Blindada"></div>
@@ -574,7 +611,7 @@ function conta() {
 if (conta()) { const t = setInterval(() => { if (!conta()) clearInterval(t); }, 1000); }
 
 // abas do sistema
-const nomes = ['Escala', 'Funcionários', 'Dias e cobertura'];
+const nomes = ['Perguntas', 'Escala pronta', 'Baixar ou enviar'];
 let abaAtual = 0, girar = null;
 function mostra(i) {
   abaAtual = i;
