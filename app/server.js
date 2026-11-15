@@ -489,6 +489,8 @@ function adminAuth(req, res, next) {
 const admin = [limite(120), adminAuth];
 // materiais extras (order bumps): /api/extras, download e /api/admin/extras
 const extrasMod = require('./extras.js')({ app, q, erro, limpa, logado, fila, modelo, APP_URL, rodapeSuporte, admin, emailValido });
+// suporte: dúvidas frequentes, assistente de IA (n8n) e chamados no /admin
+require('./suporte.js')({ app, q, erro, limpa, logado, limite, admin, LIBERAR_TUDO });
 // API de Conversões da Meta: o token fica guardado no banco (nunca volta para a tela)
 app.get('/api/admin/meta', admin, erro(async (_req, res) => {
   const t = await site.tokenMeta();

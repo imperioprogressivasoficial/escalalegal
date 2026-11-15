@@ -276,3 +276,23 @@ create table if not exists notificacoes (
 );
 create unique index if not exists notificacoes_chave_idx on notificacoes (conta_id, chave) where chave is not null;
 create index if not exists notificacoes_conta_idx on notificacoes (conta_id, criado_em desc);
+
+-- suporte: conversa com o assistente que precisou de uma pessoa (ou o cliente tocou em "Falar com o suporte").
+-- Uma linha por conversa (conversa_id = 'u<usuario>-<id do widget>'); repetir só atualiza.
+create table if not exists suporte_chamados (
+  id serial primary key,
+  conversa_id text not null,
+  usuario_id int not null references usuarios(id) on delete cascade,
+  conta_id int references usuarios(id) on delete set null,
+  resumo text,
+  conversa jsonb not null default '[]',
+  tela text,
+  origem text,
+  status text not null default 'aberto',
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+create unique index if not exists suporte_chamados_conversa_idx on suporte_chamados (conversa_id);
+create index if not exists suporte_chamados_status_idx on suporte_chamados (status, atualizado_em desc);
+alter table suporte_chamados drop constraint if exists suporte_chamados_status_check;
+alter table suporte_chamados add constraint suporte_chamados_status_check check (status in ('aberto', 'fechado'));
