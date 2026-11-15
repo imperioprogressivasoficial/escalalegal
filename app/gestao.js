@@ -38,6 +38,19 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   const L = [logado, naConta], LE = [logado, naConta, edita];
   const { notificar } = require('./notificacoes.js')({ app, q, erro, L });
   const foto = require('./foto.js')({ app, q, erro, logado });
+  // dados da empresa pelo CNPJ (cadastro): Receita Federal via BrasilAPI, com CNPJ.ws de reserva; guarda 24h em memória
+  const Cnpj = require('./cnpj.js'), cnpjs = new Map();
+  app.get('/api/cnpj/:cnpj', logado, limite(40), erro(async (req, res) => {
+    const cnpj = Cadastro.soCnpj(req.params.cnpj);
+    if (!Cadastro.cnpjValido(cnpj)) return res.status(400).json({ erro: 'Esse CNPJ não confere.' });
+    const c = cnpjs.get(cnpj);
+    if (c && Date.now() - c.em < 864e5) return res.json(c.dados);
+    const dados = await Cnpj.buscaCnpj(cnpj);
+    if (!dados) return res.status(404).json({ erro: 'Não encontramos os dados deste CNPJ.' }); // não guarda: pode ter sido uma queda das fontes
+    if (cnpjs.size > 5000) cnpjs.clear();
+    cnpjs.set(cnpj, { em: Date.now(), dados });
+    res.json(dados);
+  }));
   const br = d => d.split('-').reverse().slice(0, 2).join('/');
 
   const minhaEquipe = erro(async (req, res, next) => {

@@ -72,7 +72,7 @@ function ligaSegmentos(sel, escolher) {
 
 // ================= cadastro completo da empresa =================
 let cd = null, cdI = 0;
-const CD_PASSOS = ['oi', 'empresa', 'porte', 'cnpj', 'responsavel', 'endereco', 'negocio', 'tamanho', 'origem'];
+const CD_PASSOS = ['oi', 'cnpj', 'empresa', 'porte', 'responsavel', 'endereco', 'negocio', 'tamanho', 'origem'];
 const cdChave = () => 'cadastro:' + conta.id;
 async function telaCadastro() {
   $('#v-cadastro').innerHTML = '<p class="dica" style="text-align:center;padding:40px">Carregando…</p>';
@@ -126,11 +126,10 @@ function cdDesenha() {
     desl = !cd.porte;
   } else if (id === 'cnpj') {
     etapa = 'Empresa';
-    const mei = cd.porte === 'mei';
-    corpo = `<h1>Qual o <mark>CNPJ</mark>?</h1><p class="sub">Conferimos os números na hora. Vale o CNPJ novo, com letras.</p>
+    corpo = `<h1>Qual o <mark>CNPJ</mark>?</h1><p class="sub">Com o CNPJ, os dados da empresa são preenchidos pela Receita Federal. Vale o CNPJ novo, com letras.</p>
       <label for="cdCnpj">CNPJ</label><input id="cdCnpj" class="q-grande" value="${esc(cd.cnpj)}" placeholder="00.000.000/0000-00" inputmode="text" autocapitalize="characters" autocomplete="off" ${cd.sem_cnpj ? 'disabled' : ''}>
-      <p class="q-valida" id="cdCnpjOk"></p>
-      ${mei ? `<label class="q-check"><input type="checkbox" id="cdSemCnpj" ${cd.sem_cnpj ? 'checked' : ''}><span>Ainda não tenho CNPJ<small>Só para MEI que está abrindo agora</small></span></label>` : ''}`;
+      <p class="q-valida" id="cdCnpjOk"></p><div id="cdCnpjDados" aria-live="polite"></div>
+      <label class="q-check"><input type="checkbox" id="cdSemCnpj" ${cd.sem_cnpj ? 'checked' : ''}><span>Ainda não tenho CNPJ<small>Só para MEI que está abrindo agora</small></span></label>`;
   } else if (id === 'responsavel') {
     etapa = 'Contato';
     corpo = `<h1>Quem é o <mark>responsável</mark>?</h1><p class="sub">A pessoa que a gente procura se precisar falar da conta.</p>
@@ -194,9 +193,28 @@ function cdDesenha() {
       else if (Cadastro.cnpjValido(v)) { st.textContent = 'CNPJ confere'; st.classList.add('ok'); }
       else { st.textContent = 'Esse CNPJ não confere. Veja se algum número ficou trocado.'; st.classList.add('ruim'); }
     };
-    inp.oninput = () => { const p = inp.selectionStart === inp.value.length; inp.value = Cadastro.mascaraCnpj(inp.value); if (p) inp.selectionStart = inp.selectionEnd = inp.value.length; cd.cnpj = inp.value; confere(); };
-    confere(); if (!cd.sem_cnpj) foco('#cdCnpj');
-    if ($('#cdSemCnpj')) $('#cdSemCnpj').onchange = e => { cd.sem_cnpj = e.target.checked; inp.disabled = cd.sem_cnpj; if (cd.sem_cnpj) { inp.value = ''; cd.cnpj = ''; } confere(); };
+    // CNPJ válido: busca os dados na Receita e preenche o que ainda estiver em branco (tudo continua editável nos próximos passos)
+    const busca = async () => {
+      const v = Cadastro.soCnpj(inp.value), box = $('#cdCnpjDados');
+      if (cd.sem_cnpj || v.length < 14 || !Cadastro.cnpjValido(v) || busca.ultimo === v) return;
+      busca.ultimo = v; box.innerHTML = '<p class="dica">Buscando dados do CNPJ…</p>';
+      try {
+        const d = await api('/api/cnpj/' + v);
+        if (Cadastro.soCnpj(inp.value) !== v) return;
+        const poe = (k, val) => { if (val && !cd[k]) cd[k] = val; };
+        poe('razao_social', d.razao_social); poe('nome', d.nome_fantasia || d.razao_social); poe('porte', d.porte);
+        poe('cep', d.cep ? Cadastro.mascaraCep(d.cep) : ''); poe('uf', d.uf); poe('cidade', d.cidade); poe('endereco', d.endereco);
+        if (d.segmento && d.segmento !== 'outro') poe('segmento', d.segmento);
+        poe('telefone', d.telefone ? Cadastro.mascaraTel(d.telefone) : '');
+        gravar(cdChave(), JSON.stringify(cd));
+        box.innerHTML = `<div class="nota ok"><b>${esc(d.nome_fantasia || d.razao_social)}</b><br>Dados preenchidos pela Receita Federal. Confira e altere se precisar.</div>`
+          + (d.situacao && d.situacao !== 'ATIVA' ? `<div class="nota">Situação cadastral na Receita: <b>${esc(d.situacao)}</b>. Confira se é o CNPJ certo.</div>` : '');
+        const r = $('.quiz-resumo'); if (r) r.innerHTML = cdResumo();
+      } catch { box.innerHTML = '<p class="dica">Não encontramos os dados deste CNPJ agora. Preencha nos próximos passos.</p>'; }
+    };
+    inp.oninput = () => { const p = inp.selectionStart === inp.value.length; inp.value = Cadastro.mascaraCnpj(inp.value); if (p) inp.selectionStart = inp.selectionEnd = inp.value.length; cd.cnpj = inp.value; confere(); busca(); };
+    confere(); busca(); if (!cd.sem_cnpj) foco('#cdCnpj');
+    $('#cdSemCnpj').onchange = e => { cd.sem_cnpj = e.target.checked; inp.disabled = cd.sem_cnpj; if (cd.sem_cnpj) { inp.value = ''; cd.cnpj = ''; cd.porte = 'mei'; $('#cdCnpjDados').innerHTML = ''; } confere(); };
     ok(() => {
       if (cd.sem_cnpj) return prox();
       if (!Cadastro.cnpjValido(inp.value)) return erro(Cadastro.soCnpj(inp.value).length < 14 ? 'Complete o CNPJ.' : 'Esse CNPJ não confere. Veja se algum número ficou trocado.'), inp.focus();
