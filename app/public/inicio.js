@@ -392,7 +392,7 @@ async function telaInicio() {
   $$('#v-inicio [data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
   const bv = $('#v-inicio [data-video]');
   if (bv) bv.onclick = () => {
-    folha('<h2>Como usar o app</h2><video controls autoplay playsinline preload="metadata" poster="/video/aula-app.jpg?v=1" style="width:100%;border-radius:14px;margin-top:12px;background:#000"><source src="/video/aula-app.mp4?v=1" type="video/mp4"><track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>');
+    folha('<h2>Como usar o app</h2><video controls autoplay playsinline preload="none" poster="/video/aula-app.jpg?v=1" style="width:100%;border-radius:14px;margin-top:12px;background:#000"><source src="/video/aula-app.mp4?v=1" type="video/mp4"><track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>');
     $('#folha').addEventListener('close', () => $('#folha video')?.pause(), { once: true });
   };
 }

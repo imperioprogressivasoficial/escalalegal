@@ -62,7 +62,12 @@ function telaAula() {
     return;
   }
   const l = L[aulaI];
-  $('#v-aula').innerHTML = `<div class="quiz">
+  // na primeira lição, a aula em vídeo de como usar o app vem antes
+  const video = aulaI === 0 ? `<section class="aula-video" aria-labelledby="tAulaVideo"><h2 id="tAulaVideo">Aula: como usar o app</h2>
+    <video controls preload="none" playsinline poster="/video/aula-app.jpg?v=1"><source src="/video/aula-app.mp4?v=1" type="video/mp4">
+      <track kind="captions" src="/video/aula-app.vtt?v=1" srclang="pt-BR" label="Português" default></video>
+    <p class="dica">1 minuto, com legenda. Depois, as 8 lições da nova lei.</p></section>` : '';
+  $('#v-aula').innerHTML = `${video}<div class="quiz">
     <div class="quiz-topo"><button class="link" id="aulaVolta">‹ ${aulaI ? 'Voltar' : 'Sair'}</button><span>Lição ${aulaI + 1} de ${total}</span></div>
     <div class="passos"><span class="on" style="flex:${aulaI + 1}"></span><span style="flex:${Math.max(total - aulaI - 1, 0.0001)}"></span></div>
     <div class="quiz-q aula">
