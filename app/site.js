@@ -45,7 +45,7 @@ module.exports = function site({ app, APP_URL, BLOG_URL = '', PRODUCAO, seg, q, 
   const linhaEmpresa = [esc(empresa.nome), empresa.cnpj && `CNPJ ${esc(empresa.cnpj)}`, empresa.cidade && esc(empresa.cidade)].filter(Boolean).join(' · ');
 
   // ---------- páginas com o cabeçalho completo ----------
-  const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=3';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
+  const ATENDIMENTO = `<script>addEventListener('load',function(){setTimeout(function(){var s=document.createElement('script');s.src='/suporte.js?v=4';s.dataset.modo='site';document.body.appendChild(s)},1200)})</script>`;
   const PUB = path.join(__dirname, 'public');
   const PAGINAS = { '/': 'index.html', '/ajuda': 'ajuda.html', '/privacidade': 'privacidade.html', '/termos': 'termos.html', '/obrigado': 'obrigado.html' };
   const cache = new Map();

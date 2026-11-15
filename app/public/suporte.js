@@ -92,6 +92,8 @@
 .sp-link{background:none;border:0;padding:6px 0;color:#1351b4;font:700 .88rem/1.2 'Public Sans',system-ui,sans-serif;cursor:pointer;text-decoration:underline}
 .sp-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
 .sp-cta{margin-top:4px}
+.sp-topo-acoes{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:12px}
+.sp-topo-acoes .sp-link{font-size:.85rem}
 .sp-nao .sp-link{display:block;margin:10px auto 0}
 .sp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-width:640px){
@@ -102,10 +104,17 @@
   body.modo-foco .sp-fab{bottom:calc(96px + var(--sp-baixo,0px) + env(safe-area-inset-bottom))}
   .sp-p{left:0;right:0;bottom:0;width:auto;max-width:none;height:min(88vh,calc(100dvh - 40px));border-radius:22px 22px 0 0;transform:translateY(40px)}
   .sp-topo{padding-top:16px}
+  .sp-topo small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sp-corpo{padding:12px 14px 8px}
+  .sp-tit{margin-top:12px}
   .sp-topo::before{content:"";position:absolute;left:50%;top:6px;width:40px;height:4px;margin-left:-20px;border-radius:4px;background:rgba(255,255,255,.35)}
 }
 @media(prefers-reduced-motion:reduce){.sp-p,.sp-fundo,.sp-fab,.sp-seta{transition:none}.sp-dig i{animation:none}}
 `;
+
+  // celular/toque: nada de foco automático em campo de texto (o teclado pularia na frente da tela)
+  const TOQUE = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 640;
+  const focaCampo = el => { if (el && !TOQUE) el.focus({ preventScroll: true }); };
 
   // ---------- estado ----------
   let FAQ = null, carregando = null, painel = null, anterior = null;
@@ -201,7 +210,7 @@
       <div class="sp-corpo" id="spCorpo"></div><div id="spPe"></div><div class="sp-sr" aria-live="polite" id="spVivo"></div>`;
     d.body.append(fundo, p);
     p.querySelector('#spFechar').onclick = () => fechar();
-    p.querySelector('#spVoltar').onclick = () => { tela = 'faq'; desenha(); p.querySelector('.sp-busca')?.focus(); };
+    p.querySelector('#spVoltar').onclick = () => { tela = 'faq'; desenha(); focaCampo(p.querySelector('.sp-busca')); };
     p.querySelector('#spNova').onclick = () => { conversaId = novoId(); msgs = []; mostrarZap = false; resumoAtual = ''; salvaConversa(); desenha(); };
     p.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.preventDefault(); fechar(); }
@@ -227,8 +236,9 @@
     requestAnimationFrame(() => d.body.classList.add('sp-aberto'));
     try { await carregaFaq(); } catch (e) { painel.p.querySelector('#spCorpo').innerHTML = `<p class="sp-vazio">${esc(e.message)}</p>`; return; }
     desenha();
-    const alvo = tela === 'chat' ? painel.p.querySelector('textarea') : (op.categoria ? painel.p.querySelector(`[data-cat="${CSS.escape(op.categoria)}"]`) : painel.p.querySelector('.sp-busca'));
-    (alvo || painel.p.querySelector('#spFechar')).focus({ preventScroll: true });
+    const campo = tela === 'chat' ? painel.p.querySelector('textarea') : (op.categoria ? null : painel.p.querySelector('.sp-busca'));
+    const cat = op.categoria ? painel.p.querySelector(`[data-cat="${CSS.escape(op.categoria)}"]`) : null;
+    if (campo && !TOQUE) campo.focus({ preventScroll: true }); else (cat || painel.p.querySelector('#spFechar')).focus({ preventScroll: true });
   }
   function fechar() {
     if (!painel || painel.p.hidden) return;
@@ -249,7 +259,8 @@
   function desenhaFaq() {
     const corpo = painel.p.querySelector('#spCorpo');
     const achados = busca.trim() ? FAQ.buscar(busca) : null;
-    let h = `<label class="sp-sr" for="spBusca">Buscar nas dúvidas frequentes</label><input id="spBusca" class="sp-busca" type="search" placeholder="${M.busca}" value="${esc(busca)}" autocomplete="off" enterkeyhint="search">`;
+    let h = `<div class="sp-topo-acoes"><button type="button" class="sp-btn cheio" id="spConversar">${M.conversar}</button>${SITE ? `<button type="button" class="sp-link" id="spZapDireto">${M.zapBotao}</button>` : ''}</div>`;
+    h += `<label class="sp-sr" for="spBusca">Buscar nas dúvidas frequentes</label><input id="spBusca" class="sp-busca" type="search" placeholder="${M.busca}" value="${esc(busca)}" autocomplete="off" enterkeyhint="search">`;
     if (achados) {
       h += `<p class="sp-tit">${achados.length ? 'Resultados' : 'Nada encontrado'}</p>`;
       h += achados.length ? `<div class="sp-cat"><div class="sp-lista" style="border:0">${achados.map(htmlPergunta).join('')}</div></div>` : `<p class="sp-vazio">Não achamos essa dúvida na lista. ${SITE ? 'O atendimento' : 'O assistente'} pode ajudar.</p>`;
@@ -260,7 +271,6 @@
           ${ab ? `<div class="sp-lista" id="spc-${esc(c.id)}">${c.perguntas.map(htmlPergunta).join('')}</div>` : ''}</div>`;
       }).join('');
     }
-    h += `<div class="sp-nao"><p>Não encontrou o que procura?</p><button type="button" class="sp-btn cheio" id="spConversar">${M.conversar}</button>${SITE ? `<button type="button" class="sp-link" id="spZapDireto">${M.zapBotao}</button>` : ''}</div>`;
     corpo.innerHTML = h;
     const inp = corpo.querySelector('#spBusca');
     inp.oninput = () => { busca = inp.value; abertaQ = null; const pos = inp.selectionStart; desenhaFaq(); const n = painel.p.querySelector('#spBusca'); n.focus(); n.setSelectionRange(pos, pos); };
@@ -272,7 +282,7 @@
     corpo.querySelector('#spConversar').onclick = () => {
       tela = 'chat';
       if (!msgs.length && busca.trim()) painel.rascunho = busca.trim();
-      desenha(); painel.p.querySelector('textarea')?.focus();
+      desenha(); focaCampo(painel.p.querySelector('textarea'));
     };
   }
 
