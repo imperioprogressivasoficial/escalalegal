@@ -175,9 +175,10 @@ a.onclick=function(e){var b=e.target.closest('button');if(!b)return;guardaEscolh
 (document.body?document.body.appendChild(a):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(a)}))}
 function naConta(v){try{fetch('/api/cookies',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({escolha:v})}).catch(function(){})}catch(e){}}
 var v=lerEscolha();if(v)guardaEscolha(v);
-if(v){if(v==='sim')carrega();try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){if(j&&!j.escolha&&j.logado)naConta(v)}).catch(function(){})}catch(e){}}
+if(v){if(v==='sim')carrega();if((location.pathname||'').indexOf('/app')===0)try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){if(j&&!j.escolha&&j.logado)naConta(v)}).catch(function(){})}catch(e){}}
+else if((location.pathname||'').indexOf('/app')!==0)aviso();
 else{
-// antes de perguntar: quem já respondeu em outro aparelho (logado) não vê o aviso de novo
+// no app, antes de perguntar: quem já respondeu em outro aparelho (logado) não vê o aviso de novo
 try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){var c=j&&j.escolha;if(c==='sim'||c==='nao'){guardaEscolha(c);if(c==='sim')carrega()}else aviso()}).catch(function(){aviso()})}catch(e){aviso()}}
 })();`;
   app.get(['/rastreio.js', '/pixel.js'], (_req, res) => res.type('application/javascript').set('Cache-Control', 'public, max-age=600').send(rastreio()));
