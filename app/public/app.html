@@ -739,16 +739,18 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .ban-quiz-mock i small{display:block;font-size:.68rem;opacity:.8;margin-bottom:4px}
 .ban-quiz-mock i em{font-style:normal}
 .ban-quiz-mock i.f{background:#ffcd07;color:#3b2f00;border-color:#ffcd07}
-.bn-car{margin-bottom:16px}
-.bn-trilho{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:20px;box-shadow:0 20px 44px -28px rgba(6,21,51,.6)}
+.bn-car{position:relative;margin-bottom:16px}
+.bn-trilho{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:15px;box-shadow:0 14px 30px -22px rgba(6,21,51,.6)}
 .bn-trilho::-webkit-scrollbar{display:none}
 .bn-item{flex:0 0 100%;scroll-snap-align:start;display:block;line-height:0}
-.bn-item img{display:block;width:100%;height:auto;aspect-ratio:1920/560}
-.bn-pontos{display:flex;justify-content:center;gap:2px;margin-top:4px}
-.bn-pontos button{width:28px;height:28px;border:0;background:none;cursor:pointer;display:grid;place-items:center;padding:0}
-.bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
-.bn-pontos button.on::before{width:22px;background:var(--azul)}
-@media(max-width:760px){.bn-item img{aspect-ratio:2/1}}
+.bn-item img{display:block;width:100%;height:auto}
+.bn-ctl{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:2px;background:rgba(6,21,51,.72);color:#fff;border-radius:99px;padding:2px 4px 2px 10px;font:700 .75rem var(--corpo);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.bn-ctl span{margin-right:2px;min-width:2.4em;text-align:center}
+.bn-ctl button{width:28px;height:28px;border:0;border-radius:50%;background:none;color:#fff;font-size:1.15rem;line-height:1;cursor:pointer}
+.bn-ctl button:hover{background:rgba(255,255,255,.16)}
+.bn-x{position:absolute;right:8px;top:8px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(6,21,51,.55);color:#fff;font-size:1rem;line-height:1;cursor:pointer;opacity:.75}
+.bn-x:hover{opacity:1}
+@media(max-width:760px){.bn-ctl{right:6px;bottom:6px;padding-left:8px}.bn-ctl button{width:26px;height:26px}.bn-x{right:6px;top:6px}}
 /* menu em grupos (sanfona) */
 .lateral nav{display:grid;gap:2px}
 .lat-item,.lat-g{width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px 12px;font-weight:600;color:var(--texto);cursor:pointer;font-size:.95rem;position:relative;display:block;text-decoration:none}
@@ -792,6 +794,7 @@ body.modo-foco .topo-sino{display:none}
 .not-item i{grid-row:1/4;width:8px;height:8px;border-radius:50%;margin-top:6px;background:transparent}
 .not-item.nova{background:#f5f8fe}.not-item.nova i{background:var(--azul)}
 .not-item b{color:var(--tinta);font-size:.95rem;line-height:1.3}.not-item span{font-size:.86rem;color:var(--texto)}.not-item small{font-size:.76rem;color:var(--mut)}
+.painel-not[hidden],.menu-user[hidden]{display:none!important}
 .not-vazio{padding:28px 16px;text-align:center;color:var(--mut)}
 .not-fundo{display:none}
 @media(max-width:760px){
@@ -833,7 +836,6 @@ body.ini-escuro{background:#0b1220}
 .nf-oi{margin:2px 0 16px}.nf-oi p{color:#9fb0c9;font-size:.95rem}.nf-oi p b{color:#fff}
 .nf-oi h1{color:#fff;font-size:clamp(1.55rem,4.6vw,2.3rem);margin:2px 0 4px}
 .nf .bn-trilho{box-shadow:0 24px 50px -24px rgba(0,0,0,.8)}
-.nf .bn-pontos button::before{background:#34445f}.nf .bn-pontos button.on::before{background:#ffcd07}
 .nf-aviso{margin-top:8px;border-color:#1f2a40;background:#131c2e}
 .nf-fila{margin-top:24px}
 .nf-fila-topo{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
@@ -1159,13 +1161,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=23"></script>
-<script src="/cadastro.js?v=23"></script>
-<script src="/exportar.js?v=23"></script>
-<script src="/aula.js?v=23"></script>
-<script src="/extras.js?v=23"></script>
-<script src="/inicio.js?v=23"></script>
-<script src="/extras-materiais.js?v=23"></script>
-<script src="/app.js?v=23"></script>
+<script src="/scheduler.js?v=24"></script>
+<script src="/cadastro.js?v=24"></script>
+<script src="/exportar.js?v=24"></script>
+<script src="/aula.js?v=24"></script>
+<script src="/extras.js?v=24"></script>
+<script src="/inicio.js?v=24"></script>
+<script src="/extras-materiais.js?v=24"></script>
+<script src="/app.js?v=24"></script>
 </body>
 </html>

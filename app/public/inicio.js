@@ -332,11 +332,14 @@ async function telaInicio() {
     { k: 'kit', ir: 'materiais', alt: 'Kit RH, calculadora e plaquinhas: termo aditivo, folha de ponto e avisos prontos para imprimir.' },
     dono && { k: 'contador', ir: 'acessos', alt: 'Dê acesso grátis ao seu contador. Ele vê a escala, baixa tudo e fecha o mês.' },
   ].filter(Boolean);
-  const carrosselImg = `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
+  // faixa fina de banners (como a do topo do VTurb): 8:1 no computador, 3:1 no celular, sem cortar; dá para esconder na sessão
+  let faixaFechada = false; try { faixaFechada = sessionStorage.getItem('faixaFechada') === '1'; } catch {}
+  const carrosselImg = faixaFechada ? '' : `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
-        <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=2" width="1200" height="600">
-        <img src="/img/banners/${b.k}-pc.webp?v=2" alt="${esc(b.alt)}" width="1920" height="560" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
-      <div class="bn-pontos" id="bnPontos">${bannersImg.map((b, i) => `<button type="button" aria-label="Ver destaque ${i + 1} de ${bannersImg.length}" class="${i ? '' : 'on'}"></button>`).join('')}</div>
+        <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=3" width="1200" height="400">
+        <img src="/img/banners/${b.k}-pc.webp?v=3" alt="${esc(b.alt)}" width="2400" height="300" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
+      <div class="bn-ctl"><span id="bnN" aria-live="polite">1/${bannersImg.length}</span><button type="button" id="bnAnt" aria-label="Destaque anterior">‹</button><button type="button" id="bnProx" aria-label="Próximo destaque">›</button></div>
+      <button type="button" class="bn-x" id="bnX" aria-label="Esconder os destaques">×</button>
     </section>`;
   const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
       <div class="ban-quiz-txt"><span class="ban-etq">Próximo passo</span><h2 id="tQuiz">Monte a escala da sua equipe em 2 minutos</h2>
@@ -669,23 +672,24 @@ function telaPersonalizar() {
 // (para com toque, mouse ou foco; não passa sozinho com movimento reduzido)
 function ligaCarrosselImg() {
   const t = $('#bnTrilho'); if (!t) return;
-  const pts = $$('#bnPontos button'), n = pts.length;
+  const itens = [...t.children], n = itens.length;
   const reduz = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const idx = () => Math.round(t.scrollLeft / t.clientWidth);
   t.classList.add('anima');
-  const itens = [...t.children];
   const vai = i => t.scrollTo({ left: ((i + n) % n) * t.clientWidth, behavior: reduz() ? 'auto' : 'smooth' });
-  const marca = () => { const i = idx(); itens.forEach((x, j) => x.classList.toggle('ativo', j === i)); pts.forEach((p, j) => { p.classList.toggle('on', j === i); p.setAttribute('aria-current', j === i ? 'true' : 'false'); }); };
+  const marca = () => { const i = idx(); itens.forEach((x, j) => x.classList.toggle('ativo', j === i)); $('#bnN').textContent = `${i + 1}/${n}`; };
   t.onscroll = () => { cancelAnimationFrame(t.raf); t.raf = requestAnimationFrame(marca); };
   marca();
-  pts.forEach((p, j) => p.onclick = () => vai(j));
+  $('#bnAnt').onclick = () => vai(idx() - 1);
+  $('#bnProx').onclick = () => vai(idx() + 1);
+  $('#bnX').onclick = () => { try { sessionStorage.setItem('faixaFechada', '1'); } catch {} clearInterval(ligaCarrosselImg.t); t.closest('.bn-car').remove(); };
   clearInterval(ligaCarrosselImg.t);
   if (n < 2 || reduz()) return;
   let parado = false;
-  const para = () => { parado = true; }, volta = () => { parado = false; };
-  t.addEventListener('pointerenter', para); t.addEventListener('pointerleave', volta);
+  const caixa = t.closest('.bn-car'), para = () => { parado = true; }, volta = () => { parado = false; };
+  caixa.addEventListener('pointerenter', para); caixa.addEventListener('pointerleave', volta);
   t.addEventListener('touchstart', para, { passive: true }); t.addEventListener('touchend', () => setTimeout(volta, 4000));
-  t.addEventListener('focusin', para); t.addEventListener('focusout', volta);
+  caixa.addEventListener('focusin', para); caixa.addEventListener('focusout', volta);
   ligaCarrosselImg.t = setInterval(() => {
     if (!document.body.contains(t)) return clearInterval(ligaCarrosselImg.t);
     if (!parado && !document.hidden) vai(idx() + 1);
