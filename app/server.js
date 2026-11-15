@@ -382,6 +382,19 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
     // 200 para a plataforma não ficar reenviando um evento que nunca vai ter e-mail (ex.: teste vazio)
     return res.json({ ok: false, erro: 'E-mail do comprador não encontrado no corpo.' });
   }
+  // order bumps (Kit RH, Calculadora, Plaquinhas): pedido só de extras não cria conta nem libera o app
+  const pedido = extrasMod.classificaPedido(req.body);
+  if (pedido.soExtras) {
+    if (p.acao === 'ignorar') { await registra('ignorar', { _extras: pedido.extras }); return res.json({ ok: true, acao: 'ignorar', evento: p.evento, extras: pedido.extras }); }
+    if (p.acao === 'bloquear') {
+      const removidos = await extrasMod.revogar(p.email, pedido.extras, p.transacao);
+      await registra('bloquear', { _extras: pedido.extras });
+      return res.json({ ok: true, acao: 'bloquear', extras: pedido.extras, extras_removidos: removidos });
+    }
+    const novos = await extrasMod.liberar(p.email, pedido.extras, { transacao: p.transacao, origem: p.plataforma });
+    await registra('liberar', { _extras: pedido.extras });
+    return res.json({ ok: true, acao: 'liberar', extras: pedido.extras, extras_novos: novos });
+  }
   if (p.acao === 'ignorar') { await registra('ignorar'); return res.json({ ok: true, acao: 'ignorar', evento: p.evento }); }
   if (p.acao === 'bloquear') {
     const { rows } = await q('select transacao from compras where email=$1', [p.email]);
@@ -393,14 +406,18 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
     await q("update compras set status='reembolsada', atualizado_em=now() where email=$1", [p.email]);
     const { rowCount } = await q('update usuarios set acesso_liberado=false, liberado_em=null where email=$1', [p.email]);
     await q("update comissoes set status='cancelada' where comprador_email=$1 and status='devida'", [p.email]);
+    // bumps que vieram no mesmo pedido saem junto
+    if (pedido.extras.length) await extrasMod.revogar(p.email, pedido.extras, p.transacao);
+    await extrasMod.revogarDaTransacao(p.email, p.transacao);
     await registra('bloquear');
     enviar(N8N_WEBHOOK_URL, { evento: 'compra_reembolsada', email: p.email });
     return res.json({ ok: true, acao: 'bloquear', conta_bloqueada: rowCount > 0 });
   }
   const r = await liberarCompra({ email: p.email, nome: p.nome, whatsapp: p.whatsapp, transacao: p.transacao, origem: p.plataforma, ref: refDoPayload(req.body) || codigoInd(req.query.ref) });
-  await registra('liberar');
+  const extrasNovos = pedido.extras.length ? await extrasMod.liberar(p.email, pedido.extras, { transacao: p.transacao, origem: p.plataforma }) : [];
+  await registra('liberar', pedido.extras.length ? { _extras: pedido.extras } : undefined);
   const { link, ...resto } = r;
-  res.json({ ok: true, acao: 'liberar', ...resto });
+  res.json({ ok: true, acao: 'liberar', ...resto, ...(pedido.extras.length && { extras: pedido.extras, extras_novos: extrasNovos }) });
 }));
 
 // ---------- leads (formulário da página de vendas) ----------
@@ -427,6 +444,8 @@ function adminAuth(req, res, next) {
   res.set('WWW-Authenticate', 'Basic realm="admin", charset="UTF-8"').status(401).send('Acesso restrito');
 }
 const admin = [limite(120), adminAuth];
+// materiais extras (order bumps): /api/extras, download e /api/admin/extras
+const extrasMod = require('./extras.js')({ app, q, erro, limpa, logado, fila, modelo, APP_URL, rodapeSuporte, admin, emailValido });
 // API de Conversões da Meta: o token fica guardado no banco (nunca volta para a tela)
 app.get('/api/admin/meta', admin, erro(async (_req, res) => {
   const t = await site.tokenMeta();
@@ -448,7 +467,8 @@ app.get('/api/admin/clientes', admin, erro(async (_req, res) => {
     c.razao_social, c.cnpj, c.porte, c.segmento, c.cidade, c.uf, c.telefone, c.responsavel, c.responsavel_cargo,
     c.funcionarios_qtd, c.unidades_qtd, c.como_conheceu, c.como_conheceu_outro, c.cadastro_em,
     (select count(*)::int from equipes e where e.usuario_id=u.id) equipes,
-    (select count(*)::int from escalas s join equipes e on e.id=s.equipe_id where e.usuario_id=u.id) escalas
+    (select count(*)::int from escalas s join equipes e on e.id=s.equipe_id where e.usuario_id=u.id) escalas,
+    (select array_agg(x.extra order by x.extra) from extras_compras x where x.email=u.email and x.status='aprovada') extras
     from usuarios u left join empresa_config c on c.conta_id=u.id
     where u.origem is distinct from 'empresa_extra' order by u.criado_em desc limit 5000`);
   res.json(rows);
