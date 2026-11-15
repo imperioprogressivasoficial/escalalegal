@@ -550,7 +550,7 @@ async function wizGerar() {
     conta = await api('/api/conta');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
-    semData = segundaDe(hojeIso()); diaSel = null; ir('resultado');
+    semData = segundaDe(hojeIso()); diaSel = null; window.escalaRecemGerada = true; ir('resultado');
   } catch (err) {
     wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
   }
@@ -581,7 +581,7 @@ async function telaEscala() {
   if (!semData) semData = segHoje;
   $('#semTit').textContent = tituloSemana(semData);
   $('#semSub').textContent = semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
-  $('#escCorpo').innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
+  $('#escCorpo').innerHTML = esqueletoSemana();
   const pedido = semData;
   const r = await api(`/api/equipes/${atual.id}/semana?data=${semData}`);
   if (pedido !== semData) return; // trocou de semana enquanto carregava

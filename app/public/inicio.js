@@ -381,14 +381,14 @@ async function telaInicio() {
   recem = false;
   v.innerHTML = `<div class="nf">
     <header class="nf-oi"><p>Olá, <b>${esc(nomeCurto(eu.nome))}</b></p><h1>${esc(conta.empresa || 'Sua empresa')}</h1>
-      <p class="nf-data">${dataLonga(hojeIso())}${atual ? ` · ${esc(atual.nome)}` : ''}${hojeU ? ` · <b>${hojeU.trabalham.length}</b> trabalham hoje` : ''}</p></header>
+      <p class="nf-data">${dataLonga(hojeIso())}${atual ? ` · ${esc(atual.nome)}` : ''}${hojeU ? ` · <b data-conta="${hojeU.trabalham.length}">${hojeU.trabalham.length}</b> trabalham hoje` : ''}</p></header>
     ${quiz}${carrosselImg}${aviso}
     ${fileira('fContinuar', 'Continue de onde parou', continuar)}
     ${fileira('fAula', 'Aula da nova lei', aula, '<button class="nf-ver" data-ir="aula">Ver tudo</button>')}
     ${fileira('fMat', 'Seus materiais', mats, '<button class="nf-ver" data-ir="materiais">Ver tudo</button>')}
     ${fileira('fAtalhos', 'Atalhos', atalhos)}
   </div>`;
-  ligaCarrosselImg();
+  ligaCarrosselImg(); animaContadores(v);
   $$('#v-inicio [data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
   const bv = $('#v-inicio [data-video]');
   if (bv) bv.onclick = () => {
@@ -513,6 +513,23 @@ document.addEventListener('DOMContentLoaded', () => {
   gavetaEstado();
 });
 
+// ---------- animações pequenas ----------
+const semMovimento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// números que contam até o valor (só o texto muda; nada de layout)
+function animaContadores(raiz) {
+  if (!raiz || semMovimento()) return;
+  raiz.querySelectorAll('[data-conta]').forEach(el => {
+    const alvo = +el.dataset.conta; if (!(alvo > 0)) return;
+    const t0 = performance.now(), dur = Math.min(900, 400 + alvo * 30);
+    const passo = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(alvo * e); if (k < 1) requestAnimationFrame(passo); };
+    el.textContent = '0'; requestAnimationFrame(passo);
+  });
+}
+// esqueleto com brilho enquanto a semana carrega
+const esqueletoSemana = () => `<div class="esq" aria-busy="true" aria-label="Carregando a escala"><i style="--h:56px"></i>
+  <div class="esq-dias">${'<i style="--h:56px"></i>'.repeat(7)}</div><i style="--h:22px;width:60%"></i>
+  <i style="--h:120px"></i><i style="--h:90px"></i></div>`;
+
 // ================= resultado do primeiro acesso (etapa 1) e personalizar (etapa 2) =================
 // Etapa 1 (o que a compra entrega): o padrão da escala por função, só com números.
 // Etapa 2 (personalizar): nomes, trocas, faltas, férias, mês. Separada para poder virar plano mensal depois:
@@ -527,7 +544,7 @@ const ddmm = d => `${d.slice(8)}/${d.slice(5, 7)}`;
 async function telaResultado() {
   const v = $('#v-resultado');
   if (!atual) return ir('inicio');
-  v.innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
+  v.innerHTML = esqueletoSemana();
   const seg0 = segundaDe(hojeIso());
   const r = await api(`/api/equipes/${atual.id}/semana?data=${seg0}`), e = r.escala;
   if (!e) { v.innerHTML = '<div class="vazio"><h2>A escala ainda não saiu</h2><p>Abra a escala da semana para ver o que falta.</p><button class="btn" data-ir="escala">Abrir a escala</button></div>'; return; }
@@ -562,14 +579,17 @@ async function telaResultado() {
   const ajustes = (e.ajustes || []).length ? `<div class="cartao" style="margin-top:12px"><b>Ajustes da lei do domingo</b><p class="dica" style="margin:4px 0 6px">Nessas semanas a folga escolhida deu lugar ao domingo, como manda a lei.</p>
     <ul class="res-folgas">${e.ajustes.slice(0, 5).map(a => `<li>${esc(a.texto)}</li>`).join('')}${e.ajustes.length > 5 ? `<li>e mais ${e.ajustes.length - 5}</li>` : ''}</ul></div>` : '';
   const a = Escala.analisar(e, opcoesAnalise(atual));
-  v.innerHTML = `<header class="res-topo"><span class="ban-etq">Etapa 1 · Resultado</span><h1>Sua escala 5x2 está pronta</h1>
+  const festa = window.escalaRecemGerada ? '<div class="res-ok" role="status"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="23"/><path d="M14 24l6 6 12-13"/></svg><b>Escala montada, dentro da lei</b></div>' : '';
+  window.escalaRecemGerada = false;
+  v.innerHTML = `<header class="res-topo">${festa}<span class="ban-etq">Etapa 1 · Resultado</span><h1>Sua escala 5x2 está pronta</h1>
       <p>O padrão da escala por função, em números. Tudo dentro da nova lei.</p>
-      <div class="res-nums"><span>${plural(fs.length, 'pessoa', 'pessoas')}</span><span>${plural(funcoes.length, 'função', 'funções')}</span><span>2 folgas por semana</span>${ab[6] ? `<span>Domingo: 1 a cada ${ds}</span>` : ''}<span>Semana de ${ddmm(r.inicio)} a ${ddmm(Escala.somaDias(r.inicio, 6))}</span></div></header>
+      <div class="res-nums"><span><b data-conta="${fs.length}">${fs.length}</b> ${fs.length === 1 ? 'pessoa' : 'pessoas'}</span><span><b data-conta="${funcoes.length}">${funcoes.length}</b> ${funcoes.length === 1 ? 'função' : 'funções'}</span><span>2 folgas por semana</span>${ab[6] ? `<span>Domingo: 1 a cada ${ds}</span>` : ''}<span>Semana de ${ddmm(r.inicio)} a ${ddmm(Escala.somaDias(r.inicio, 6))}</span></div></header>
     <div class="res-acoes"><button class="btn" data-ir="escala">Ver a semana</button><button class="btn sec" data-ir="tabela">Baixar ou enviar</button></div>
     ${podeEditar() ? cartaoPersonalizar(false) : ''}
     <h2 class="res-tit">O padrão por função</h2><div class="res-funcs">${cards}</div>
     ${domingo}${ajustes}
     <h2 class="res-tit">A escala e a lei</h2><div class="cartao">${htmlAnalise(a)}</div>`;
+  animaContadores(v);
 }
 function telaPersonalizar() {
   const v = $('#v-personalizar');
@@ -596,8 +616,12 @@ function ligaCarrosselImg() {
   const pts = $$('#bnPontos button'), n = pts.length;
   const reduz = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const idx = () => Math.round(t.scrollLeft / t.clientWidth);
+  t.classList.add('anima');
+  const itens = [...t.children];
   const vai = i => t.scrollTo({ left: ((i + n) % n) * t.clientWidth, behavior: reduz() ? 'auto' : 'smooth' });
-  t.onscroll = () => { const i = idx(); pts.forEach((p, j) => { p.classList.toggle('on', j === i); p.setAttribute('aria-current', j === i ? 'true' : 'false'); }); };
+  const marca = () => { const i = idx(); itens.forEach((x, j) => x.classList.toggle('ativo', j === i)); pts.forEach((p, j) => { p.classList.toggle('on', j === i); p.setAttribute('aria-current', j === i ? 'true' : 'false'); }); };
+  t.onscroll = () => { cancelAnimationFrame(t.raf); t.raf = requestAnimationFrame(marca); };
+  marca();
   pts.forEach((p, j) => p.onclick = () => vai(j));
   clearInterval(ligaCarrosselImg.t);
   if (n < 2 || reduz()) return;

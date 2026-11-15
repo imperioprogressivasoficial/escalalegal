@@ -754,6 +754,34 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
 .bn-pontos button.on::before{width:22px;background:var(--azul)}
 @media(max-width:760px){.bn-item img{aspect-ratio:1080/1240}}
+/* ===== animações: só transform/opacity, curtas; nada com movimento reduzido ===== */
+@keyframes vistaEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes sobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes surge{from{opacity:0;transform:scale(.6)}60%{opacity:1;transform:scale(1.08)}to{opacity:1;transform:none}}
+@keyframes brilho{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes risca{to{stroke-dashoffset:0}}
+#telaApp .vista:not(#v-comecar):not(#v-cadastro){animation:vistaEntra .22s cubic-bezier(.2,.8,.2,1)}
+.nf>*{animation:sobe .45s cubic-bezier(.2,.8,.2,1) both}
+.nf>:nth-child(2){animation-delay:.05s}.nf>:nth-child(3){animation-delay:.1s}.nf>:nth-child(4){animation-delay:.15s}
+.nf>:nth-child(5){animation-delay:.2s}.nf>:nth-child(6){animation-delay:.25s}.nf>:nth-child(7){animation-delay:.3s}.nf>:nth-child(n+8){animation-delay:.35s}
+.nf-trilho>*{animation:sobe .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0s) + .15s)}
+.nf-trilho>:nth-child(2){--d:.05s}.nf-trilho>:nth-child(3){--d:.1s}.nf-trilho>:nth-child(4){--d:.15s}.nf-trilho>:nth-child(5){--d:.2s}.nf-trilho>:nth-child(n+6){--d:.25s}
+.res-func,.perso-lista li{animation:sobe .4s cubic-bezier(.2,.8,.2,1) both}
+.res-func:nth-child(2),.perso-lista li:nth-child(2){animation-delay:.06s}.res-func:nth-child(3),.perso-lista li:nth-child(3){animation-delay:.12s}.res-func:nth-child(n+4),.perso-lista li:nth-child(n+4){animation-delay:.18s}
+.btn,.q-op,.nf-card,.atalho,.perso-lista button,.fn-passo button,.jn-dias button,.fg-dias button,.dias button,.nome{transition:transform .14s ease,box-shadow .2s ease,background-color .2s,border-color .2s,opacity .2s}
+.btn:active,.q-op:active,.perso-lista button:active,.nome:active,.dias button:active{transform:scale(.97)}
+.nf-card:active{transform:scale(.98)}
+@media(hover:hover){.perso-lista button:hover,.res-func:hover,.atalho:hover{transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(7,29,65,.45)}.res-func{transition:transform .2s,box-shadow .2s}}
+.bn-item{transition:opacity .5s ease}.bn-trilho.anima .bn-item:not(.ativo){opacity:.35}
+.esq{display:grid;gap:12px}
+.esq i{display:block;height:var(--h,18px);border-radius:12px;background:#e6ebf2;position:relative;overflow:hidden}
+.esq i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);transform:translateX(-100%);animation:brilho 1.2s ease-in-out infinite}
+.esq-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.res-ok{display:flex;align-items:center;gap:12px;margin-bottom:6px;animation:sobe .4s both}
+.res-ok svg{width:46px;height:46px;flex:none;animation:surge .55s cubic-bezier(.2,.8,.2,1) both}
+.res-ok circle{fill:#168821}.res-ok path{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30;animation:risca .4s .35s ease-out forwards}
+.res-ok b{color:#fff;font:800 1.05rem var(--display)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}.bn-trilho.anima .bn-item:not(.ativo){opacity:1}.res-ok path{stroke-dashoffset:0}}
 /* ===== Início no estilo streaming (escuro só aqui) ===== */
 body.ini-escuro{background:#0b1220}
 .nf{color:#c9d3e3}
@@ -1076,13 +1104,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=20"></script>
-<script src="/cadastro.js?v=20"></script>
-<script src="/exportar.js?v=20"></script>
-<script src="/aula.js?v=20"></script>
-<script src="/extras.js?v=20"></script>
-<script src="/inicio.js?v=20"></script>
-<script src="/extras-materiais.js?v=20"></script>
-<script src="/app.js?v=20"></script>
+<script src="/scheduler.js?v=21"></script>
+<script src="/cadastro.js?v=21"></script>
+<script src="/exportar.js?v=21"></script>
+<script src="/aula.js?v=21"></script>
+<script src="/extras.js?v=21"></script>
+<script src="/inicio.js?v=21"></script>
+<script src="/extras-materiais.js?v=21"></script>
+<script src="/app.js?v=21"></script>
 </body>
 </html>
