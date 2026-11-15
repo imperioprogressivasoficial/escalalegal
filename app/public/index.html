@@ -659,6 +659,16 @@ const IND = (() => {
     return g && g.ate > Date.now() ? g.c : daUrl;
   } catch { return daUrl; }
 })();
+// origem do anúncio (utm, fbclid, gclid): guarda na primeira visita por 30 dias para não perder ao navegar
+const ORIGEM = (() => {
+  const daUrl = {};
+  for (const [k, v] of new URLSearchParams(location.search)) if (/^(utm_|src$|sck$|fbclid$|gclid$)/.test(k) && v) daUrl[k] = v.slice(0, 200);
+  try {
+    if (Object.keys(daUrl).length) { localStorage.setItem('origem', JSON.stringify({p: daUrl, ate: Date.now() + 30 * 864e5})); return daUrl; }
+    const g = JSON.parse(localStorage.getItem('origem') || 'null');
+    return g && g.ate > Date.now() ? g.p : {};
+  } catch { return daUrl; }
+})();
 // checkout: no VPS o link vem de /api/config
 let CHECKOUT = '';
 fetch('/api/config').then(r => r.json()).then(c => {
@@ -669,8 +679,8 @@ fetch('/api/config').then(r => r.json()).then(c => {
 const chk = $('#btnCheckout');
 function linkCheckout() {
   const u = new URL(CHECKOUT || chk.href);
-  for (const [k, v] of new URLSearchParams(location.search)) if (/^(utm_|src$|sck$|fbclid$|gclid$)/.test(k)) u.searchParams.set(k, v);
-  if (IND) { u.searchParams.set('src', 'ind_' + IND); u.searchParams.set('sck', 'ind_' + IND); u.searchParams.set('utm_campaign', 'ind_' + IND); }
+  for (const [k, v] of Object.entries(ORIGEM)) u.searchParams.set(k, v);
+  if (IND) { u.searchParams.set('src', 'ind_' + IND); u.searchParams.set('sck', 'ind_' + IND); if (!ORIGEM.utm_campaign) u.searchParams.set('utm_campaign', 'ind_' + IND); }
   return u.toString();
 }
 chk.addEventListener('click', e => {
