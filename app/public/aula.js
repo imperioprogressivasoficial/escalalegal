@@ -9,7 +9,7 @@ function licoes() {
   return [
     {tit: 'O que mudou', texto: 'A Emenda Constitucional 141/2026 acabou com a escala 6x1. Desde a mudança, ninguém trabalha 6 dias seguidos: cada pessoa tem <b>2 folgas por semana</b>, sem reduzir o salário.',
       exemplo: `<p class="ex-tit">Antes e depois, numa semana</p>${miniLinha('6x1', ['t', 't', 't', 't', 't', 't', 'f'])}${miniLinha('5x2', ['t', 't', 't', 't', 't', 'f', 'f'])}`,
-      pratica: 'Passa a valer em <b>16 de dezembro de 2026</b>. Toda empresa com funcionário em 6x1 precisa refazer a escala.',
+      pratica: 'Passa a valer em <b>15 de dezembro de 2026</b>. Toda empresa com funcionário em 6x1 precisa refazer a escala.',
       p: 'Uma pessoa pode trabalhar de segunda a sábado e folgar só no domingo?', op: ['Pode', 'Não pode'], certa: 1,
       exp: 'Não pode mais. São 2 folgas por semana para cada pessoa.'},
     {tit: 'As 2 folgas', texto: 'As 2 folgas são por semana e para cada pessoa. A lei pede que <b>uma delas caia no domingo sempre que possível</b>. Quando dá, as duas folgas ficam juntas, que a equipe prefere.',
@@ -17,7 +17,7 @@ function licoes() {
       pratica: 'Quem abre todos os dias continua abrindo. O que muda é o rodízio: cada um folga em dias diferentes para o dia nunca ficar vazio.',
       p: 'A loja pode abrir 7 dias com todo mundo em 5x2?', op: ['Pode', 'Não pode'], certa: 0,
       exp: 'Pode. A lei limita a jornada de cada pessoa, não o horário da loja. É só fazer o rodízio de folgas.'},
-    {tit: 'As horas', texto: `Até <b>8 horas por dia</b>. Por semana, o limite é <b>${lim}h</b> agora${lim > 40 ? ` e cai até <b>40h</b> em 16/12/2027` : ''}. Hora a mais é hora extra, paga com no mínimo 50% a mais, ou vai para o banco de horas.`,
+    {tit: 'As horas', texto: `Até <b>8 horas por dia</b>. Por semana, o limite é <b>${lim}h</b> agora${lim > 40 ? ` e cai até <b>40h</b> em 15/12/2027` : ''}. Hora a mais é hora extra, paga com no mínimo 50% a mais, ou vai para o banco de horas.`,
       exemplo: `<div class="ex-conta"><span>${String(h).replace('.', ',')}h</span><small>por dia</small><em>×</em><span>5</span><small>dias</small><em>=</em><span class="ok">${String(h * 5).replace('.', ',')}h</span><small>por semana</small></div>`,
       pratica: `Com ${String(h).replace('.', ',')}h por dia, cada pessoa trabalha ${String(h * 5).replace('.', ',')}h na semana${h * 5 <= 40 ? ': já dentro do limite final de 40h.' : '. Revise com o contador: passa do limite.'} O almoço não conta nessas horas.`,
       p: 'Uma pessoa que trabalha 9h em um dia faz hora extra?', op: ['Sim', 'Não'], certa: 0,

@@ -40,7 +40,7 @@ function resumoPeriodo(sems) {
   const h = +atual.horas_dia || 8;
   const regras = [
     'Cada pessoa tem 2 folgas por semana. Ninguém trabalha 6 dias seguidos (Emenda 141/2026).',
-    `${String(h).replace('.', ',')}h por dia, ${String(h * 5).replace('.', ',')}h por semana. O limite agora é ${lim}h${lim > 40 ? ` e cai para ${lim === 44 ? '42h em 16/12/2026 e 40h em 16/12/2027' : '40h em 16/12/2027'}` : ''}. Sem reduzir salário.`,
+    `${String(h).replace('.', ',')}h por dia, ${String(h * 5).replace('.', ',')}h por semana. O limite agora é ${lim}h${lim > 40 ? ` e cai para ${lim === 44 ? '42h em 15/12/2026 e 40h em 15/12/2027' : '40h em 15/12/2027'}` : ''}. Sem reduzir salário.`,
     `Domingo: cada pessoa folga pelo menos 1 domingo a cada ${ds} semanas${s.comercio ? ' (comércio, Lei 10.101)' : ' (Portaria do Ministério do Trabalho)'}.`,
     'Feriado trabalhado: pague o dia em dobro ou dê outra folga na mesma semana (Lei 605/49).',
     'Entre um dia e outro, a pessoa descansa pelo menos 11 horas (CLT, art. 66).',

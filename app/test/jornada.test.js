@@ -11,10 +11,10 @@ process.env.ADMIN_PASS ||= 'adm-teste';
 process.env.SESSION_SECRET ||= 'segredo-teste';
 
 test('limite semanal acompanha a EC 141/2026', () => {
-  assert.equal(limiteSemanal('2026-12-15'), 44);
-  assert.equal(limiteSemanal('2026-12-16'), 42);
-  assert.equal(limiteSemanal('2027-12-15'), 42);
-  assert.equal(limiteSemanal('2027-12-16'), 40);
+  assert.equal(limiteSemanal('2026-12-14'), 44);
+  assert.equal(limiteSemanal('2026-12-15'), 42);
+  assert.equal(limiteSemanal('2027-12-14'), 42);
+  assert.equal(limiteSemanal('2027-12-15'), 40);
 });
 
 test('análise aponta o que está errado em linguagem simples', () => {

@@ -113,8 +113,8 @@
     if (ctx?.locais?.includes(md)) return 'Feriado municipal';
     return null;
   }
-  // Limite de horas por semana (EC 141/2026): 44h até 15/12/2026, 42h até 15/12/2027, 40h depois.
-  function limiteSemanal(dataIso) { return dataIso < '2026-12-16' ? 44 : dataIso < '2027-12-16' ? 42 : 40; }
+  // Limite de horas por semana (EC 141/2026): 44h até 14/12/2026, 42h de 15/12/2026 a 14/12/2027, 40h a partir de 15/12/2027.
+  function limiteSemanal(dataIso) { return dataIso < '2026-12-15' ? 44 : dataIso < '2027-12-15' ? 42 : 40; }
   // data (AAAA-MM-DD) + n dias
   function somaDias(dataIso, n) { const d = new Date(dataIso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
 
@@ -256,7 +256,7 @@
     else if (semanais > limMin) itens.push({ ok: false, titulo: `${String(semanais).replace('.', ',')}h por semana passa do limite`, texto: `O limite no período é ${limMin}h por semana.` });
     else itens.push({ ok: true, titulo: `${String(semanais).replace('.', ',')}h por semana`, texto: semanais <= 40
       ? 'Já dentro do limite final de 40h da nova lei. Não vai precisar mudar em 2027.'
-      : `Dentro do limite de ${limMin}h deste período. A partir de 16/12/2027 o limite cai para 40h.` });
+      : `Dentro do limite de ${limMin}h deste período. A partir de 15/12/2027 o limite cai para 40h.` });
     // 5b. horário de funcionamento x jornada
     const ha = horasAberto(opts.abre, opts.fecha);
     if (ha && ha > horasDia + 1) {
