@@ -6,6 +6,7 @@ const pular = !process.env.DATABASE_URL && 'defina DATABASE_URL para rodar';
 process.env.WEBHOOK_TOKEN ||= 'tk-teste';
 process.env.ADMIN_PASS ||= 'adm-teste';
 process.env.SESSION_SECRET ||= 'segredo-teste';
+process.env.COMISSAO_PERCENT ||= '30'; // a comissão vem desligada; o teste liga para conferir o mecanismo
 
 test('indicação vira comissão, reembolso cancela; empresa extra usa o acesso de quem criou', { skip: pular }, async t => {
   const { app, migrar, pool } = require('../server.js');

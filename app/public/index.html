@@ -229,7 +229,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .preco-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:clamp(36px,6vw,80px);align-items:center}
 .preco-txt p{font-size:1.18rem;margin-top:16px}
 .garantia{display:flex;align-items:center;gap:18px;margin-top:30px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px}
-.garantia svg{flex:none;width:86px;height:86px}
+.garantia .selo-garantia{flex:none;width:120px;height:120px;filter:drop-shadow(0 12px 22px rgba(0,0,0,.45))}
 .garantia b{display:block;color:#fff;font-size:1.1rem}
 @property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
 .oferta{position:relative;background:linear-gradient(#fff,#fff) padding-box,conic-gradient(from var(--ang),#2670e8,#23b53a,#ffcd07,#2670e8) border-box;border:3px solid transparent;border-radius:26px;padding:clamp(26px,3.5vw,38px);color:var(--texto);box-shadow:0 50px 100px -40px rgba(0,0,0,.8);animation:gira 6s linear infinite}
@@ -380,7 +380,6 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
       </div>
       <div class="formatos-mini" data-e style="--d:4"><span class="bolinhas"><i title="WhatsApp"><img src="img/formatos/whatsapp.svg?v=20261115b" alt="WhatsApp" width="30" height="30"></i><i title="PDF"><img src="img/formatos/pdf.svg?v=20261115b" alt="PDF" width="30" height="30"></i><i title="Excel"><img src="img/formatos/excel.svg?v=20261115b" alt="Excel" width="30" height="30"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg?v=20261115b" alt="Google Planilhas" width="30" height="30"></i><i title="Imagem"><img src="img/formatos/jpg.svg?v=20261115b" alt="Imagem" width="30" height="30"></i></span><span class="fm-txt"><b>Baixe ou envie em + de 10 formatos</b>WhatsApp, PDF, Excel, Planilhas e mais</span></div>
-      <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único e vitalício</span><span>7 dias de garantia</span></div>
     </div>
     <div class="vitrine" data-e style="--d:2">
       <img class="ze-espia" src="img/mascote.svg?v=20261115b" alt="Zé Folga, o mascote da Sua Escala 5x2">
@@ -561,7 +560,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <h2>Acesso completo à Sua Escala 5x2</h2>
       <p>Um pagamento só. Você monta a escala de quantas equipes precisar e refaz sempre que a equipe mudar.</p>
       <div class="garantia">
-        <svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="gs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe46b"/><stop offset="1" stop-color="#ffcd07"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="url(#gs)"/><circle cx="50" cy="50" r="38" fill="none" stroke="#3b2f00" stroke-width="2" stroke-dasharray="3 4"/><text x="50" y="50" text-anchor="middle" font-family="Archivo,Arial" font-weight="900" font-size="30" fill="#3b2f00">7</text><text x="50" y="66" text-anchor="middle" font-family="Archivo,Arial" font-weight="800" font-size="11" fill="#3b2f00">DIAS</text></svg>
+        <img class="selo-garantia" src="img/selo-garantia.svg?v=20261115b" alt="Selo de garantia de 7 dias" width="120" height="120">
         <div><b>Garantia de 7 dias</b>Se o sistema não servir para a sua empresa, você pede o reembolso dentro de 7 dias.</div>
       </div>
     </div>
@@ -570,7 +569,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
       <p class="oferta-nome">Sua Escala 5x2</p>
       <p class="valor"><span>R$</span>97</p>
       <p class="unico">uma vez só, acesso vitalício e imediato</p>
-      <ul class="itens"><li>Escala pronta respondendo perguntas simples</li><li>Dentro da lei: 2 folgas, domingo, feriado e cobertura conferidos</li><li>WhatsApp, PDF, Excel, CSV, Google Planilhas e imagem</li><li>Aula da nova lei, explicada sem juridiquês</li><li>Acesso grátis para o seu contador</li><li>Use quantas vezes quiser: empresas, lojas e escalas sem mensalidade</li><li>Indique e ganhe comissão por cada venda</li></ul>
+      <ul class="itens"><li>Escala pronta respondendo perguntas simples</li><li>Dentro da lei: 2 folgas, domingo, feriado e cobertura conferidos</li><li>WhatsApp, PDF, Excel, CSV, Google Planilhas e imagem</li><li>Aula da nova lei, explicada sem juridiquês</li><li>Acesso grátis para o seu contador</li><li>Use quantas vezes quiser: empresas, lojas e escalas sem mensalidade</li></ul>
       <a class="btn" href="#preco" data-comprar>Quero meu acesso agora</a>
       <p class="oferta-pe">Compra segura. Acesso enviado para o seu e-mail.</p>
     </div>
@@ -580,14 +579,14 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 <section class="sec gelo" id="indique">
   <div class="wrap indique-grid">
     <div>
-      <span class="etq">Indique e ganhe</span>
-      <h2>Indique para outro dono de negócio e ganhe por cada venda</h2>
-      <p>Todo cliente ganha um link só dele dentro do app. Mandou no grupo da associação, no WhatsApp ou no Instagram e alguém comprou: a comissão é sua, paga por Pix.</p>
+      <span class="etq">Indique</span>
+      <h2>Conhece outro empresário que vai precisar da escala nova?</h2>
+      <p>Toda empresa com funcionário vai ter que mudar a escala até 15 de dezembro. Mande o link para quem você conhece: o dono da loja vizinha, o grupo da associação, os amigos empresários.</p>
     </div>
     <ol class="indique-passos">
-      <li data-r><b>1</b><span>Pegue o seu link em <strong>Mais › Indique e ganhe</strong></span></li>
-      <li data-r style="--d:1"><b>2</b><span>Mande para quem precisa da escala nova<i><img src="img/formatos/whatsapp.svg?v=20261115b" alt="" width="26" height="26"></i></span></li>
-      <li data-r style="--d:2"><b>3</b><span>Comprou pelo seu link: <strong><span id="valorComissao">comissão</span></strong> para você, por Pix</span></li>
+      <li data-r><b>1</b><span>Pegue o link em <strong>Mais › Indique para quem conhece</strong></span></li>
+      <li data-r style="--d:1"><b>2</b><span>Mande no WhatsApp para outros empresários<i><img src="img/formatos/whatsapp.svg?v=20261115b" alt="" width="26" height="26"></i></span></li>
+      <li data-r style="--d:2"><b>3</b><span>Ele monta a escala dele em uns 2 minutos</span></li>
     </ol>
   </div>
 </section>
@@ -665,7 +664,6 @@ const IND = (() => {
 let CHECKOUT = '';
 fetch('/api/config').then(r => r.json()).then(c => {
   CHECKOUT = c.checkout || ''; if (CHECKOUT) $('#previa').hidden = true;
-  if (c.comissao) $('#valorComissao').textContent = 'R$ ' + c.comissao.toFixed(2).replace('.', ',');
 }).catch(() => {});
 
 // compra

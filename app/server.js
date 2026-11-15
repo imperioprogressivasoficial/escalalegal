@@ -11,9 +11,9 @@ const { criaFila, modelo } = require('./email.js');
 const {
   DATABASE_URL, SESSION_SECRET, ADMIN_USER = 'admin', ADMIN_PASS, WEBHOOK_TOKEN, N8N_WEBHOOK_URL, META_PIXEL_ID,
   CHECKOUT_URL = '', LIBERAR_TUDO, PORT = 3000, DOMAIN, SUPORTE_WHATSAPP = '', TRUST_PROXY = '1', NODE_ENV,
-  PRECO = '97', COMISSAO_PERCENT = '30',
+  PRECO = '97', COMISSAO_PERCENT = '0',
 } = process.env;
-// indicação: quem indica ganha COMISSAO_PERCENT % do PRECO por compra aprovada (paga pelo dono via Pix, depois da garantia)
+// indicação: o link de indicação só registra quem indicou. Comissão desligada (COMISSAO_PERCENT=0); se um dia ligar, paga COMISSAO_PERCENT % do PRECO por compra aprovada
 const VALOR_COMISSAO = Math.round((+String(PRECO).replace(',', '.') || 97) * (+COMISSAO_PERCENT || 0)) / 100;
 const PRODUCAO = NODE_ENV === 'production';
 const APP_URL = (process.env.APP_URL || (DOMAIN ? `https://${DOMAIN}` : `http://localhost:${PORT}`)).replace(/\/$/, '');

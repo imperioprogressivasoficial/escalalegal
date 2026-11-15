@@ -24,11 +24,11 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 
 - `app/public/exportar.js`: a tabela pronta (`#tabela`) e as saídas: WhatsApp (imagem), PDF, Excel .xlsx, CSV, Google Planilhas (`=IMPORTDATA` do link `/api/publico/planilha/:token`), JPG, texto, link da equipe, imprimir. Tudo gerado no aparelho, sem biblioteca.
 - `app/public/aula.js`: aula da nova lei (`#aula`), 8 lições com exemplo e teste rápido.
-- `app/public/extras.js`: colocar na tela inicial (PWA: `manifest.webmanifest`, `sw.js`, `#instalar`), Indique e ganhe (`#indique`) e cadastrar outra empresa.
+- `app/public/extras.js`: colocar na tela inicial (PWA: `manifest.webmanifest`, `sw.js`, `#instalar`), Indique para quem conhece (`#indique`) e cadastrar outra empresa.
 - Logos dos formatos em `app/public/img/formatos/`: logos oficiais baixados do Wikimedia Commons (WhatsApp, Adobe Acrobat para PDF, Excel 2025, Google Planilhas, Google Fotos para imagem); CSV, link, texto, imprimir e tela inicial são desenhos próprios. Prints do app na página de vendas sempre dentro das molduras oficiais da Apple (Apple Design Resources: iPhone 17 Pro Cosmic Orange e MacBook Pro M5 14" Space Black), em `img/iphone-*.webp` e `img/mac-*.webp`.
 - `app/site.js`: site público. Injeta no `<!--HEAD-->` de index/ajuda/privacidade/termos/obrigado: canonical, Open Graph (`img/og.png`), Twitter, verificação Google/Meta e JSON-LD (SoftwareApplication, Organization, FAQPage tirado dos `<details>`). Troca `{{EMPRESA_*}}`, `{{CONTATO}}`, `{{PRECO}}`, `{{ANO}}`. Serve `robots.txt`, `sitemap.xml`, `llms.txt`, `/rastreio.js` (Meta Pixel, GA4, GTM só depois do "Aceitar" no aviso de cookies; modo de consentimento do Google começa negado; `window.rastrear(evento)`), a compra pela API de Conversões da Meta (`META_CAPI_TOKEN`) e a página 404.
 - Prints das notícias reais da EC 141/2026 em `app/public/img/noticias/` (carrossel com 3 notícias na seção `#noticias` da página de vendas, com link para a fonte). A regra vale a partir de 15/12/2026 (Agência Brasil); 40h a partir de 15/12/2027.
-- `app/public/privacidade.html` e `termos.html` (reembolso em `#reembolso`, regras do Indique e ganhe em `#indique`).
+- `app/public/privacidade.html` e `termos.html` (reembolso em `#reembolso`, regras da indicação em `#indique`).
 - `marketing/video/`: vídeo em motion (Reels) e o projeto para gerar de novo.
 
 ## Regras de negócio
@@ -42,7 +42,7 @@ SaaS que gera a escala 5x2 (EC 141/2026, fim da 6x1) para empresas. Vendido por 
 - Dono sem unidade cai no primeiro acesso guiado (`#comecar`): empresa (porte MEI/ME/EPP, UF, cidade, feriados da cidade) → unidade (dias, mínimo, horas/dia) → pessoas → gera a escala e mostra a análise (`Escala.analisar`, em `scheduler.js`).
 - Limite semanal pela data (`limiteSemanal`): 44h até 14/12/2026, 42h de 15/12/2026 a 14/12/2027, 40h a partir de 15/12/2027. Feriados: nacionais + estaduais (`ESTADUAIS`) + municipais informados pela empresa.
 - Várias empresas na mesma conta: empresa extra = usuário sem login (`origem='empresa_extra'`, e-mail `@empresa.invalid`) e quem criou entra como `membros.papel='dono'`; vale o acesso pago de quem criou. Não aparece no /admin.
-- Indique e ganhe: cada cliente tem `usuarios.ref_codigo` e o link `/?ind=CODIGO`. A página de vendas guarda o código 30 dias, manda no lead (`leads.ref`) e no checkout (`src`/`sck`/`utm_campaign=ind_CODIGO`). Compra aprovada gera uma linha em `comissoes` (valor = PRECO × COMISSAO_PERCENT). Reembolso antes de pagar cancela. O dono paga por Pix e marca como pago no /admin (só depois dos 7 dias de garantia). Comprar pelo próprio link não conta.
+- Indique para quem conhece: cada cliente tem `usuarios.ref_codigo` e o link `/?ind=CODIGO` para mandar a outros empresários. Sem comissão (`COMISSAO_PERCENT=0`); o link só registra quem indicou (`leads.ref`, `usuarios.indicado_por`). O mecanismo de comissão (`comissoes`, /admin) continua no código, desligado.
 - Contador pode se cadastrar sozinho (`tipo: 'contador'`) e vê as empresas que o liberaram no Espaço do contador.
 
 ## Estilo

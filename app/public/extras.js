@@ -1,4 +1,4 @@
-// Sua Escala 5x2 — colocar o app na tela inicial, indique e ganhe e outra empresa.
+// Sua Escala 5x2 — colocar o app na tela inicial, indique para quem conhece e outra empresa.
 
 // ---------- app na tela inicial (PWA) ----------
 let pedidoInstalar = null;
@@ -36,40 +36,21 @@ function avisoInstalar() {
 }
 document.addEventListener('click', e => { if (e.target.id === 'dispInstalar') { gravar('instalarDispensado', '1'); e.target.closest('.aviso').remove(); } });
 
-// ---------- indique e ganhe ----------
-const reais = v => 'R$ ' + (+v || 0).toFixed(2).replace('.', ',');
+// ---------- indique para quem conhece ----------
 async function telaIndique() {
   const v = $('#v-indique');
   v.innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
   const r = await api('/api/indicacao');
-  const msg = `Achei um app que monta a escala 5x2 da nova lei em 2 minutos, respondendo umas perguntas. Me ajudou muito: ${r.link}`;
+  const msg = `Toda empresa vai ter que mudar a escala para a 5x2 até 15 de dezembro. Achei um app que monta a escala dentro da nova lei em 2 minutos, respondendo umas perguntas. Vale a pena: ${r.link}`;
   v.innerHTML = `<button class="voltar" data-ir="mais">‹ Voltar</button>
-    <h1>Indique e ganhe</h1>
-    <p class="sub">Todo dono de negócio vai precisar da escala nova. Mande o seu link: cada compra feita por ele vira comissão para você.</p>
-    <div class="ind-valor"><span>Você ganha</span><b>${reais(r.valor_por_venda)}</b><span>por cada venda</span></div>
-    <label style="margin-top:18px">Seu link</label>
-    <div class="ind-link"><input readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn pq sec" id="indCopiar">Copiar</button></div>
-    <a class="btn cheio btn-zap" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg?v=20261115b" alt="" width="26" height="26">Mandar no WhatsApp</a>
+    <h1>Indique para quem conhece</h1>
+    <p class="sub">Toda empresa com funcionário vai precisar da escala nova. Ajude outros empresários: o dono da loja vizinha, o grupo da associação, os amigos.</p>
+    <a class="btn cheio btn-zap" style="margin-top:16px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg?v=20261115b" alt="" width="26" height="26">Mandar no WhatsApp</a>
     ${navigator.share ? '<button class="btn cheio sec" id="indOutros" style="margin-top:8px">Mandar de outro jeito</button>' : ''}
-    <div class="ind-numeros">
-      <div><b>${r.vendas}</b><span>${r.vendas === 1 ? 'venda' : 'vendas'} pelo seu link</span></div>
-      <div><b>${reais(r.a_receber)}</b><span>a receber</span></div>
-      <div><b>${reais(r.recebido)}</b><span>já recebido</span></div>
-    </div>
-    <div class="cartao" style="margin-top:14px">
-      <label for="indPix" style="margin-top:0">Sua chave Pix, para receber</label>
-      <div class="ind-link"><input id="indPix" value="${esc(r.pix)}" placeholder="CPF, e-mail, telefone ou chave aleatória"><button class="btn pq" id="indSalvaPix">Salvar</button></div>
-    </div>
-    <h3 style="margin:22px 0 10px">Como funciona</h3>
-    <ol class="passos-inst">
-      <li><b>1</b><span>Mande o seu link para outros donos de negócio: grupo de WhatsApp, associação, Instagram.</span></li>
-      <li><b>2</b><span>A pessoa compra pelo seu link. O link fica guardado no celular dela por 30 dias.</span></li>
-      <li><b>3</b><span>Passados os 7 dias de garantia da compra, você recebe ${reais(r.valor_por_venda)} por Pix.</span></li>
-    </ol>
-    <p class="dica" style="margin-top:10px">Se a pessoa pedir reembolso, a venda não conta. Comprar pelo próprio link não gera comissão.</p>`;
+    <label style="margin-top:18px">Ou copie o link</label>
+    <div class="ind-link"><input readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn pq sec" id="indCopiar">Copiar</button></div>`;
   $('#indCopiar').onclick = () => copiar(r.link, 'Link copiado.');
   if ($('#indOutros')) $('#indOutros').onclick = () => navigator.share({text: msg}).catch(() => {});
-  $('#indSalvaPix').onclick = async () => { try { await api('/api/indicacao/pix', {method: 'PUT', body: {pix: $('#indPix').value}}); toast('Chave Pix salva.'); } catch (err) { toast(err.message); } };
 }
 
 // ---------- outra empresa ----------

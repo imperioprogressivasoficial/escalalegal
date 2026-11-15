@@ -652,8 +652,8 @@ function telaMais() {
     if (dono) h += item('empresa', 'Dados da empresa', 'Nome, CNPJ, cidade e feriados');
     h += '</ul>';
   }
-  h += `<p class="menu-tit">Ganhe e facilite</p><ul class="menu">
-    <li><button data-ir="indique" class="menu-ind"><span>Indique e ganhe<small>Comissão por cada venda pelo seu link</small></span><span class="seta">›</span></button></li>
+  h += `<p class="menu-tit">Facilite</p><ul class="menu">
+    <li><button data-ir="indique" class="menu-ind"><span>Indique para quem conhece<small>Mande o link para outros empresários</small></span><span class="seta">›</span></button></li>
     ${naTelaInicial() ? '' : `<li><button data-ir="instalar"><span>Colocar na tela inicial<small>Abre como aplicativo no celular</small></span><span class="seta">›</span></button></li>`}</ul>`;
   h += '<p class="menu-tit">Você</p><ul class="menu">';
   if (eu.contas.length > 1) h += `<li><button id="mTrocar"><span>Trocar de empresa<small>${esc(mc ? 'Meu escritório' : conta.empresa || '')}${conta.papel !== 'dono' ? ` · você é ${PAPEL[conta.papel].toLowerCase()}` : ''}</small></span><span class="seta">›</span></button></li>`;
