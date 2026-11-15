@@ -209,7 +209,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
       JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || [])]);
     auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
-    await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} pronta`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
+    await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} gerada`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
       link: 'escala', chave: `escala:${equipe.id}:${hojeBR()}` });
     return (await escalasComOcorrencias(rows))[0];
   }
@@ -330,7 +330,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const periodo = inicio === fim ? inicio.split('-').reverse().join('/') : `${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`;
     auditar(req, `Lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}${horas ? ` (${horas > 0 ? '+' : ''}${horas}h)` : ''} para ${fr[0].nome}: ${periodo}`);
     if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'ocorrencia', papel: 'dono', titulo: `${req.u.nome} lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}`,
-      texto: `${fr[0].nome}: ${periodo}.`, link: 'ocorrencias' });
+      texto: `${fr[0].nome}: ${periodo}.`, link: 'equipe/faltas' });
     res.json(rows[0]);
   }));
   app.delete('/api/ocorrencias/:oid', LE, erro(async (req, res) => {
@@ -512,7 +512,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       [req.conta.id, mes, req.u.id, JSON.stringify(f)]);
     if (!rowCount) return res.status(409).json({ erro: `O mês ${mesBR(mes)} já está fechado.` });
     auditar(req, `Fechou o mês ${mesBR(mes)} e enviou ao contador`);
-    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Mês ${mesBR(mes)} fechado`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, faltas e feriados prontos para a folha.`, link: 'fechamento', chave: `fechado:${mes}` });
+    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Competência ${mesBR(mes)} fechada`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, ausências e feriados prontos para a folha.`, link: 'mes', chave: `fechado:${mes}` });
     const { rows: conts } = await q(`select u.email, u.nome from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 and m.papel='contador'`, [req.conta.id]);
     const empresa = req.conta.empresa || req.u.nome;
     for (const c of conts) {
@@ -598,6 +598,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   app.post('/api/inicio/enviada', LE, erro(async (req, res) => {
     await q(`insert into empresa_config (conta_id, escala_enviada_em) values ($1, now())
       on conflict (conta_id) do update set escala_enviada_em=coalesce(empresa_config.escala_enviada_em, now())`, [req.conta.id]);
+    await q("update notificacoes set lida=true where conta_id=$1 and tipo='enviar' and not lida", [req.conta.id]);
     res.json({ ok: true });
   }));
   app.put('/api/empresa', L, soDono, erro(async (req, res) => {

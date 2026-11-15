@@ -23,13 +23,15 @@ let eu = null, conta = null, equipes = [], atual = null, funcs = [], semana = nu
 const hojeIso = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const segundaDe = d => soma(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
 const mesAtual = () => hojeIso().slice(0, 7);
+// a semana que importa: no sábado e no domingo já é a que vem (a atual está acabando)
+const semanaInicial = () => { const h = hojeIso(), dow = new Date(h + 'T12:00:00').getDay(); return dow === 0 || dow === 6 ? segundaDe(soma(h, 7)) : segundaDe(h); };
 const ler = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, v ?? ''); } catch {} };
 const podeEditar = () => conta && conta.papel !== 'contador';
 const ehModoContador = () => eu?.contador && conta?.id === eu.id && !eu.empresa;
 const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
 const dataLonga = d => { const x = new Date(d + 'T12:00:00'); return `${DIA_LONGO[(x.getDay() + 6) % 7]}, ${x.getDate()} de ${MES[x.getMonth()]}`; };
-const nomeCurto = n => String(n || '').split(' ')[0];
+const nomeCurto = n => { const t = String(n || '').trim(); return /\s\d+$/.test(t) ? t : t.split(' ')[0]; };
 const naDia = d => (d >= 5 ? 'no ' : 'na ') + DIA_LONGO[d].toLowerCase();
 const hora = h => { const [a, b] = String(h || '').split(':'); return a ? `${+a}h${b && b !== '00' ? b : ''}` : ''; };
 
@@ -242,11 +244,10 @@ const comPessoas = () => wz.funcoes.map((f, i) => [f, i]).filter(([f]) => f.n > 
 // a lista de perguntas muda conforme as respostas: cada função com gente tem a jornada e as folgas
 function perguntas() {
   const q = [];
-  if (!wz.soUnidade) q.push('oi');
   if (wz.soUnidade || !wz.temSegmento) q.push('negocio');
   if (wz.soUnidade || (conta.unidades_qtd || 1) > 1) q.push('nome');
   q.push('dias', 'funcoes');
-  comPessoas().forEach(([, i]) => q.push('jornada:' + i, 'folgas:' + i));
+  if (wz.ajustar) comPessoas().forEach(([, i]) => q.push('jornada:' + i, 'folgas:' + i));
   return q;
 }
 const DIAS_OP = [['1111111', 'Todo dia', 'De segunda a domingo'], ['1111110', 'Segunda a sábado', 'Fecha no domingo'], ['1111100', 'Segunda a sexta', 'Fecha sábado e domingo']];
@@ -309,7 +310,10 @@ function wizResumo() {
   ], extra);
 }
 function wizDesenha() {
-  const lista = perguntas(), cheio = lista[wz.i] || '', [id, fiStr] = cheio.split(':'), total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
+  const lista = perguntas(), cheio = lista[wz.i] || '', [id, fiStr] = cheio.split(':');
+  // contagem fixa: os passos de ajuste (jornada e folgas) não entram no total
+  const base = lista.filter(x => !x.includes(':')), ajuste = lista.filter(x => x.includes(':'));
+  const total = base.length, num = cheio.includes(':') ? total : base.indexOf(cheio) + 1;
   const s = seg(wz.setor || 'outro'), u = wz.un, fi = +fiStr, f = wz.funcoes[fi];
   const local = `${artigo(s)} ${esc(s.local)}`;
   let corpo = '', botao = 'Continuar', etapa = '', desl = false;
@@ -348,7 +352,9 @@ function wizDesenha() {
       <div class="fn-lista">${wz.funcoes.map((x, i) => linhaFuncao(x, i)).join('')}</div>
       <div class="fn-nova hide" id="fnNovaBox"><input id="fnNova" maxlength="40" placeholder="Ex.: Entregador" autocomplete="off" aria-label="Nome da função"><button type="button" class="btn pq azul" id="fnNovaOk">Adicionar</button></div>
       <div class="fn-rodape"><button type="button" class="link" id="fnOutra">+ Outra função</button><p class="fn-total" aria-live="polite"><b id="fnTotal">${totalWz()}</b> ${totalWz() === 1 ? 'pessoa' : 'pessoas'}</p></div>
-      <p class="dica">A escala sai com "Caixa 1", "Caixa 2"... Depois você pode trocar pelos nomes, se quiser.</p><div id="qConta"></div>`;
+      <p class="dica">A escala sai com "Caixa 1", "Caixa 2"... Depois você pode trocar pelos nomes, se quiser.</p><div id="qConta"></div>
+      <p class="fn-ajustar"><button type="button" class="link" id="qAjustar">Ajustar horário e folgas antes</button><small>Opcional. A sugestão já está dentro da lei: 5 dias, 8h por dia, folgas em rodízio.</small></p>`;
+    botao = 'Montar minha escala';
   } else if (id === 'jornada') {
     sugereFuncao(f);
     etapa = esc(rotuloFuncao(f.nome));
@@ -386,6 +392,7 @@ function wizDesenha() {
   const restam = total - num + 1;
   const pular = (id === 'jornada' || id === 'folgas') && comPessoas().some(([, i]) => i > fi)
     ? '<p class="q-cancelar"><button class="link" id="qSugestao" type="button">Usar a sugestão para as outras funções</button></p>' : '';
+  if (cheio.includes(':')) etapa = `Ajuste ${ajuste.indexOf(cheio) + 1} de ${ajuste.length} · ${etapa}`;
   $('#v-comecar').innerHTML = quizMoldura({etapa, num, total, minutos: `~${Math.max(1, Math.round(restam * 12 / 60))} min`, corpo, botao, botaoDesligado: desl, resumo: wizResumo(),
     rodapeExtra: (wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="mais">Cancelar</button></p>' : '') + pular});
   const prox = () => { quizDir = 1; if (wz.i >= perguntas().length - 1) return wizGerar(); wz.i++; wizDesenha(); };
@@ -413,7 +420,8 @@ function wizDesenha() {
     ok(() => { if (!u.abertos.some(Boolean)) return erro('Marque pelo menos um dia.'); prox(); });
   }
   const contagem = () => {
-    const n = totalWz(), totalMin = u.minimo.reduce((a, m, d) => a + (u.abertos[d] ? m : 0), 0), precisa = Math.ceil(totalMin / 5);
+    const n = totalWz(), minDia = Math.max(1, comPessoas().reduce((a, [x]) => { const d = x.dias || 5, cap = Math.floor(Math.max(0, x.n * d - Math.ceil(x.n / 2)) / abertosN()); return a + (x.critica ? Math.max(1, Math.min(cap, Math.max(...(u.criticas.find(c => c.nome === x.nome)?.minimo || [1])))) : Math.min(cap, 1)); }, 0));
+    const totalMin = u.abertos.filter(Boolean).length * minDia, precisa = Math.ceil(totalMin / 5);
     let html = '';
     if (n) html += n >= precisa ? `<div class="nota ok">${plural(n, 'pessoa', 'pessoas')}. Dá para cobrir todos os dias com 2 folgas por semana para cada um.</div>`
       : `<div class="nota">${plural(n, 'pessoa', 'pessoas')}. Para cobrir todos os dias precisa de ${precisa}. A escala sai, mas alguns dias ficam com menos gente.</div>`;
@@ -462,7 +470,9 @@ function wizDesenha() {
     $('#fnNovaOk').onclick = adiciona;
     $('#fnNova').onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); adiciona(); } };
     contagem();
-    ok(() => { if (!totalWz()) return erro('Coloque pelo menos uma pessoa em alguma função.'); if (totalWz() > 200) return erro('Até 200 pessoas por unidade.'); prox(); });
+    const confere = () => { if (!totalWz()) { erro('Coloque pelo menos uma pessoa em alguma função.'); return false; } if (totalWz() > 200) { erro('Até 200 pessoas por unidade.'); return false; } return true; };
+    ok(() => { if (!confere()) return; wz.ajustar = false; comPessoas().forEach(([x]) => sugereFuncao(x)); wizGerar(); });
+    $('#qAjustar').onclick = () => { if (!confere()) return; wz.ajustar = true; prox(); };
   }
   if (id === 'jornada') {
     const atualiza = () => {
@@ -551,11 +561,11 @@ async function wizGerar() {
     <p>Distribuindo as folgas de ${plural(pessoas.length, 'pessoa', 'pessoas')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
   const espera = new Promise(r => setTimeout(r, 1400));
   try {
-    const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {unidade, pessoas, inicio: segundaDe(hojeIso()), semanas: 4}}), espera]);
+    const [r] = await Promise.all([api('/api/onboarding', {method: 'POST', body: {unidade, pessoas, inicio: semanaInicial(), semanas: 4}}), espera]);
     conta = await api('/api/conta');
     gravar('unidade', r.equipe.id); await carregaEquipes();
     if (!r.escala) return telaPagar(r.checkout);
-    semData = segundaDe(hojeIso()); diaSel = null; window.escalaRecemGerada = true; ir('resultado');
+    semData = semanaInicial(); diaSel = null; window.escalaRecemGerada = true; ir('resultado');
   } catch (err) {
     wz.i = perguntas().length - 1; wizDesenha(); $('#wzErro').textContent = err.message;
   }
@@ -583,7 +593,7 @@ async function telaEscala() {
   }
   $('.sem-nav').classList.remove('hide');
   const hoje = hojeIso(), segHoje = segundaDe(hoje);
-  if (!semData) semData = segHoje;
+  if (!semData) semData = semanaInicial();
   $('#semTit').textContent = tituloSemana(semData);
   $('#semSub').textContent = semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
   $('#escCorpo').innerHTML = esqueletoSemana();

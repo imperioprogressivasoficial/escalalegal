@@ -1,8 +1,8 @@
 // Sua Escala 5x2 — notificações do app (sino no topo).
 // Cada notificação é da conta (empresa) e, se precisar, de um papel: 'dono' (dono e gerente) ou 'contador'.
 // "chave" evita repetir o mesmo aviso (ex.: lei:30, fechar:2026-11, escala:12:2026-11-16:2026-11-15).
-// Parte é criada na hora (escala montada, falta lançada, mês fechado) e parte quando o sino é aberto
-// (contagem da lei, mês para fechar, escala não enviada, contador entrou, material liberado).
+// Só eventos: escala gerada, ausência lançada pelo gerente, competência fechada (na hora) e, quando o sino é aberto,
+// a contagem da lei, a contabilidade que entrou e o material liberado. Lembretes ficam no cartão de próximo passo.
 const { CATALOGO } = require('./extras.js');
 
 const hojeBR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
@@ -25,24 +25,10 @@ module.exports = function notificacoes({ app, q, erro, L }) {
     const marco = [30, 7, 1].find((m, i, a) => dias <= m && dias > (a[i + 1] ?? 0));
     if (marco) await notificar(c, { tipo: 'lei', titulo: dias === 1 ? 'Amanhã a escala 5x2 passa a valer' : `Faltam ${dias} dias para a escala 5x2 valer`,
       texto: 'A partir de 15/12/2026: 2 folgas por semana e limite de 42 horas.', link: 'aula', chave: `lei:${marco}` });
-    const { rows: [e] } = await q(`select (select count(*)::int from equipes where usuario_id=$1) unidades,
-        (select escala_enviada_em from empresa_config where conta_id=$1) enviada,
-        (select count(*)::int from equipes where usuario_id=$1 and link_token is not null) links,
-        (select count(*)::int from fechamentos where conta_id=$1 and mes=$2) fechado`, [c, hoje.slice(0, 7)]);
-    if (e.unidades) {
-      const d = new Date(hoje + 'T12:00:00Z'), ultimo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-      if (d.getUTCDate() >= ultimo - 2 && !e.fechado) await notificar(c, { tipo: 'fechar', papel: 'dono', titulo: 'O mês está acabando: hora de fechar',
-        texto: 'Feche o mês para o contador receber os dias trabalhados, faltas e feriados.', link: 'fechamento', chave: `fechar:${hoje.slice(0, 7)}` });
-      if (!e.enviada && !e.links) {
-        const seg = new Date(d); seg.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-        await notificar(c, { tipo: 'enviar', papel: 'dono', titulo: 'A equipe ainda não recebeu a escala',
-          texto: 'Mande no grupo do WhatsApp, em PDF ou pelo link onde cada um vê a própria folga.', link: 'tabela', chave: `enviar:${seg.toISOString().slice(0, 10)}` });
-      }
-    }
     const { rows: conts } = await q(`select u.id, u.nome from membros m join usuarios u on u.id=m.usuario_id
       where m.conta_id=$1 and m.papel='contador' and u.senha_hash is not null`, [c]);
-    for (const x of conts) await notificar(c, { tipo: 'contador', papel: 'dono', titulo: `${x.nome || 'Seu contador'} entrou no app`,
-      texto: 'O contador já vê a escala e o fechamento do mês.', link: 'acessos', chave: `contador:${x.id}` });
+    for (const x of conts) await notificar(c, { tipo: 'contador', papel: 'dono', titulo: `${x.nome || 'A contabilidade'} acessou o app`,
+      texto: 'A contabilidade já vê a escala e o fechamento da competência.', link: 'mes/contador', chave: `contador:${x.id}` });
     const { rows: ex } = await q(`select distinct x.extra from extras_compras x join usuarios u on lower(u.email)=lower(x.email)
       where u.id=$1 and x.status='aprovada'`, [c]).catch(() => ({ rows: [] }));
     for (const x of ex) await notificar(c, { tipo: 'material', papel: 'dono', titulo: `${CATALOGO[x.extra]?.nome || 'Material'} liberado`,

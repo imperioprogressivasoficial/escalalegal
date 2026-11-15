@@ -63,7 +63,7 @@ async function telaTabela() {
     ${sems.map(w => `<div class="cartao tab-sem"><h3>Semana de ${dm(w.inicio)} a ${dm(fimSemana(w))}</h3><div class="rolagem"><table class="tabela-escala">
       <thead><tr><th></th>${DIAS.map((d, i) => { const data = soma(w.inicio, i), f = Escala.feriado(data, conta.ctx); return `<th class="${f ? 'fer' : ''}">${d}<small>${dm(data)}${f ? ' · feriado' : ''}</small></th>`; }).join('')}</tr></thead>
       <tbody>${w.linhas.map((l, f) => `<tr><td>${esc(w.funcionarios[f].nome)}</td>${l.map((c, d) => `<td class="${!w.abertos[d] ? 'fc' : COD[c] ? 'A' : c}">${esc(rotuloCel(c, w.abertos[d]))}</td>`).join('')}</tr>`).join('')}
-      <tr class="tot"><td>Trabalhando</td>${DIAS.map((_, d) => { if (!w.abertos[d]) return '<td>–</td>'; const p = w.linhas.filter(x => x[d] === 'T').length; return `<td class="${p >= w.minimo[d] ? 'ok' : 'baixo'}">${p} de ${w.minimo[d]}</td>`; }).join('')}</tr>
+      <tr class="tot"><td>Trabalhando (mínimo)</td>${DIAS.map((_, d) => { if (!w.abertos[d]) return '<td>–</td>'; const p = w.linhas.filter(x => x[d] === 'T').length; return `<td class="${p >= w.minimo[d] ? 'ok' : 'baixo'}">${p} (mín. ${w.minimo[d]})</td>`; }).join('')}</tr>
       </tbody></table></div></div>`).join('')}
     ${htmlPrejuizo(r)}`;
   ligaExportar(sems);

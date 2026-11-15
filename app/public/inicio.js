@@ -269,7 +269,7 @@ function cdDesenha() {
         conta = await api('/api/conta'); eu = await api('/api/eu'); pintaTopo();
         window.rastrear?.('CompleteRegistration');
         toast('Cadastro da empresa salvo.');
-        ir('inicio');
+        ir(equipes.length ? 'inicio' : 'comecar');
       } catch (err) {
         b.disabled = false;
         // volta para o passo do campo com problema
