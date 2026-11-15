@@ -127,8 +127,13 @@
     if (ctx?.locais?.includes(md)) return 'Feriado municipal';
     return null;
   }
-  // a unidade abre neste feriado? (sem marcar, fica fechada: todos folgam)
-  const feriadoAberto = (dataIso, ctx) => !!(ctx?.config?.abre || []).includes(dataIso);
+  // a unidade abre neste feriado? Padrão: abre se a unidade abre no domingo (config.padraoAbre); abre/fecha guardam a escolha de cada data
+  const feriadoAberto = (dataIso, ctx) => { const c = ctx?.config || {};
+    if ((c.fecha || []).includes(dataIso)) return false;
+    if ((c.abre || []).includes(dataIso)) return true;
+    return !!c.padraoAbre; };
+  // config da unidade com o padrão do feriado (abre no domingo = abre no feriado)
+  const configFeriados = (fc, abertos) => ({ ...(fc || {}), padraoAbre: !!(abertos && abertos[6]) });
   const feriadoFechado = (dataIso, ctx) => !!feriado(dataIso, ctx) && !feriadoAberto(dataIso, ctx);
   // feriados entre duas datas, com o tipo e a escolha da unidade (inclui os removidos, para poder voltar atrás)
   function feriadosEntre(de, ate, ctx) {
@@ -139,7 +144,7 @@
       if (!nome) continue;
       const md = d.slice(5), nac = (cacheFer[d.slice(0, 4)] ||= feriados(+d.slice(0, 4)))[d];
       const tipo = ex ? 'extra' : nac ? 'nacional' : base?.uf && ESTADUAIS[base.uf]?.[md] ? 'estadual' : 'municipal';
-      out.push({ data: d, nome, tipo, abre: (cfg.abre || []).includes(d), removido: !ex && (cfg.removidos || []).includes(d) });
+      out.push({ data: d, nome, tipo, abre: feriadoAberto(d, { config: cfg }), removido: !ex && (cfg.removidos || []).includes(d) });
     }
     return out;
   }
@@ -403,6 +408,6 @@
   }
 
   const api = { DIAS, SETORES, OCORRENCIAS, COD_NOME, UFS, ESTADUAIS, gerarEscala, feriado, feriados, somaDias, limiteSemanal, analisar, casaFuncao, daFuncao, hm, domingoSemanasDe, domingoSemanasPessoa, horasAberto, gruposDaUnidade,
-    feriadoAberto, feriadoFechado, feriadosEntre, diasFeriadoFechado, avaliar };
+    feriadoAberto, feriadoFechado, feriadosEntre, diasFeriadoFechado, configFeriados, avaliar };
   if (typeof module !== 'undefined') module.exports = api; else root.Escala = api;
 })(this);

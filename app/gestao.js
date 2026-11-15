@@ -4,7 +4,7 @@
 // "Conta" = a empresa (o usuário dono). Quem entra pode ser o dono, um gestor (edita tudo)
 // ou o contador (só consulta e baixa relatórios). O front manda a conta escolhida no cabeçalho x-conta.
 const crypto = require('crypto');
-const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe, diasFeriadoFechado } = require('./public/scheduler.js');
+const { gerarEscala, SETORES, OCORRENCIAS, COD_NOME, DIAS, UFS, feriado, somaDias, gruposDaUnidade, domingoSemanasDe, diasFeriadoFechado, configFeriados } = require('./public/scheduler.js');
 
 const Cadastro = require('./public/cadastro.js');
 const TIPOS = Object.keys(OCORRENCIAS);
@@ -140,7 +140,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const datas = l => [...new Set((Array.isArray(l) ? l : []).map(dataValida).filter(Boolean))].sort().slice(-400);
     const extras = (Array.isArray(v.extras) ? v.extras : []).map(x => ({ data: dataValida(x?.data), nome: limpa(x?.nome, 60) || 'Feriado' }))
       .filter(x => x.data).filter((x, i, l) => l.findIndex(y => y.data === x.data) === i).sort((a, b) => a.data < b.data ? -1 : 1).slice(-200);
-    return { abre: datas(v.abre), removidos: datas(v.removidos), extras };
+    return { abre: datas(v.abre), fecha: datas(v.fecha), removidos: datas(v.removidos), extras };
   }
   const fixosDias = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d < 7))].slice(0, 6);
   app.get('/api/equipes', L, erro(async (req, res) => {
@@ -260,7 +260,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   }
   // feriados em que a unidade fecha no período (dias contados a partir do início)
   async function feriadosFechadosDe(contaId, equipe, inicio, semanas) {
-    return diasFeriadoFechado(inicio, semanas, { ...(await ctxDe(contaId)), config: equipe.feriados_config || {} }, equipe.abertos);
+    return diasFeriadoFechado(inicio, semanas, { ...(await ctxDe(contaId)), config: configFeriados(equipe.feriados_config, equipe.abertos) }, equipe.abertos);
   }
   app.post('/api/equipes/:id/escalas', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
     const semanas = Math.max(1, Math.min(8, Math.round(+req.body?.semanas) || 4));
@@ -435,7 +435,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
         const data = somaDias(hoje, i), dow = (new Date(data + 'T12:00:00Z').getUTCDay() + 6) % 7;
         const tem = cob.has(e.id + '|' + data);
         const presentes = fe.filter(f => (cel.get(f.id + '|' + data) || (tem ? '' : null)) === 'T').length;
-        return { data, dia: DIAS[dow], aberto: !!e.abertos[dow], minimo: e.minimo[dow], presentes: tem ? presentes : null, feriado: feriado(data, { ...ctx, config: e.feriados_config || {} }) };
+        return { data, dia: DIAS[dow], aberto: !!e.abertos[dow], minimo: e.minimo[dow], presentes: tem ? presentes : null, feriado: feriado(data, { ...ctx, config: configFeriados(e.feriados_config, e.abertos) }) };
       });
       const st = f => cel.get(f.id + '|' + hoje) || mapaOc.get(f.id + '|' + hoje) || null;
       const semEscala = [7, 8, 9, 10, 11, 12, 13].filter(i => !cob.has(e.id + '|' + somaDias(hoje, i))).length;
@@ -478,8 +478,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const ctx = await ctxDe(contaId);
     const dias = []; for (let d = de; d <= ate; d = somaDias(d, 1)) dias.push({ data: d, dia: DIAS[(new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7], feriado: feriado(d, ctx) });
     // feriado trabalhado conta pelos feriados de cada unidade (a unidade pode ter tirado ou somado um feriado)
-    const { rows: cfgs } = await q('select id, feriados_config from equipes where usuario_id=$1', [contaId]);
-    const ctxEq = Object.fromEntries(cfgs.map(e => [e.id, { ...ctx, config: e.feriados_config || {} }]));
+    const { rows: cfgs } = await q('select id, feriados_config, abertos from equipes where usuario_id=$1', [contaId]);
+    const ctxEq = Object.fromEntries(cfgs.map(e => [e.id, { ...ctx, config: configFeriados(e.feriados_config, e.abertos) }]));
     const linhas = funcs.map(f => {
       const c = { trabalhados: 0, folgas: 0, domingos: 0, feriados: 0, faltas: 0, atestado: 0, ferias: 0, afastamento: 0, folga_extra: 0, sem_escala: 0 };
       const codigos = dias.map(({ data, dia }) => {
@@ -778,7 +778,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     const hoje = hojeBR(), dow = (new Date(hoje + 'T12:00:00Z').getUTCDay() + 6) % 7, de = somaDias(hoje, -dow), ate = somaDias(de, 27);
     const { rows: fs } = await q('select id, nome, cargo from funcionarios where equipe_id=$1 and ativo order by nome', [e.id]);
     const { cel } = await vigentes(e.usuario_id, de, ate, e.id);
-    const ctx = { ...(await ctxDe(e.usuario_id)), config: e.feriados_config || {} };
+    const ctx = { ...(await ctxDe(e.usuario_id)), config: configFeriados(e.feriados_config, e.abertos) };
     const dias = Array.from({ length: 28 }, (_, i) => { const d = somaDias(de, i); return { data: d, dia: DIAS[i % 7], aberto: !!e.abertos[i % 7], feriado: feriado(d, ctx) }; });
     return { empresa: e.empresa, equipe: e.nome, hoje, dias,
       pessoas: fs.map(f => ({ nome: f.nome, cargo: f.cargo, dias: dias.map(d => cel.get(f.id + '|' + d.data) || '') })) };

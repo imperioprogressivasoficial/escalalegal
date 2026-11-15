@@ -59,7 +59,7 @@ function toast(msg, desfazer) {
   document.body.append(t); setTimeout(() => t.remove(), desfazer ? 8000 : 3600);
 }
 // feriados da empresa (estado, cidade) + escolhas da unidade (abre, removidos, extras)
-const ctxU = () => ({...(conta?.ctx || {}), config: atual?.feriados_config || {}});
+const ctxU = () => ({...(conta?.ctx || {}), config: Escala.configFeriados(atual?.feriados_config, atual?.abertos)});
 // unidade já com escala publicada ou em uso: mudar horário ou folga de quem já trabalha pede cuidado (CLT, art. 468)
 function avisoArt468() {
   return new Promise(ok => {
@@ -1070,7 +1070,7 @@ function desenhaConfig() {
   if (!atual) return ir('comecar');
   const fc = atual.feriados_config || {};
   cfg = {abertos: [...atual.abertos], minimo: [...atual.minimo], criticas: (atual.criticas || []).map(c => ({...c, minimo: [...c.minimo]})),
-    feriados_config: {abre: [...(fc.abre || [])], removidos: [...(fc.removidos || [])], extras: (fc.extras || []).map(x => ({...x}))}};
+    feriados_config: {abre: [...(fc.abre || [])], fecha: [...(fc.fecha || [])], removidos: [...(fc.removidos || [])], extras: (fc.extras || []).map(x => ({...x}))}};
   ferMes = hojeIso().slice(0, 7);
   $('#cfSetor').innerHTML = SEG_ORDEM.map(k => `<option value="${k}">${esc(seg(k).nome)}</option>`).join('');
   $('#cfNome').value = atual.nome; $('#cfSetor').value = atual.setor; $('#cfHoras').value = +atual.horas_dia || 8;
@@ -1090,12 +1090,12 @@ let ferMes = null;
 const TIPO_FER = {nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal', extra: 'Adicionado por você'};
 function feriadosConfig() {
   const el = $('#cfFeriados'); if (!el) return;
-  const fc = cfg.feriados_config, ctx = {...conta.ctx, config: fc}, de = ferMes + '-01', ate = soma(soma(de, 32).slice(0, 7) + '-01', -1);
+  const fc = cfg.feriados_config, padrao = !!cfg.abertos[6], ctx = {...conta.ctx, config: Escala.configFeriados(fc, cfg.abertos)}, de = ferMes + '-01', ate = soma(soma(de, 32).slice(0, 7) + '-01', -1);
   const lista = Escala.feriadosEntre(de, ate, ctx), [a, m] = ferMes.split('-').map(Number);
   const diaSem = d => DIA_LONGO[(new Date(d + 'T12:00:00').getDay() + 6) % 7].toLowerCase();
   el.innerHTML = `<label style="margin-top:18px">Feriados</label>
     <div class="fer-nav"><button type="button" class="link" id="ferAnt" aria-label="Mês anterior">‹</button><b>${MES[m - 1]} de ${a}</b><button type="button" class="link" id="ferProx" aria-label="Próximo mês">›</button></div>
-    <p class="dica" style="margin-top:4px">Sem marcar, a unidade fecha no feriado e todos folgam.</p>
+    <p class="dica" style="margin-top:4px">${padrao ? 'Como a unidade abre no domingo, ela abre nos feriados. Desmarque o feriado em que fecha: nele todos folgam.' : 'Sem marcar, a unidade fecha no feriado e todos folgam.'}</p>
     <ul class="fer-lista">${lista.map(f => `<li class="${f.removido ? 'removido' : ''}"><div><b>${dm(f.data)} · ${esc(f.nome)}</b><small>${diaSem(f.data)} · ${TIPO_FER[f.tipo]}${f.removido ? ' · tratado como dia normal' : ''}</small>
       ${f.removido ? '' : `<label class="ck"><input type="checkbox" data-fer-abre="${f.data}" ${f.abre ? 'checked' : ''}> A empresa abre neste feriado</label>`}</div>
       <button type="button" class="link ${f.removido ? '' : 'perigo'}" data-fer-${f.removido ? 'volta' : 'tira'}="${f.data}">${f.removido ? 'Voltar' : 'Remover'}</button></li>`).join('') || '<li><span class="dica">Nenhum feriado neste mês.</span></li>'}</ul>
@@ -1106,7 +1106,7 @@ function feriadosConfig() {
   const tira = (l, d) => { const i = l.indexOf(d); if (i >= 0) l.splice(i, 1); };
   $('#ferAnt').onclick = () => { ferMes = soma(de, -1).slice(0, 7); feriadosConfig(); };
   $('#ferProx').onclick = () => { ferMes = soma(de, 32).slice(0, 7); feriadosConfig(); };
-  $$('[data-fer-abre]').forEach(c => c.onchange = () => { const d = c.dataset.ferAbre; tira(fc.abre, d); if (c.checked) fc.abre.push(d); feriadosConfig(); });
+  $$('[data-fer-abre]').forEach(c => c.onchange = () => { const d = c.dataset.ferAbre; fc.fecha ||= []; tira(fc.abre, d); tira(fc.fecha, d); if (c.checked !== padrao) (c.checked ? fc.abre : fc.fecha).push(d); feriadosConfig(); });
   $$('[data-fer-tira]').forEach(b => b.onclick = () => { const d = b.dataset.ferTira, ex = fc.extras.findIndex(x => x.data === d); tira(fc.abre, d);
     if (ex >= 0) fc.extras.splice(ex, 1); else fc.removidos.push(d); feriadosConfig(); });
   $$('[data-fer-volta]').forEach(b => b.onclick = () => { tira(fc.removidos, b.dataset.ferVolta); feriadosConfig(); });

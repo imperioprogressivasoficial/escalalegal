@@ -85,9 +85,9 @@ test('API: sexo do colaborador, feriados da unidade e reativar (só na própria 
 
   const eq = (await chama('/api/equipes', { method: 'POST', cookie: s1, body: { nome: 'Centro', setor: 'salao',
     feriados_config: { abre: ['2027-04-21', 'lixo'], removidos: ['2027-05-01'], extras: [{ data: '2027-03-19', nome: 'São José' }, { data: 'x' }] } } })).json;
-  assert.deepEqual(eq.feriados_config, { abre: ['2027-04-21'], removidos: ['2027-05-01'], extras: [{ data: '2027-03-19', nome: 'São José' }] });
+  assert.deepEqual(eq.feriados_config, { abre: ['2027-04-21'], fecha: [], removidos: ['2027-05-01'], extras: [{ data: '2027-03-19', nome: 'São José' }] });
   let r = await chama(`/api/equipes/${eq.id}`, { method: 'PUT', cookie: s1, body: { feriados_config: { abre: [], removidos: [], extras: [] } } });
-  assert.deepEqual(r.json.feriados_config, { abre: [], removidos: [], extras: [] });
+  assert.deepEqual(r.json.feriados_config, { abre: [], fecha: [], removidos: [], extras: [] });
   r = await chama(`/api/equipes/${eq.id}`, { method: 'PUT', cookie: s2, body: { feriados_config: { abre: ['2027-04-21'] } } });
   assert.equal(r.status, 404, 'outra empresa não mexe nos feriados');
 
@@ -118,4 +118,14 @@ test('API: sexo do colaborador, feriados da unidade e reativar (só na própria 
   assert.ok(lista.some(f => f.id === ana.id));
   const eqs = (await chama('/api/equipes', { cookie: s1 })).json;
   assert.equal(typeof eqs[0].publicada, 'boolean');
+});
+
+test('feriado: unidade que abre no domingo abre no feriado por padrão; a escolha de cada data vence', () => {
+  const Escala = require('../public/scheduler.js');
+  const d = '2026-11-20'; // Consciência Negra (nacional)
+  const todo = [1, 1, 1, 1, 1, 1, 1], semDom = [1, 1, 1, 1, 1, 1, 0];
+  assert.equal(Escala.feriadoAberto(d, { config: Escala.configFeriados({}, todo) }), true);
+  assert.equal(Escala.feriadoAberto(d, { config: Escala.configFeriados({}, semDom) }), false);
+  assert.equal(Escala.feriadoAberto(d, { config: Escala.configFeriados({ fecha: [d] }, todo) }), false);
+  assert.equal(Escala.feriadoAberto(d, { config: Escala.configFeriados({ abre: [d] }, semDom) }), true);
 });
