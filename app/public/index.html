@@ -299,14 +299,13 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
   @keyframes curva-sai{from{transform:none;filter:none;opacity:1}to{transform:perspective(1200px) rotateX(-14deg) scale(.95);transform-origin:50% 100%;filter:blur(6px);opacity:.3}}
 }
 
-.formatos-mini{margin-top:26px;max-width:560px}
-.formatos-mini>span{display:block;font-weight:700;font-size:.92rem;color:#c9d8f0;margin-bottom:10px}
-.esteira{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.esteira-trilho{display:flex;gap:8px;width:max-content;animation:esteira 26s linear infinite}
-.esteira:hover .esteira-trilho{animation-play-state:paused}
-.esteira i{display:inline-flex;align-items:center;gap:9px;flex:none;background:#fff;color:var(--tinta);border-radius:12px;padding:8px 14px 8px 9px;font:700 .9rem/1 var(--corpo);font-style:normal;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
-.esteira img{width:28px;height:28px}
-@keyframes esteira{to{transform:translateX(calc(-50% - 4px))}}
+.formatos-mini{display:flex;align-items:center;gap:14px;margin-top:26px}
+.bolinhas{display:flex}
+.bolinhas i{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#fff;border:3px solid #0d2a5c;margin-left:-12px;box-shadow:0 8px 18px -8px rgba(0,0,0,.6)}
+.bolinhas i:first-child{margin-left:0}
+.bolinhas img{width:26px;height:26px}
+.fm-txt{font-size:.88rem;line-height:1.35;color:#c9d8f0}
+.fm-txt b{display:block;color:#fff;font-size:.98rem}
 .formatos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
 .formato{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px;transition:transform .3s,box-shadow .3s}
 .formato:hover{transform:translateY(-4px);box-shadow:0 22px 40px -24px rgba(12,27,51,.35)}
@@ -380,7 +379,7 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <a class="btn" href="#preco" data-comprar>Quero a Sua Escala 5x2 <small>R$&nbsp;97</small></a>
         <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
       </div>
-      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><div class="esteira" aria-label="WhatsApp, PDF, Excel, Google Planilhas, imagem, CSV, link da equipe e impressão"><div class="esteira-trilho"><span class="grupo" style="display:contents"><i><img src="img/formatos/whatsapp.svg?v=20261115b" alt="" width="28" height="28">WhatsApp</i><i><img src="img/formatos/pdf.svg?v=20261115b" alt="" width="28" height="28">PDF</i><i><img src="img/formatos/excel.svg?v=20261115b" alt="" width="28" height="28">Excel</i><i><img src="img/formatos/sheets.svg?v=20261115b" alt="" width="28" height="28">Google Planilhas</i><i><img src="img/formatos/jpg.svg?v=20261115b" alt="" width="28" height="28">Imagem</i><i><img src="img/formatos/csv.svg?v=20261115b" alt="" width="28" height="28">CSV</i><i><img src="img/formatos/link.svg?v=20261115b" alt="" width="28" height="28">Link da equipe</i><i><img src="img/formatos/imprimir.svg?v=20261115b" alt="" width="28" height="28">Imprimir</i></span><span style="display:contents" aria-hidden="true"><i><img src="img/formatos/whatsapp.svg?v=20261115b" alt="" width="28" height="28">WhatsApp</i><i><img src="img/formatos/pdf.svg?v=20261115b" alt="" width="28" height="28">PDF</i><i><img src="img/formatos/excel.svg?v=20261115b" alt="" width="28" height="28">Excel</i><i><img src="img/formatos/sheets.svg?v=20261115b" alt="" width="28" height="28">Google Planilhas</i><i><img src="img/formatos/jpg.svg?v=20261115b" alt="" width="28" height="28">Imagem</i><i><img src="img/formatos/csv.svg?v=20261115b" alt="" width="28" height="28">CSV</i><i><img src="img/formatos/link.svg?v=20261115b" alt="" width="28" height="28">Link da equipe</i><i><img src="img/formatos/imprimir.svg?v=20261115b" alt="" width="28" height="28">Imprimir</i></span></div></div></div>
+      <div class="formatos-mini" data-e style="--d:4"><span class="bolinhas"><i title="WhatsApp"><img src="img/formatos/whatsapp.svg?v=20261115b" alt="WhatsApp" width="30" height="30"></i><i title="PDF"><img src="img/formatos/pdf.svg?v=20261115b" alt="PDF" width="30" height="30"></i><i title="Excel"><img src="img/formatos/excel.svg?v=20261115b" alt="Excel" width="30" height="30"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg?v=20261115b" alt="Google Planilhas" width="30" height="30"></i><i title="Imagem"><img src="img/formatos/jpg.svg?v=20261115b" alt="Imagem" width="30" height="30"></i></span><span class="fm-txt"><b>Baixe ou envie em + de 10 formatos</b>WhatsApp, PDF, Excel, Planilhas e mais</span></div>
       <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único e vitalício</span><span>7 dias de garantia</span></div>
     </div>
     <div class="vitrine" data-e style="--d:2">
