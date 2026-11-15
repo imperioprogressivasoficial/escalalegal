@@ -68,7 +68,7 @@ function telaAulas() {
     <p class="sub">Como usar o app e a nova lei, em vídeos curtos com legenda e teste rápido.</p>
     <div class="aulas-prog"><span><b>${feitas}</b> de ${L.length + 1} assistidas</span><i style="--p:${Math.round(feitas / (L.length + 1) * 100)}%"></i></div>
     <div class="aulas-grade">${card('aula/app', 1, 'Vídeo · 1 min', 'Como usar o app')}${L.map((l, i) => card('aula/' + i, i + 2, 'Vídeo · com teste rápido', l.tit.replace(/<[^>]+>/g, ''))).join('')}</div>
-    <p style="margin-top:18px"><a class="link" href="/ajuda">Ajuda completa e a lei ›</a></p>`;
+    <p style="margin-top:18px"><a class="link" href="/ajuda" style="display:inline-flex;align-items:center;min-height:44px">Ajuda completa e a lei ›</a></p>`;
 }
 // Aula aberta: aulaI 0 = vídeo, aulaI k = lição k da lei.
 function telaAula() {

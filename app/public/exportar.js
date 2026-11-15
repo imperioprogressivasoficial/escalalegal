@@ -58,7 +58,7 @@ function htmlPrejuizo(r) {
     <ul class="diag" style="margin-top:8px">${r.regras.map(t => `<li><span class="ic ok">✓</span><div><span>${esc(t)}</span></div></li>`).join('')}</ul>
     ${r.feriados.length ? `<div class="nota" style="margin-top:12px"><b>Feriados no período:</b> ${r.feriados.map(f => `${dm(f.data)} (${esc(f.nome)})`).join(', ')}. ${r.ferTrab ? `São ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado: pague em dobro ou dê outra folga.` : 'Ninguém trabalha nesses dias.'}</div>` : ''}
     <h3 style="margin:16px 0 8px">Cada colaborador no período</h3>
-    <div class="rolagem"><table class="tab"><thead><tr><th>Colaborador</th><th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th></tr></thead>
+    <div class="rolagem" tabindex="0" role="region" aria-label="Horas e folgas por colaborador"><table class="tab"><thead><tr><th>Colaborador</th><th class="n">Trabalhou</th><th class="n">Folgas</th><th class="n">Domingos</th><th class="n">Feriados</th></tr></thead>
     <tbody>${r.pessoas.map(p => `<tr><td><b>${esc(p.nome)}</b></td><td class="n">${p.dias}</td><td class="n">${p.folgas}</td><td class="n">${p.dom}</td><td class="n">${p.fer ? `<b style="color:#8a5a00">${p.fer}</b>` : 0}</td></tr>`).join('')}</tbody></table></div>
   </div>`;
 }

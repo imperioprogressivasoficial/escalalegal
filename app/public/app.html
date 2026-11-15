@@ -127,12 +127,12 @@ main.larga{max-width:1180px}
 .dia-tit{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:4px 0 10px}
 .dia-tit h2{font-size:1.3rem}
 .dia-tit span{font-weight:700;font-size:.9rem;white-space:nowrap}
-.dia-tit .ok{color:var(--verde-tx)}.dia-tit .baixo{color:var(--vermelho-tx)}
+.dia-tit .ok{color:var(--verde-esc-tx)}.dia-tit .baixo{color:var(--vermelho-tx)}
 .grupo{background:var(--sup);border:1px solid var(--linha);border-radius:16px;padding:14px;margin-bottom:10px}
 .grupo h3{font:700 .85rem var(--corpo);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .grupo h3 em{font-style:normal;border-radius:99px;padding:1px 9px;font-size:.85rem}
 .grupo.T h3{color:var(--azul-tx)}.grupo.T h3 em{background:var(--azul-claro)}
-.grupo.F h3{color:#6b5300}.grupo.F h3 em{background:var(--amarelo)}
+.grupo.F h3{color:var(--amarelo-tx)}.grupo.F h3 em{background:var(--amarelo)}
 .grupo.A h3{color:var(--roxo-tx)}.grupo.A h3 em{background:var(--roxo-claro)}
 .nomes{display:flex;flex-wrap:wrap;gap:8px}
 .nome{border:0;border-radius:12px;padding:11px 14px;font-weight:700;font-size:1rem;cursor:pointer;text-align:left;line-height:1.2}
@@ -149,7 +149,7 @@ main.larga{max-width:1180px}
 .pp li{background:var(--sup);border:1px solid var(--linha);border-radius:14px;padding:12px 14px;cursor:pointer}
 .pp .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .pp b{color:var(--tinta)}
-.pp .folga{font-size:.88rem;color:#6b5300;font-weight:700}
+.pp .folga{font-size:.88rem;color:var(--amarelo-tx);font-weight:700}
 .pp .sem{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
 .pp .sem span{border-radius:8px;text-align:center;font-size:.72rem;font-weight:700;padding:6px 0;line-height:1.1}
 .c-T{background:var(--azul-claro);color:var(--azul-tx)}.c-F{background:var(--amarelo);color:#4a3a00}
@@ -340,7 +340,7 @@ video.aula-video{display:block;width:100%;aspect-ratio:16/9;border-radius:14px;b
 .passos-inst li>b{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--azul);color:#fff}
 .aviso-inst{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .aviso-inst img{border-radius:12px}.aviso-inst span{flex:1;min-width:180px}
-.btn-zap{background:#25d366;color:#fff;gap:10px}
+.btn-zap{background:var(--verde);color:#fff;gap:10px}
 .ind-valor{display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,#0b2d6b,#1351b4);color:#c9d8f0;border-radius:18px;padding:20px;font-weight:600}
 .ind-valor b{font:900 2.6rem/1.1 var(--display);color:#fff;font-stretch:86%}
 .ind-link{display:grid;grid-template-columns:1fr auto;gap:8px}
@@ -600,7 +600,7 @@ body.modo-foco .topo-in select,body.modo-foco .lateral{display:none!important}
 @media(max-width:1023.98px){
   body:not(.modo-foco) .btn-menu{display:inline-flex;align-items:center;gap:8px;margin-left:-6px;border:0;background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:0 12px 0 10px;height:42px;cursor:pointer;font-weight:700;font-size:.9rem;flex:none}
   .btn-menu:active{background:rgba(255,255,255,.16)}
-  .btn-menu-ico{display:grid;gap:4px;width:18px}.btn-menu-ico i{display:block;height:2px;border-radius:2px;background:var(--sup)}.btn-menu-ico i:nth-child(2){width:70%}
+  .btn-menu-ico{display:grid;gap:4px;width:18px}.btn-menu-ico i{display:block;height:2px;border-radius:2px;background:#fff}.btn-menu-ico i:nth-child(2){width:70%}
   body:not(.modo-foco) #telaApp .lateral{display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:60;width:min(86vw,330px);background:var(--sup);padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;box-shadow:24px 0 60px -20px rgba(2,10,30,.45);transform:translateX(-104%);visibility:hidden;transition:transform .34s cubic-bezier(.22,1,.36,1),visibility 0s linear .34s;will-change:transform}
   body.gaveta:not(.modo-foco) #telaApp .lateral{transform:none;visibility:visible;transition:transform .34s cubic-bezier(.22,1,.36,1)}
   #telaApp .lateral.arrastando{transition:none!important}
@@ -773,9 +773,9 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-item{flex:0 0 100%;scroll-snap-align:start;display:block;line-height:0}
 .bn-item img{display:block;width:100%;height:auto}
 .bn-ctl{display:flex;justify-content:flex-end;align-items:center;gap:2px;margin-top:6px;color:var(--mut);font:700 .78rem var(--corpo)}
-.nf .bn-ctl{color:#93a3bd}
+.nf .bn-ctl{color:var(--mut)}
 .bn-ctl span{margin-right:2px;min-width:2.4em;text-align:center}
-.bn-ctl button{width:30px;height:30px;border:0;border-radius:50%;background:none;color:inherit;font-size:1.15rem;line-height:1;cursor:pointer}
+.bn-ctl button{width:44px;height:44px;border:0;border-radius:50%;background:none;color:inherit;font-size:1.15rem;line-height:1;cursor:pointer}
 .bn-ctl button:hover{background:rgba(127,140,160,.18)}
 .bn-ctl .bn-x{font-size:1.05rem;margin-left:4px}
 /* menu em grupos (sanfona) */
@@ -1043,6 +1043,18 @@ body.ini-escuro{background:var(--nf-bg)}
 }
 /* botão "Ajuda" do suporte (suporte.js): no celular não cobre o fim da tela nem os botões do quiz */
 @media(max-width:760px){main{padding-bottom:calc(84px + env(safe-area-inset-bottom))}main.quiz-pg{padding-bottom:calc(30px + env(safe-area-inset-bottom))}body.modo-foco .sp-fab{display:none}}
+/* toques de no mínimo 44-48px (passada de simplicidade) */
+body:not(.modo-foco) .btn-menu{height:46px}.btn-sino{width:46px;height:46px}
+.esc-modos button{min-height:44px}
+.nome{min-height:46px}
+.voltar{min-height:44px}
+.nf-ver,#aulaVolta,#btnExcluir{min-height:44px;display:inline-flex;align-items:center}
+.setor-chips button,.chip-sug,.ag-legenda button,#agHoje{min-height:44px}
+.tabela-escala td[data-cel]{height:46px}
+.dias-conf .tg{min-height:46px}
+.ag-legenda button{color:color-mix(in srgb,var(--forte) 72%,#000)}
+:root[data-tema="escuro"] .ag-cab em{color:var(--amarelo-tx)}
+@media(prefers-color-scheme:dark){:root[data-tema="auto"] .ag-cab em{color:var(--amarelo-tx)}}
 </style>
 </head>
 <body>
@@ -1197,8 +1209,8 @@ body.ini-escuro{background:var(--nf-bg)}
       <div class="cartao" id="fechStatus" style="margin-bottom:12px"></div>
       <div class="acoes" style="margin:0 0 14px"><button class="btn azul" id="btnCsv">Baixar planilha</button><button class="btn sec" id="btnImpFech">Imprimir</button></div>
       <div id="fechAvisos"></div>
-      <div class="cartao rolagem" id="fechResumo" style="margin-bottom:12px"></div>
-      <div class="cartao"><h3 style="margin-bottom:10px">Dia a dia</h3><div class="rolagem" id="fechEspelho"></div>
+      <div class="cartao rolagem" id="fechResumo" style="margin-bottom:12px" tabindex="0" role="region" aria-label="Resumo da competência"></div>
+      <div class="cartao"><h3 style="margin-bottom:10px">Dia a dia</h3><div class="rolagem" id="fechEspelho" tabindex="0" role="region" aria-label="Dia a dia da competência"></div>
         <div class="legenda"><span><i class="c-T"></i>T trabalha</span><span><i class="c-F"></i>F folga</span><span><i class="c-V"></i>FÉ férias</span><span><i class="c-M"></i>AT atestado</span><span><i class="c-X"></i>FA falta</span><span><i class="c-L"></i>AF afastamento</span><span><i class="c-E"></i>FX folga extra</span></div>
       </div>
     </section>
@@ -1329,15 +1341,15 @@ body.ini-escuro{background:var(--nf-bg)}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=35"></script>
-<script src="/cadastro.js?v=35"></script>
-<script src="/ooxml.js?v=35"></script>
-<script src="/exportar.js?v=35"></script>
-<script src="/aula.js?v=35"></script>
-<script src="/extras.js?v=35"></script>
-<script src="/inicio.js?v=35"></script>
-<script src="/extras-materiais.js?v=35"></script>
-<script src="/app.js?v=35"></script>
+<script src="/scheduler.js?v=36"></script>
+<script src="/cadastro.js?v=36"></script>
+<script src="/ooxml.js?v=36"></script>
+<script src="/exportar.js?v=36"></script>
+<script src="/aula.js?v=36"></script>
+<script src="/extras.js?v=36"></script>
+<script src="/inicio.js?v=36"></script>
+<script src="/extras-materiais.js?v=36"></script>
+<script src="/app.js?v=36"></script>
 <script src="/suporte.js?v=1" defer></script>
 </body>
 </html>

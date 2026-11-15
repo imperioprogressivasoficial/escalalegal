@@ -47,7 +47,7 @@ async function telaIndique() {
     <a class="btn cheio btn-zap" style="margin-top:16px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg?v=20261115b" alt="" width="26" height="26">Mandar no WhatsApp</a>
     ${navigator.share ? '<button class="btn cheio sec" id="indOutros" style="margin-top:8px">Mandar de outro jeito</button>' : ''}
     <label style="margin-top:18px">Ou copie o link</label>
-    <div class="ind-link"><input readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn pq sec" id="indCopiar">Copiar</button></div>`;
+    <div class="ind-link"><input readonly aria-label="Seu link de indicação" value="${esc(r.link)}" onclick="this.select()"><button class="btn pq sec" id="indCopiar">Copiar</button></div>`;
   $('#indCopiar').onclick = () => copiar(r.link, 'Link copiado.');
   if ($('#indOutros')) $('#indOutros').onclick = () => navigator.share({text: msg}).catch(() => {});
 }
