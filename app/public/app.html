@@ -748,7 +748,7 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .bn-pontos button{width:28px;height:28px;border:0;background:none;cursor:pointer;display:grid;place-items:center;padding:0}
 .bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
 .bn-pontos button.on::before{width:22px;background:var(--azul)}
-@media(max-width:760px){.bn-item img{aspect-ratio:1080/1240}}
+@media(max-width:760px){.bn-item img{aspect-ratio:2/1}}
 /* menu em grupos (sanfona) */
 .lateral nav{display:grid;gap:2px}
 .lat-item,.lat-g{width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px 12px;font-weight:600;color:var(--texto);cursor:pointer;font-size:.95rem;position:relative;display:block;text-decoration:none}
@@ -775,7 +775,30 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .menu-user button{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;color:var(--tinta)}
 .menu-user button:hover{background:var(--cinza)}.menu-user .mu-sair{color:var(--vermelho)}
 @media(min-width:1024px){body:not(.modo-foco) .topo-user{display:block}.topo .quem{margin-left:auto}#selUnidade+.quem.hide+.topo-user,.topo-in>.topo-user{margin-left:0}}
-@media(max-width:760px){.bn-item img{aspect-ratio:auto;height:min(46vh,calc(100vw - 32px));object-fit:cover;object-position:top}}
+/* notificações (sino) */
+.topo-sino{position:relative;flex:none}
+body.modo-foco .topo-sino{display:none}
+@media(max-width:760px){.topo-in{gap:8px}.topo .marca{font-size:1.08rem}.topo select{max-width:38%;min-width:0;padding:8px 26px 8px 10px;text-overflow:ellipsis}.topo .quem{max-width:36%;min-width:0}}
+.btn-sino{position:relative;width:42px;height:42px;border-radius:12px;border:0;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;display:grid;place-items:center}
+.btn-sino:hover{background:rgba(255,255,255,.16)}
+.btn-sino svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sino-n{position:absolute;top:4px;right:3px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--amarelo);color:#3b2f00;font:800 .7rem/18px var(--corpo);text-align:center;box-shadow:0 0 0 2px var(--azul-esc);animation:surge .35s both}
+.painel-not{position:absolute;right:0;top:calc(100% + 10px);width:380px;max-height:min(70vh,560px);display:flex;flex-direction:column;background:#fff;color:var(--texto);border-radius:16px;box-shadow:0 24px 60px -18px rgba(2,10,30,.5);z-index:45;overflow:hidden;animation:sobe .2s ease-out}
+.painel-not header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #eef1f5}
+.painel-not h2{font-size:1.1rem}.painel-not header .link{font-size:.85rem}
+.not-lista{overflow-y:auto;overscroll-behavior:contain}
+.not-item{display:grid;grid-template-columns:10px 1fr;gap:4px 10px;width:100%;text-align:left;border:0;border-bottom:1px solid #f1f3f7;background:#fff;padding:12px 16px;cursor:pointer}
+.not-item:hover{background:#f7f9fc}
+.not-item i{grid-row:1/4;width:8px;height:8px;border-radius:50%;margin-top:6px;background:transparent}
+.not-item.nova{background:#f5f8fe}.not-item.nova i{background:var(--azul)}
+.not-item b{color:var(--tinta);font-size:.95rem;line-height:1.3}.not-item span{font-size:.86rem;color:var(--texto)}.not-item small{font-size:.76rem;color:var(--mut)}
+.not-vazio{padding:28px 16px;text-align:center;color:var(--mut)}
+.not-fundo{display:none}
+@media(max-width:760px){
+  .painel-not{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-height:78vh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom);animation:folhaSobe .25s cubic-bezier(.2,.8,.2,1)}
+  .not-fundo:not([hidden]){display:block;position:fixed;inset:0;background:rgba(7,29,65,.5);z-index:44;animation:vistaEntra .2s both}
+}
+@keyframes folhaSobe{from{transform:translateY(100%)}to{transform:none}}
 /* ===== animações: só transform/opacity, curtas; nada com movimento reduzido ===== */
 @keyframes vistaEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes sobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -910,6 +933,13 @@ body.ini-escuro{background:#0b1220}
     <span class="marca">SuaEscala<span>5x2</span></span>
     <select id="selUnidade" class="hide" aria-label="Unidade"></select>
     <span class="quem" id="topoQuem"></span>
+    <div class="topo-sino"><button type="button" id="btnSino" class="btn-sino" aria-haspopup="dialog" aria-expanded="false" aria-controls="painelNot" aria-label="Notificações">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v3.6L4.3 15.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.6L18 12.6V9a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
+        <span class="sino-n hide" id="sinoN"></span></button>
+      <div class="not-fundo" id="notFundo" hidden></div>
+      <section class="painel-not" id="painelNot" role="dialog" aria-modal="false" aria-labelledby="tNot" hidden>
+        <header><h2 id="tNot">Notificações</h2><button type="button" class="link" id="notTodas">Marcar todas como lidas</button></header>
+        <div class="not-lista" id="notLista"></div></section></div>
     <div class="topo-user"><button type="button" id="btnUser" class="btn-user" aria-haspopup="menu" aria-expanded="false" aria-controls="menuUser" aria-label="Sua conta"></button>
       <div class="menu-user" id="menuUser" role="menu" hidden><p><b id="muNome"></b><span id="muEmail"></span></p>
         <button type="button" role="menuitem" data-ir="conta">Minha conta</button><button type="button" role="menuitem" class="mu-sair" data-sair>Sair</button></div></div>
@@ -1129,13 +1159,13 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=22"></script>
-<script src="/cadastro.js?v=22"></script>
-<script src="/exportar.js?v=22"></script>
-<script src="/aula.js?v=22"></script>
-<script src="/extras.js?v=22"></script>
-<script src="/inicio.js?v=22"></script>
-<script src="/extras-materiais.js?v=22"></script>
-<script src="/app.js?v=22"></script>
+<script src="/scheduler.js?v=23"></script>
+<script src="/cadastro.js?v=23"></script>
+<script src="/exportar.js?v=23"></script>
+<script src="/aula.js?v=23"></script>
+<script src="/extras.js?v=23"></script>
+<script src="/inicio.js?v=23"></script>
+<script src="/extras-materiais.js?v=23"></script>
+<script src="/app.js?v=23"></script>
 </body>
 </html>

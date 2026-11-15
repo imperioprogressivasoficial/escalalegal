@@ -134,6 +134,7 @@ async function iniciar() {
   pintaLateral();
   await carregaEquipes();
   rota();
+  carregaNotificacoes();
 }
 async function carregaEquipes() {
   if (ehModoContador()) { equipes = []; atual = null; return pintaTopo(); }

@@ -334,8 +334,8 @@ async function telaInicio() {
   ].filter(Boolean);
   const carrosselImg = `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
       <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
-        <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=1" width="1080" height="1240">
-        <img src="/img/banners/${b.k}-pc.webp?v=1" alt="${esc(b.alt)}" width="1920" height="560" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
+        <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=2" width="1200" height="600">
+        <img src="/img/banners/${b.k}-pc.webp?v=2" alt="${esc(b.alt)}" width="1920" height="560" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
       <div class="bn-pontos" id="bnPontos">${bannersImg.map((b, i) => `<button type="button" aria-label="Ver destaque ${i + 1} de ${bannersImg.length}" class="${i ? '' : 'on'}"></button>`).join('')}</div>
     </section>`;
   const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
@@ -691,3 +691,49 @@ function ligaCarrosselImg() {
     if (!parado && !document.hidden) vai(idx() + 1);
   }, 6000);
 }
+
+// ================= notificações (sino no topo) =================
+let notifs = { itens: [], nao_lidas: 0 };
+const quando = d => {
+  const min = Math.round((Date.now() - new Date(d)) / 6e4);
+  if (min < 1) return 'agora'; if (min < 60) return `há ${min} min`; if (min < 24 * 60) return `há ${Math.round(min / 60)} h`;
+  if (min < 48 * 60) return 'ontem'; const x = new Date(d); return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}`;
+};
+async function carregaNotificacoes() {
+  if (!conta || document.hidden) return;
+  try { notifs = await api('/api/notificacoes'); } catch { return; }
+  pintaSino();
+}
+function pintaSino() {
+  const n = notifs.nao_lidas, b = $('#sinoN');
+  b.textContent = n > 9 ? '9+' : n; b.classList.toggle('hide', !n);
+  $('#btnSino').setAttribute('aria-label', n ? `Notificações: ${n} ${n === 1 ? 'nova' : 'novas'}` : 'Notificações');
+  $('#notTodas').classList.toggle('hide', !n);
+  $('#notLista').innerHTML = notifs.itens.length ? notifs.itens.map(x => `<button type="button" class="not-item ${x.lida ? '' : 'nova'}" data-nid="${x.id}" data-link="${esc(x.link || '')}">
+      <i aria-hidden="true"></i><b>${esc(x.titulo)}</b>${x.texto ? `<span>${esc(x.texto)}</span>` : ''}<small>${quando(x.criado_em)}${x.lida ? '' : ' · nova'}</small></button>`).join('')
+    : '<p class="not-vazio">Nada por aqui ainda. Os avisos da sua escala aparecem aqui.</p>';
+}
+function abrePainelNot(abrir) {
+  const p = $('#painelNot'), f = $('#notFundo');
+  p.hidden = !abrir; f.hidden = !abrir; $('#btnSino').setAttribute('aria-expanded', String(abrir));
+  if (abrir) { carregaNotificacoes(); (p.querySelector('.not-item') || $('#notTodas')).focus({ preventScroll: true }); }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  $('#btnSino').onclick = e => { e.stopPropagation(); abrePainelNot($('#painelNot').hidden); };
+  $('#notFundo').onclick = () => abrePainelNot(false);
+  document.addEventListener('click', e => { if (!$('#painelNot').hidden && !e.target.closest('.topo-sino')) abrePainelNot(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#painelNot').hidden) { abrePainelNot(false); $('#btnSino').focus(); } });
+  $('#notTodas').onclick = async () => {
+    await api('/api/notificacoes/lidas', { method: 'POST' }).catch(() => {});
+    notifs.itens.forEach(x => x.lida = true); notifs.nao_lidas = 0; pintaSino();
+  };
+  $('#notLista').onclick = async e => {
+    const b = e.target.closest('.not-item'); if (!b) return;
+    const x = notifs.itens.find(i => i.id === +b.dataset.nid);
+    if (x && !x.lida) { x.lida = true; notifs.nao_lidas = Math.max(0, notifs.nao_lidas - 1); pintaSino(); api(`/api/notificacoes/${x.id}/lida`, { method: 'POST' }).catch(() => {}); }
+    abrePainelNot(false);
+    if (b.dataset.link) ir(b.dataset.link);
+  };
+  setInterval(carregaNotificacoes, 90e3);
+  document.addEventListener('visibilitychange', carregaNotificacoes);
+});

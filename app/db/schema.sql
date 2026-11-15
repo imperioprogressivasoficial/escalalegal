@@ -256,3 +256,19 @@ alter table extras_compras drop constraint if exists extras_compras_extra_check;
 alter table extras_compras add constraint extras_compras_extra_check check (extra in ('kit_rh', 'calculadora', 'plaquinhas'));
 alter table extras_compras drop constraint if exists extras_compras_status_check;
 alter table extras_compras add constraint extras_compras_status_check check (status in ('aprovada', 'reembolsada'));
+
+-- notificações do app (sino). papel: null = todos da conta, 'dono' = dono e gerente, 'contador'. chave evita repetir.
+create table if not exists notificacoes (
+  id serial primary key,
+  conta_id int not null references usuarios(id) on delete cascade,
+  papel text,
+  tipo text not null,
+  titulo text not null,
+  texto text,
+  link text,
+  chave text,
+  lida boolean not null default false,
+  criado_em timestamptz not null default now()
+);
+create unique index if not exists notificacoes_chave_idx on notificacoes (conta_id, chave) where chave is not null;
+create index if not exists notificacoes_conta_idx on notificacoes (conta_id, criado_em desc);

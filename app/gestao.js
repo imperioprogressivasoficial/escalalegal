@@ -36,6 +36,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
   const pago = (req, res, next) => req.conta.liberado
     ? next() : res.status(402).json({ erro: 'O acesso desta empresa ainda não foi liberado. Conclua o pagamento para gerar escalas.', checkout: CHECKOUT_URL });
   const L = [logado, naConta], LE = [logado, naConta, edita];
+  const { notificar } = require('./notificacoes.js')({ app, q, erro, L });
+  const br = d => d.split('-').reverse().slice(0, 2).join('/');
 
   const minhaEquipe = erro(async (req, res, next) => {
     const { rows } = await q('select * from equipes where id=$1 and usuario_id=$2', [+req.params.id || 0, req.conta.id]);
@@ -207,6 +209,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
     [equipe.id, inicio, semanas, JSON.stringify(fs.map(f => ({ id: f.id, nome: f.nome, cargo: f.cargo }))),
       JSON.stringify(equipe.abertos), JSON.stringify(equipe.minimo), JSON.stringify(r.escala), JSON.stringify(r.alertas), JSON.stringify(r.ajustes || [])]);
     auditar(req, `Gerou escala de ${semanas} semana(s) para ${equipe.nome} a partir de ${inicio.split('-').reverse().join('/')}`);
+    await notificar(req.conta.id, { tipo: 'escala', titulo: `Escala de ${equipe.nome} pronta`, texto: `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} a partir de ${br(inicio)}, dentro da lei.`,
+      link: 'escala', chave: `escala:${equipe.id}:${hojeBR()}` });
     return (await escalasComOcorrencias(rows))[0];
   }
   app.post('/api/equipes/:id/escalas', LE, pago, minhaEquipe, limite(30), erro(async (req, res) => {
@@ -280,6 +284,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       await client.query('update escalas set dados=$1 where id=$2', [JSON.stringify(d), esc.id]);
       await client.query('commit');
       auditar(req, `Ajustou a escala de ${esc.equipe}: ${esc.funcionarios[funcionario]?.nome} ${novo === 'F' ? 'folga' : 'trabalha'} em ${data.split('-').reverse().join('/')}`);
+      if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'troca', papel: 'dono', titulo: `${req.u.nome} trocou uma folga`,
+        texto: `${esc.funcionarios[funcionario]?.nome} ${novo === 'F' ? 'folga' : 'trabalha'} em ${br(data)} (${esc.equipe}).`, link: 'escala' });
       res.json({ ok: true, dados: (await escalasComOcorrencias([{ ...esc, dados: d }]))[0].dados });
     } catch (e) { await client.query('rollback').catch(() => {}); throw e; } finally { client.release(); }
   }));
@@ -323,6 +329,8 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       values ($1,$2,$3,$4,$5,$6,$7) returning *`, [fr[0].id, tipo, inicio, fim, horas, limpa(b.obs, 300) || null, req.u.id]);
     const periodo = inicio === fim ? inicio.split('-').reverse().join('/') : `${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`;
     auditar(req, `Lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}${horas ? ` (${horas > 0 ? '+' : ''}${horas}h)` : ''} para ${fr[0].nome}: ${periodo}`);
+    if (req.conta.papel === 'gestor') await notificar(req.conta.id, { tipo: 'ocorrencia', papel: 'dono', titulo: `${req.u.nome} lançou ${OCORRENCIAS[tipo].nome.toLowerCase()}`,
+      texto: `${fr[0].nome}: ${periodo}.`, link: 'ocorrencias' });
     res.json(rows[0]);
   }));
   app.delete('/api/ocorrencias/:oid', LE, erro(async (req, res) => {
@@ -504,6 +512,7 @@ module.exports = function gestao({ app, q, pool, erro, limpa, logado, limite, LI
       [req.conta.id, mes, req.u.id, JSON.stringify(f)]);
     if (!rowCount) return res.status(409).json({ erro: `O mês ${mesBR(mes)} já está fechado.` });
     auditar(req, `Fechou o mês ${mesBR(mes)} e enviou ao contador`);
+    await notificar(req.conta.id, { tipo: 'fechado', papel: 'contador', titulo: `Mês ${mesBR(mes)} fechado`, texto: `${req.conta.empresa || req.u.nome}: dias trabalhados, faltas e feriados prontos para a folha.`, link: 'fechamento', chave: `fechado:${mes}` });
     const { rows: conts } = await q(`select u.email, u.nome from membros m join usuarios u on u.id=m.usuario_id where m.conta_id=$1 and m.papel='contador'`, [req.conta.id]);
     const empresa = req.conta.empresa || req.u.nome;
     for (const c of conts) {
