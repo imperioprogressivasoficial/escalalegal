@@ -55,7 +55,7 @@ function licoes() {
 function telaAulas() {
   const L = licoes();
   const card = (ir, n, sub, tit) => `<button type="button" class="aula-card" data-ir="${ir}" aria-label="Aula ${n}: ${esc(tit)}"><img src="/img/capas/aula-${String(n).padStart(2, '0')}.webp?v=1" alt="" width="960" height="540" loading="lazy" decoding="async"><small>${sub}</small></button>`;
-  $('#v-aula').innerHTML = `<button class="voltar" data-ir="mais">‹ Mais</button><h1>Aulas e ajuda</h1>
+  $('#v-aula').innerHTML = `<h1>Aulas</h1>
     <p class="sub">O vídeo de como usar o app e a nova lei em aulas de 1 minuto, com teste rápido.</p>
     <div class="aulas-grade">${card('aula/app', 1, 'Vídeo · 1 min', 'Como usar o app')}${L.map((l, i) => card('aula/' + i, i + 2, '1 min · com teste rápido', l.tit.replace(/<[^>]+>/g, ''))).join('')}</div>
     <p style="margin-top:18px"><a class="link" href="/ajuda">Ajuda completa e a lei ›</a></p>`;

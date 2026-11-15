@@ -172,9 +172,9 @@ document.addEventListener('click', e => {
 // endereços antigos (links salvos, avisos, e-mails) -> os de agora
 const ALIAS = { resultado: 'escala', personalizar: 'escala', tabela: 'escala/mes', ocorrencias: 'colaboradores/ausencias', pessoas: 'colaboradores',
   equipe: 'colaboradores', 'equipe/faltas': 'colaboradores/ausencias', mes: 'fechamento', 'mes/contador': 'fechamento/contabilidade', acessos: 'fechamento/contabilidade',
-  loja: 'funcionamento', lojas: 'unidades' };
+  loja: 'funcionamento', lojas: 'unidades', mais: 'configuracoes' };
 // rota -> seção da página
-const VISTA = { colaboradores: x => x === 'ausencias' ? 'ocorrencias' : 'pessoas', fechamento: x => x === 'contabilidade' ? 'acessos' : 'fechamento' };
+const VISTA = { configuracoes: () => 'mais', colaboradores: x => x === 'ausencias' ? 'ocorrencias' : 'pessoas', fechamento: x => x === 'contabilidade' ? 'acessos' : 'fechamento' };
 async function rota() {
   if (!conta) return;
   let h = location.hash.slice(1) || '';
@@ -182,7 +182,7 @@ async function rota() {
   if (al) { h = ALIAS[h] || al; history.replaceState(null, '', '#' + h); }
   let [v, extra] = h.split('/');
   const mc = ehModoContador(), dono = conta.papel === 'dono', cont = conta.papel === 'contador';
-  if (mc && !['contador', 'conta', 'mais', 'aula', 'instalar', 'indique', 'materiais', 'unidades'].includes(v)) v = 'contador';
+  if (mc && !['contador', 'conta', 'configuracoes', 'aula', 'instalar', 'materiais', 'unidades'].includes(v)) v = 'contador';
   if (!v) v = cont ? 'fechamento' : 'inicio';
   // dono sem unidade: primeiro o cadastro completo da empresa, depois o quiz da escala
   if (!mc && dono && !equipes.length && !conta.cadastro_ok && !['comecar', 'cadastro', 'conta'].includes(v)) v = 'cadastro';
@@ -196,7 +196,7 @@ async function rota() {
   fechaGaveta();
   ['cadastro', 'comecar'].forEach(k => { if (k !== v) $('#v-' + k).innerHTML = ''; }); // ids do quiz não se repetem
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
-  pintaLateral(); marcaLateral(v);
+  pintaLateral(); marcaLateral(v, extra);
   pintaAbas(v, extra);
   $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'inicio'].includes(v) || (v === 'escala' && ['mes', 'semana', 'agenda'].includes(extra)));
   $('#principal').classList.toggle('quiz-pg', foco);
@@ -216,7 +216,7 @@ async function rota() {
     else if (v === 'materiais') await renderizarMateriais($('#v-materiais'));
     else if (v === 'instalar') telaInstalar();
     else if (v === 'indique') await telaIndique();
-    else if (v === 'mais') telaMais();
+    else if (v === 'configuracoes') telaConfig();
     else if (v === 'unidades') telaUnidades();
     else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'contador') await telaContador();
@@ -414,10 +414,10 @@ function wizDesenha() {
     ? '<p class="q-cancelar"><button class="link" id="qSugestao" type="button">Usar a sugestão para as outras funções</button></p>' : '';
   if (cheio.includes(':')) etapa = `Ajuste ${ajuste.indexOf(cheio) + 1} de ${ajuste.length} · ${etapa}`;
   $('#v-comecar').innerHTML = quizMoldura({etapa, num, total, minutos: `~${Math.max(1, Math.round(restam * 12 / 60))} min`, corpo, botao, botaoDesligado: desl, resumo: wizResumo(),
-    rodapeExtra: (wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="mais">Cancelar</button></p>' : '') + pular});
+    rodapeExtra: (wz.soUnidade && wz.i === 0 ? '<p class="q-cancelar"><button class="link" data-ir="unidades">Cancelar</button></p>' : '') + pular});
   const prox = () => { quizDir = 1; if (wz.i >= perguntas().length - 1) return wizGerar(); wz.i++; wizDesenha(); };
   const erro = m => { $('#wzErro').textContent = m; };
-  $('#qVolta').onclick = () => { quizDir = -1; if (wz.i === 0) return ir(wz.soUnidade ? 'mais' : 'inicio'); wz.i--; wizDesenha(); };
+  $('#qVolta').onclick = () => { quizDir = -1; if (wz.i === 0) return ir(wz.soUnidade ? 'unidades' : 'inicio'); wz.i--; wizDesenha(); };
   const ok = fn => { const b = $('#qOk'); if (b) b.onclick = fn; const t = $('#qTxt'); if (t) { if (matchMedia('(min-width: 700px)').matches) t.focus(); t.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; } };
   if ($('#qSugestao')) $('#qSugestao').onclick = () => {
     if (id === 'jornada' && jornadaDe(f).bloqueia.length) return erro('Ajuste o horário desta função antes.');
@@ -861,25 +861,19 @@ async function sair() {
 }
 
 // ================= mais =================
-function telaMais() {
+function telaConfig() {
   const mc = ehModoContador(), dono = conta.papel === 'dono', ed = podeEditar();
   const item = (ir, t, d) => `<li><button data-ir="${ir}"><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
   let h = '<ul class="menu">';
-  if (mc) h += item('contador', 'Suas empresas', 'Clientes que liberaram o acesso');
   if (!mc && ed) h += item('funcionamento', 'Funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · dias e mínimo por dia` : 'Dias, horário e mínimo por dia');
   h += item('unidades', 'Unidades e empresas', mc ? 'Trocar de empresa' : `${plural(equipes.length, 'unidade', 'unidades')} · trocar, criar ou cadastrar outra empresa`);
   if (dono) h += item('empresa', 'Dados da empresa', 'CNPJ, endereço, feriados e histórico');
   h += '</ul><ul class="menu">';
-  h += item('aula', 'Aulas e ajuda', 'Vídeo do app e a nova lei em aulas curtas');
-  h += item('materiais', 'Seus materiais', 'Kit RH, Calculadora e Plaquinhas');
-  h += item('indique', 'Indique para outra empresa', 'Envie o link para outros empresários');
+  h += item('conta', 'Minha conta e foto de perfil', esc(eu.email));
   if (!naTelaInicial()) h += item('instalar', 'Colocar na tela inicial', 'Abre como aplicativo no celular');
-  h += '</ul><ul class="menu">';
-  h += item('conta', 'Minha conta', esc(eu.email));
-  h += '<li><button id="mSair" class="m-sair"><span>Sair do app</span><span class="seta">›</span></button></li></ul>';
-  $('#maisTit').textContent = 'Mais';
+  h += '</ul>';
+  $('#maisTit').textContent = 'Configurações';
   $('#maisCorpo').innerHTML = h;
-  $('#mSair').onclick = sair;
 }
 
 // ================= funcionamento =================

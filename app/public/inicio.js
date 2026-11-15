@@ -399,34 +399,62 @@ window.marcaEnviada = () => {
 // O mesmo #lateral é a barra fixa no computador e, abaixo de 1024px, a gaveta que desliza da esquerda.
 // Cinco itens, iguais nos dois: Início · Escala · Colaboradores · Fechamento · Mais.
 function itensMenu() {
-  if (ehModoContador()) return [['contador', 'Suas empresas'], ['mais', 'Mais']];
-  if (conta.papel === 'contador') return [['fechamento', 'Fechamento'], ['escala', 'Escala'], ['colaboradores', 'Colaboradores'], ['mais', 'Mais']];
-  return [['inicio', 'Início'], ['escala', 'Escala'], ['colaboradores', 'Colaboradores'], ['fechamento', 'Fechamento'], ['mais', 'Mais']];
+  const mc = ehModoContador(), cont = conta.papel === 'contador', dono = conta.papel === 'dono', ed = podeEditar();
+  // grupo: [rota principal, título, subitens [[rota, título]]]
+  const escala = ['escala', 'Escala', [['escala/semana', 'Semana'], ['escala', 'Dia'], ['escala/pessoa', 'Por colaborador'], ['escala/mes', 'Mês'], ['escala/agenda', 'Agenda'], ['escala/publicar', 'Publicar escala']]];
+  const colab = ['colaboradores', 'Colaboradores', [['colaboradores', 'Lista'], ['colaboradores/ausencias', 'Ausências e férias']]];
+  const fech = ['fechamento', 'Fechamento', [['fechamento', 'Fechar competência'], ...(dono ? [['fechamento/contabilidade', 'Acesso da contabilidade'], ['empresa/historico', 'Histórico']] : [])]];
+  const config = ['configuracoes', 'Configurações', [...(!mc && ed ? [['funcionamento', 'Funcionamento']] : []), ['unidades', 'Unidades e empresas'], ...(dono ? [['empresa', 'Dados da empresa']] : []),
+    ['conta', 'Minha conta'], ['instalar', 'Tela inicial']]];
+  const principal = mc ? [['contador', 'Suas empresas']] : cont ? [fech, escala, colab] : [['inicio', 'Início'], escala, colab, fech];
+  const recursos = [['aula', 'Aulas'], ['materiais', 'Seus materiais'], ...(mc || cont ? [] : [['indique', 'Indique para empresários']])];
+  return { principal, recursos, config };
 }
+const gruposAbertos = () => { try { return new Set(JSON.parse(ler('menuAberto') || '[]')); } catch { return new Set(); } };
 function pintaLateral() {
   const el = $('#lateral'); if (!el) return;
-  const mc = ehModoContador();
+  const mc = ehModoContador(), { principal, recursos, config } = itensMenu(), abertos = gruposAbertos();
   const ini = (eu.nome || eu.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  const bt = ([r, t], cls = '') => `<button type="button" class="lat-item ${cls}" data-ir="${r}" data-lat="${r}">${t}</button>`;
+  const item = x => {
+    if (!Array.isArray(x[2])) return bt(x);
+    const [r, t, subs] = x, aberto = abertos.has(r);
+    return `<div class="lat-grupo ${aberto ? 'aberto' : ''}" data-grupo="${r}">
+      <div class="lat-gl">${bt([r, t], 'lat-g')}<button type="button" class="lat-chevb" aria-expanded="${aberto}" aria-controls="lg-${r}" aria-label="Mostrar opções de ${t}"><i class="lat-chev" aria-hidden="true"></i></button></div>
+      <div class="lat-sub" id="lg-${r}" role="group" aria-label="${t}" ${aberto ? '' : 'inert'}><div class="lat-sub-in">${subs.map(s => bt(s, 'sub')).join('')}</div></div></div>`;
+  };
   el.innerHTML = `<div class="lat-emp"><img class="lat-logo" src="/img/logo-escuro-completo.webp?v=1" alt="" width="814" height="148"><small>${mc ? 'Escritório' : conta.papel === 'dono' ? 'Empresa' : 'Você é ' + PAPEL[conta.papel].toLowerCase()}</small><b>${esc(mc ? eu.nome : conta.empresa || 'Sua empresa')}</b>
       <div class="lat-quem so-gaveta"><i aria-hidden="true">${typeof meuAvatar === 'function' ? meuAvatar() : esc(ini)}</i><span><b>${esc(eu.nome || '')}</b><em>${esc(eu.email)}</em></span></div>
       <button type="button" class="gav-x so-gaveta" data-fecha-gaveta aria-label="Fechar o menu">×</button></div>
-    <nav aria-label="Seções">${itensMenu().map(([r, t]) => `<button type="button" class="lat-item" data-ir="${r}" data-lat="${r}">${t}</button>`).join('')}</nav>
-    <div class="lat-pe"><button type="button" class="lat-sair-btn" data-sair>Sair do app</button><span>${esc(eu.email)}</span></div>`;
+    <nav aria-label="Seções">${principal.map(item).join('')}
+      <p class="lat-sec">Recursos</p>${recursos.map(item).join('')}</nav>
+    <div class="lat-pe"><nav aria-label="Conta" class="lat-baixo">${item(config)}<button type="button" class="lat-item" data-ajuda>Central de ajuda</button></nav>
+      <button type="button" class="lat-sair-btn" data-sair>Sair do app</button><span>${esc(eu.email)}</span></div>`;
 }
-function marcaLateral(v) {
-  const mapa = { comecar: 'inicio', cadastro: 'inicio', funcionamento: 'mais', unidades: 'mais', empresa: 'mais', aula: 'mais', materiais: 'mais', indique: 'mais', instalar: 'mais', conta: 'mais' };
-  const alvo = mapa[v] || v;
-  $$('#lateral [data-lat]').forEach(b => {
-    const on = b.dataset.lat === alvo;
-    b.classList.toggle('on', on);
-    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-  });
+function abreGrupo(g, abrir, salvar = true) {
+  const el = $(`#lateral [data-grupo="${g}"]`); if (!el) return;
+  el.classList.toggle('aberto', abrir);
+  el.querySelector('.lat-chevb').setAttribute('aria-expanded', String(abrir));
+  el.querySelector('.lat-sub').inert = !abrir;
+  if (salvar) { const s = gruposAbertos(); abrir ? s.add(g) : s.delete(g); gravar('menuAberto', JSON.stringify([...s])); }
+}
+// destaca o item da tela atual (o subitem exato quando houver) e abre o grupo dela
+function marcaLateral(v, extra) {
+  const grupoDe = { funcionamento: 'configuracoes', unidades: 'configuracoes', empresa: extra === 'historico' ? 'fechamento' : 'configuracoes', conta: 'configuracoes', instalar: 'configuracoes', comecar: 'inicio', cadastro: 'inicio' };
+  const exato = extra && extra !== 'dia' ? `${v}/${extra}` : v;
+  const grupo = grupoDe[v] || v;
+  $$('#lateral .lat-item').forEach(b => { b.classList.remove('on'); b.removeAttribute('aria-current'); });
+  const sub = $(`#lateral .lat-item.sub[data-lat="${exato}"]`) || (grupoDe[v] ? $(`#lateral .lat-item.sub[data-lat="${v}"]`) : null);
+  const alvo = sub || $(`#lateral .lat-item:not(.sub)[data-lat="${grupo}"]`);
+  if (alvo) { alvo.classList.add('on'); alvo.setAttribute('aria-current', 'page'); }
+  const g = $(`#lateral [data-grupo="${grupo}"]`);
+  if (g) { g.querySelector('.lat-g').classList.add('dentro'); if (!g.classList.contains('aberto')) abreGrupo(grupo, true, false); }
 }
 // Mais › Unidades e empresas: trocar de unidade, criar unidade, trocar ou cadastrar empresa
 function telaUnidades() {
   const v = $('#v-unidades'), ed = podeEditar(), mc = ehModoContador();
   const item = (attr, t, d) => `<li><button ${attr}><span>${t}${d ? `<small>${d}</small>` : ''}</span><span class="seta">›</span></button></li>`;
-  v.innerHTML = `<button class="voltar" data-ir="mais">‹ Mais</button><h1>Unidades e empresas</h1>
+  v.innerHTML = `<button class="voltar" data-ir="configuracoes">‹ Configurações</button><h1>Unidades e empresas</h1>
     <p class="sub">Cada unidade tem os próprios colaboradores e a própria escala.</p>
     ${mc ? '' : `<p class="menu-tit">Unidades de ${esc(conta.empresa || 'sua empresa')}</p><ul class="menu">${equipes.map(e => item(`data-un="${e.id}"`, esc(e.nome), `${plural(+e.total || 0, 'colaborador', 'colaboradores')}${e.id === atual?.id ? ' · aberta agora' : ''}`)).join('')}
       ${ed ? item('data-ir="comecar/unidade"', 'Nova unidade', 'Outra loja, filial ou setor') : ''}</ul>`}
@@ -473,6 +501,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#lateral').addEventListener('click', e => {
     if (e.target.closest('[data-fecha-gaveta]')) fechaGaveta();
     else if (e.target.closest('[data-sair]')) sair();
+    else if (e.target.closest('.lat-chevb')) { const g = e.target.closest('.lat-grupo'); abreGrupo(g.dataset.grupo, !g.classList.contains('aberto')); }
+    else if (e.target.closest('.lat-g')) { const g = e.target.closest('.lat-grupo'); abreGrupo(g.dataset.grupo, true); }
+    else if (e.target.closest('[data-ajuda]')) { fechaGaveta(); if (typeof window.abrirSuporte === 'function') window.abrirSuporte(); else location.href = '/ajuda'; }
   });
   // menu do usuário no topo (computador): Minha conta e Sair
   const bu = $('#btnUser'), mu = $('#menuUser');

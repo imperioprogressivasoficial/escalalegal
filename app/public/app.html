@@ -766,7 +766,10 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .lat-item:hover,.lat-g:hover{background:var(--cinza);color:var(--tinta)}
 .lat-item.on{background:var(--azul-claro);color:var(--azul);font-weight:700}
 .lat-item.on::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--azul)}
-.lat-g{display:flex;align-items:center;justify-content:space-between;font-weight:700;color:var(--tinta)}
+.lat-gl{display:flex;align-items:center}.lat-gl .lat-g{flex:1}
+.lat-chevb{flex:none;width:40px;height:40px;border:0;background:none;border-radius:10px;cursor:pointer;color:var(--mut);display:grid;place-items:center}
+.lat-chevb:hover{background:var(--cinza)}
+.lat-g.dentro:not(.on){color:var(--azul);font-weight:700}
 .lat-chev{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .22s ease;opacity:.6;margin-right:4px}
 .lat-grupo.aberto .lat-chev{transform:rotate(45deg)}
 .lat-sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
@@ -775,6 +778,9 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .lat-grupo.aberto .lat-sub-in{background:#f5f8fd;border-radius:10px;margin:2px 0 6px;padding:4px 0}
 .lat-item.sub{padding:8px 12px 8px 26px;font-size:.92rem;font-weight:500}
 .lat-item.sub.atual::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--verde)}
+.lat-sec{font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:16px 12px 4px}
+.lat-baixo{display:grid;gap:2px;margin:0 -10px 8px}
+.lat-div{border:0;border-top:1px solid var(--linha);margin:8px 10px}
 .lat-sair-btn{width:100%;border:1.5px solid #f2b8ba;background:#fff;color:var(--vermelho);border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;font-size:.92rem}
 .lat-sair-btn:hover{background:var(--vermelho-claro)}
 .lat-pe{display:grid;gap:8px}
@@ -1068,7 +1074,7 @@ body.ini-escuro{background:#0b1220}
 
     <!-- funcionamento -->
     <section class="vista hide" id="v-funcionamento">
-      <button class="voltar" data-ir="mais">‹ Voltar</button>
+      <button class="voltar" data-ir="configuracoes">‹ Configurações</button>
       <h1>Funcionamento</h1>
       <p class="sub">Quando abre e quantas pessoas precisam estar trabalhando. A escala das próximas semanas se ajusta sozinha.</p>
       <div class="cartao">
@@ -1142,7 +1148,7 @@ body.ini-escuro{background:#0b1220}
 
     <!-- empresa -->
     <section class="vista hide" id="v-empresa">
-      <button class="voltar" data-ir="mais">‹ Voltar</button>
+      <button class="voltar" data-ir="configuracoes">‹ Configurações</button>
       <h1>Dados da empresa</h1>
       <p class="sub">Aparecem no fechamento que vai para o contador.</p>
       <div id="emAviso"></div>
@@ -1188,7 +1194,7 @@ body.ini-escuro{background:#0b1220}
 
     <!-- minha conta -->
     <section class="vista hide" id="v-conta">
-      <button class="voltar" data-ir="mais">‹ Voltar</button>
+      <button class="voltar" data-ir="configuracoes">‹ Configurações</button>
       <h1>Minha conta</h1>
       <p class="sub" id="contaEmail"></p>
       <section class="cartao foto-perfil" style="margin-bottom:12px" aria-labelledby="tFoto"><h3 id="tFoto">Foto de perfil</h3>
@@ -1243,14 +1249,14 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=30"></script>
-<script src="/cadastro.js?v=30"></script>
-<script src="/ooxml.js?v=30"></script>
-<script src="/exportar.js?v=30"></script>
-<script src="/aula.js?v=30"></script>
-<script src="/extras.js?v=30"></script>
-<script src="/inicio.js?v=30"></script>
-<script src="/extras-materiais.js?v=30"></script>
-<script src="/app.js?v=30"></script>
+<script src="/scheduler.js?v=32"></script>
+<script src="/cadastro.js?v=32"></script>
+<script src="/ooxml.js?v=32"></script>
+<script src="/exportar.js?v=32"></script>
+<script src="/aula.js?v=32"></script>
+<script src="/extras.js?v=32"></script>
+<script src="/inicio.js?v=32"></script>
+<script src="/extras-materiais.js?v=32"></script>
+<script src="/app.js?v=32"></script>
 </body>
 </html>

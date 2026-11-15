@@ -22,8 +22,8 @@ function telaInstalar() {
   else if (ehAndroid()) corpo = `<p class="sub">No Android, use o Chrome:</p>${passos([`Toque nos três pontinhos ${ICO_PONTOS}, no canto de cima.`, 'Toque em <b>Adicionar à tela inicial</b> ou <b>Instalar app</b>.', 'Confirme em <b>Instalar</b> ou <b>Adicionar</b>.'])}
     <p class="dica">Se abriu o link pelo WhatsApp ou Instagram, toque nos três pontinhos e escolha <b>Abrir no Chrome</b> antes.</p>`;
   else corpo = `<p class="sub">No computador, use o Chrome ou o Edge:</p>${passos(['Clique no ícone de instalar, no fim da barra de endereço (um monitor com uma seta).', 'Clique em <b>Instalar</b>.'])}
-    <p class="dica">No celular é ainda melhor: abra este endereço no celular e volte aqui em Mais › Colocar na tela inicial.</p>`;
-  v.innerHTML = `<button class="voltar" data-ir="mais">‹ Voltar</button>
+    <p class="dica">No celular é ainda melhor: abra este endereço no celular e volte aqui em Configurações › Colocar na tela inicial.</p>`;
+  v.innerHTML = `<button class="voltar" data-ir="configuracoes">‹ Configurações</button>
     <div class="inst-topo"><img src="/img/icone-192.png?v=20261115b" alt="" width="84" height="84"><div><h1>Coloque o app na tela inicial</h1><p class="dica">Abre como aplicativo, sem baixar em loja e sem ocupar espaço.</p></div></div>
     ${corpo}`;
   if ($('#btnInstalar')) $('#btnInstalar').onclick = async () => { pedidoInstalar.prompt(); const r = await pedidoInstalar.userChoice.catch(() => ({})); pedidoInstalar = null; if (r.outcome === 'accepted') gravar('instalado', '1'); telaInstalar(); };
@@ -42,8 +42,7 @@ async function telaIndique() {
   v.innerHTML = '<p class="dica" style="text-align:center;padding:30px">Carregando…</p>';
   const r = await api('/api/indicacao');
   const msg = `Toda empresa vai ter que mudar a escala para a 5x2 até 15 de dezembro. Achei um app que monta a escala dentro da nova lei em 2 minutos, respondendo umas perguntas. Vale a pena: ${r.link}`;
-  v.innerHTML = `<button class="voltar" data-ir="mais">‹ Voltar</button>
-    <h1>Indique para quem conhece</h1>
+  v.innerHTML = `    <h1>Indique para quem conhece</h1>
     <p class="sub">Toda empresa com funcionário vai precisar da escala nova. Ajude outros empresários: o dono da loja vizinha, o grupo da associação, os amigos.</p>
     <a class="btn cheio btn-zap" style="margin-top:16px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg?v=20261115b" alt="" width="26" height="26">Mandar no WhatsApp</a>
     ${navigator.share ? '<button class="btn cheio sec" id="indOutros" style="margin-top:8px">Mandar de outro jeito</button>' : ''}
