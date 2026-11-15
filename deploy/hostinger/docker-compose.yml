@@ -54,6 +54,9 @@ services:
       EMPRESA_CNPJ: ${EMPRESA_CNPJ:-}
       EMPRESA_EMAIL: ${EMPRESA_EMAIL:-}
       EMPRESA_CIDADE: ${EMPRESA_CIDADE:-}
+      DOMINIOS_PERMITIDOS: ${DOMINIOS_PERMITIDOS:-}
+      ANTICLONE: ${ANTICLONE:-1}
+      CSP_SO_RELATORIO: ${CSP_SO_RELATORIO:-0}
     depends_on:
       db: { condition: service_healthy }
     healthcheck:
