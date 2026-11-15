@@ -70,7 +70,7 @@ async function telaTabela() {
 }
 function htmlPrejuizo(r) {
   return `<div class="cartao prejuizo">
-    <div class="diag-topo ${r.ok ? 'ok' : 'ruim'}"><img src="/img/mascote.svg" alt=""><div><b>${r.ok ? 'Essa escala está dentro da lei' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção`}</b>Como ela funciona para você não ter prejuízo</div></div>
+    <div class="diag-topo ${r.ok ? 'ok' : 'ruim'}"><img src="/img/mascote.svg?v=20261115b" alt=""><div><b>${r.ok ? 'Essa escala está dentro da lei' : `${plural(r.problemas.length, 'ponto precisa', 'pontos precisam')} de atenção`}</b>Como ela funciona para você não ter prejuízo</div></div>
     ${r.problemas.length ? `<ul class="diag">${r.problemas.map(i => `<li><span class="ic ruim">!</span><div><b>${esc(i.titulo)}</b><span>${esc(i.texto)}</span></div></li>`).join('')}</ul>` : ''}
     <ul class="diag" style="margin-top:8px">${r.regras.map(t => `<li><span class="ic ok">✓</span><div><span>${esc(t)}</span></div></li>`).join('')}</ul>
     ${r.feriados.length ? `<div class="nota" style="margin-top:12px"><b>Feriados no período:</b> ${r.feriados.map(f => `${dm(f.data)} (${esc(f.nome)})`).join(', ')}. ${r.ferTrab ? `São ${plural(r.ferTrab, 'dia trabalhado', 'dias trabalhados')} em feriado: pague em dobro ou dê outra folga.` : 'Ninguém trabalha nesses dias.'}</div>` : ''}
@@ -95,7 +95,7 @@ const SAIDAS = {
 };
 function botoesExportar() {
   const LOGO = {zap: 'whatsapp', link: 'link', copiar: 'texto', pdf: 'pdf', xlsx: 'excel', csv: 'csv', sheets: 'sheets', jpg: 'jpg', imprimir: 'imprimir'};
-  const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
+  const ed = podeEditar(), tile = k => `<button class="tile" data-x="${k}"><img class="logo" src="/img/formatos/${LOGO[k]}.svg?v=20261115b" alt=""><span><b>${SAIDAS[k][1]}</b><small>${SAIDAS[k][2]}</small></span></button>`;
   return `<p class="saida-tit">Mandar para a equipe</p><div class="tiles">${['zap', ...(ed ? ['link'] : []), 'copiar'].map(tile).join('')}</div>
     <p class="saida-tit">Guardar ou mandar para o contador</p><div class="tiles">${['pdf', 'xlsx', 'csv', ...(ed ? ['sheets'] : []), 'jpg', 'imprimir'].map(tile).join('')}</div>`;
 }

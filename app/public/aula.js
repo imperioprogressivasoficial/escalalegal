@@ -54,7 +54,7 @@ function licoes() {
 function telaAula() {
   const L = licoes(), total = L.length;
   if (aulaI >= total) {
-    $('#v-aula').innerHTML = `<div class="quiz"><div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Pronto! Você já sabe o principal.</h1>
+    $('#v-aula').innerHTML = `<div class="quiz"><div class="vazio quiz-oi"><img src="/img/mascote.svg?v=20261115b" alt=""><h1>Pronto! Você já sabe o principal.</h1>
       <p>A Sua Escala 5x2 já monta a escala seguindo tudo isso: 2 folgas, horas, domingo e feriado.</p></div>
       <button class="btn cheio" data-ir="escala">Ver minha escala</button>
       <p style="text-align:center;margin-top:14px"><a class="link" href="/ajuda">Ler a ajuda completa</a> · <button class="link" id="aulaDeNovo">Ver a aula de novo</button></p></div>`;

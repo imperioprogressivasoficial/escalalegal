@@ -24,14 +24,14 @@ function telaInstalar() {
   else corpo = `<p class="sub">No computador, use o Chrome ou o Edge:</p>${passos(['Clique no ícone de instalar, no fim da barra de endereço (um monitor com uma seta).', 'Clique em <b>Instalar</b>.'])}
     <p class="dica">No celular é ainda melhor: abra este endereço no celular e volte aqui em Mais › Colocar na tela inicial.</p>`;
   v.innerHTML = `<button class="voltar" data-ir="mais">‹ Voltar</button>
-    <div class="inst-topo"><img src="/img/icone-192.png" alt="" width="84" height="84"><div><h1>Coloque o app na tela inicial</h1><p class="dica">Abre como aplicativo, sem baixar em loja e sem ocupar espaço.</p></div></div>
+    <div class="inst-topo"><img src="/img/icone-192.png?v=20261115b" alt="" width="84" height="84"><div><h1>Coloque o app na tela inicial</h1><p class="dica">Abre como aplicativo, sem baixar em loja e sem ocupar espaço.</p></div></div>
     ${corpo}`;
   if ($('#btnInstalar')) $('#btnInstalar').onclick = async () => { pedidoInstalar.prompt(); const r = await pedidoInstalar.userChoice.catch(() => ({})); pedidoInstalar = null; if (r.outcome === 'accepted') gravar('instalado', '1'); telaInstalar(); };
 }
 // aviso na escala, só no celular e só até a pessoa instalar ou dispensar
 function avisoInstalar() {
   if (naTelaInicial() || !ehCelular() || ler('instalado') || ler('instalarDispensado')) return '';
-  return `<div class="aviso azul aviso-inst"><img src="/img/icone-192.png" alt="" width="44" height="44"><span>Coloque o app na tela inicial do celular, como um aplicativo.</span>
+  return `<div class="aviso azul aviso-inst"><img src="/img/icone-192.png?v=20261115b" alt="" width="44" height="44"><span>Coloque o app na tela inicial do celular, como um aplicativo.</span>
     <div class="lado" style="margin-top:10px;width:100%"><button class="btn pq" data-ir="instalar">Ver como</button><button class="btn pq sec" id="dispInstalar">Agora não</button></div></div>`;
 }
 document.addEventListener('click', e => { if (e.target.id === 'dispInstalar') { gravar('instalarDispensado', '1'); e.target.closest('.aviso').remove(); } });
@@ -49,7 +49,7 @@ async function telaIndique() {
     <div class="ind-valor"><span>Você ganha</span><b>${reais(r.valor_por_venda)}</b><span>por cada venda</span></div>
     <label style="margin-top:18px">Seu link</label>
     <div class="ind-link"><input readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn pq sec" id="indCopiar">Copiar</button></div>
-    <a class="btn cheio btn-zap" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg" alt="" width="26" height="26">Mandar no WhatsApp</a>
+    <a class="btn cheio btn-zap" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><img src="/img/formatos/whatsapp-branco.svg?v=20261115b" alt="" width="26" height="26">Mandar no WhatsApp</a>
     ${navigator.share ? '<button class="btn cheio sec" id="indOutros" style="margin-top:8px">Mandar de outro jeito</button>' : ''}
     <div class="ind-numeros">
       <div><b>${r.vendas}</b><span>${r.vendas === 1 ? 'venda' : 'vendas'} pelo seu link</span></div>
