@@ -169,14 +169,15 @@ async function rota() {
   if (!document.getElementById('v-' + v) || (['acessos', 'empresa'].includes(v) && conta.papel !== 'dono')
     || (['comecar', 'pessoas', 'funcionamento'].includes(v) && !podeEditar())) v = mc ? 'contador' : 'escala';
   $$('.vista').forEach(x => x.classList.toggle('hide', x.id !== 'v-' + v));
-  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (v === 'funcionamento' && b.dataset.ir === 'mais')));
-  $('#principal').classList.toggle('larga', ['fechamento', 'contador'].includes(v));
+  $$('#barraBaixo button').forEach(b => b.classList.toggle('on', b.dataset.ir === v || (v === 'funcionamento' && b.dataset.ir === 'mais') || (v === 'tabela' && b.dataset.ir === 'escala')));
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'tabela'].includes(v));
   $('#barraBaixo').classList.toggle('hide', v === 'comecar' || mc);
   window.scrollTo(0, 0);
   try {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'escala') await telaEscala();
     else if (v === 'pessoas') telaPessoas();
+    else if (v === 'tabela') await telaTabela();
     else if (v === 'mais') telaMais();
     else if (v === 'funcionamento') desenhaConfig();
     else if (v === 'ocorrencias') await telaOcorrencias();
@@ -373,7 +374,7 @@ async function telaEscala() {
   if (pedido !== semData) return; // trocou de semana enquanto carregava
   semana = r;
   let aviso = '';
-  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala. Toque em um nome para trocar a folga. Depois é só mandar para a equipe.</div>`;
+  if (recem && r.escala) aviso = `<div class="aviso verde">Pronto! Essa é a sua escala, dentro da lei. Toque em um nome para trocar a folga. Para baixar em PDF, Excel ou mandar no WhatsApp, toque em "Baixar ou enviar".</div>`;
   if (r.novos) aviso += `<div class="aviso azul">${plural(r.novos, 'pessoa nova entra', 'pessoas novas entram')} na escala a partir de ${br(soma(semData, 7))}. Esta semana fica como estava.</div>`;
   $('#escAviso').innerHTML = aviso;
   if (!r.escala) {
@@ -428,14 +429,13 @@ function desenhaSemana() {
     }
   }
   $('#escCorpo').innerHTML = `${status}<div class="dias">${pills}</div>${corpo}
-    ${ed ? `<div class="acoes-esc"><button class="btn" id="btnMandar">Mandar para a equipe</button><button class="btn sec" data-faltar>Alguém vai faltar?</button></div>`
-      : '<div class="acoes-esc"><button class="btn sec" id="btnImprimir2">Imprimir</button><span></span></div>'}
+    <div class="acoes-esc"><button class="btn" id="btnExportar">Baixar ou enviar</button>${ed ? '<button class="btn sec" data-faltar>Alguém vai faltar?</button>' : '<button class="btn sec" data-ir="tabela">Ver a tabela</button>'}</div>
+    <button class="btn sec cheio" data-ir="tabela" style="margin-top:8px">Ver a tabela pronta e a parte da lei</button>
     <button class="link ver-pessoa" id="btnModo">${porPessoa ? 'Ver dia por dia' : 'Ver a semana de cada pessoa'}</button>`;
   $$('[data-dia]').forEach(b => b.onclick = () => { diaSel = +b.dataset.dia; porPessoa = false; desenhaSemana(); });
   $('#btnModo').onclick = () => { porPessoa = !porPessoa; desenhaSemana(); };
   $('#btnAnalise').onclick = () => folhaAnalise();
-  if ($('#btnMandar')) $('#btnMandar').onclick = () => linkEquipe(atual.id);
-  if ($('#btnImprimir2')) $('#btnImprimir2').onclick = imprimir;
+  $('#btnExportar').onclick = () => folhaExportar();
   if (ed) {
     $$('#escCorpo [data-f]').forEach(b => b.onclick = () => folhaPessoaDia(+b.dataset.f, diaSel));
     $$('#escCorpo [data-pessoa]').forEach(li => li.onclick = () => folhaPessoaSemana(+li.dataset.pessoa));
@@ -633,7 +633,7 @@ function telaMais() {
     h += '<p class="menu-tit">Escala</p><ul class="menu">';
     if (ed) h += item('funcionamento', 'Horário e dias de funcionamento', atual ? `${hora(atual.abre)} às ${hora(atual.fecha)} · mínimo de pessoas por dia` : '');
     h += item('ocorrencias', 'Férias, faltas e atestados', 'Tudo o que foi lançado no mês');
-    h += `<li><button id="mImprimir"><span>Imprimir a escala<small>Para colar no mural</small></span><span class="seta">›</span></button></li>`;
+    h += item('tabela', 'A tabela pronta', 'Baixar em PDF, Excel ou imagem, mandar no WhatsApp');
     h += '</ul><p class="menu-tit">Contador</p><ul class="menu">';
     h += item('fechamento', 'Fechar o mês', 'Dias trabalhados, faltas e planilha para a folha');
     if (dono) h += item('acessos', 'Dar acesso ao contador', 'Ele vê tudo sem você mandar planilha');
@@ -649,7 +649,6 @@ function telaMais() {
   h += '<li><button id="mSair"><span>Sair</span><span class="seta">›</span></button></li></ul>';
   $('#maisTit').textContent = mc ? 'Opções' : 'Mais opções';
   $('#maisCorpo').innerHTML = h;
-  if ($('#mImprimir')) $('#mImprimir').onclick = async () => { if (!semana?.escala) { await telaEscala().catch(() => {}); } imprimir(); };
   if ($('#mTrocar')) $('#mTrocar').onclick = () => {
     folha(`<h2>Trocar de empresa</h2><div class="opcoes-grandes">${eu.contas.map(c => `<button data-conta="${c.id}">${esc(c.id === eu.id && eu.contador && !eu.empresa ? 'Meu escritório' : c.empresa || 'Minha empresa')}<small>${PAPEL[c.papel]}</small></button>`).join('')}</div>`);
     $$('[data-conta]').forEach(b => b.onclick = () => { gravar('conta', b.dataset.conta); gravar('unidade', ''); location.hash = ''; location.reload(); });
