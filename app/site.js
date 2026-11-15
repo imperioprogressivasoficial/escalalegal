@@ -178,8 +178,8 @@ var v=lerEscolha();if(v)guardaEscolha(v);
 if(v){if(v==='sim')carrega();if((location.pathname||'').indexOf('/app')===0)try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){if(j&&!j.escolha&&j.logado)naConta(v)}).catch(function(){})}catch(e){}}
 else if((location.pathname||'').indexOf('/app')!==0)aviso();
 else{
-// no app, antes de perguntar: quem já respondeu em outro aparelho (logado) não vê o aviso de novo
-try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){var c=j&&j.escolha;if(c==='sim'||c==='nao'){guardaEscolha(c);if(c==='sim')carrega()}else aviso()}).catch(function(){aviso()})}catch(e){aviso()}}
+// dentro do app o aviso nunca aparece (a pessoa já viu no site): só usa a escolha guardada na conta, se houver
+try{fetch('/api/cookies',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){var c=j&&j.escolha;if(c==='sim'||c==='nao'){guardaEscolha(c);if(c==='sim')carrega()}}).catch(function(){})}catch(e){}}
 })();`;
   app.get(['/rastreio.js', '/pixel.js'], (_req, res) => res.type('application/javascript').set('Cache-Control', 'public, max-age=600').send(rastreio()));
 
