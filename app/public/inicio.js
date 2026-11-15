@@ -330,15 +330,30 @@ async function telaInicio() {
   // banners: o principal chama para o quiz quando ainda não tem escala; os avisos mudam conforme o que falta
   const dias = Math.ceil((new Date('2026-12-15T00:00:00-03:00') - Date.now()) / 864e5);
   const fechado = k => ler('banner_' + k) === '1';
+  // banners em imagem (carrossel): o aviso em texto com a mesma mensagem sai da lista
+  const cont = conta.papel === 'contador';
+  const bannersImg = [
+    { k: 'escala', ir: p.unidades ? 'escala' : 'comecar', alt: 'Sua escala 5x2 pronta em 2 minutos. Responda umas perguntas e a semana sai dentro da nova lei.' },
+    { k: 'lei', ir: 'aula', alt: 'Entenda a nova lei em 3 minutos: 2 folgas por semana, 42 horas e o domingo, sem juridiquês.' },
+    !cont && { k: 'enviar', ir: 'tabela', alt: 'Mande para a equipe por WhatsApp, PDF, Excel ou link. Cada funcionário vê a própria folga no celular.' },
+    { k: 'kit', ir: document.getElementById('v-materiais') ? 'materiais' : 'mais', alt: 'Kit RH, calculadora e plaquinhas: termo aditivo, folha de ponto e avisos prontos para imprimir.' },
+    dono && { k: 'contador', ir: 'acessos', alt: 'Dê acesso grátis ao seu contador. Ele vê a escala, baixa tudo e fecha o mês.' },
+  ].filter(Boolean);
+  const carrosselImg = `<section class="bn-car" aria-roledescription="carrossel" aria-label="Destaques">
+      <div class="bn-trilho" id="bnTrilho">${bannersImg.map((b, i) => `<a class="bn-item" href="#${b.ir}" data-ir="${b.ir}" aria-roledescription="slide" aria-label="${i + 1} de ${bannersImg.length}">
+        <picture><source media="(max-width:760px)" srcset="/img/banners/${b.k}-cel.webp?v=1" width="1080" height="1240">
+        <img src="/img/banners/${b.k}-pc.webp?v=1" alt="${esc(b.alt)}" width="1920" height="560" ${i ? 'loading="lazy"' : 'loading="eager" fetchpriority="high"'} decoding="async"></picture></a>`).join('')}</div>
+      <div class="bn-pontos" id="bnPontos">${bannersImg.map((b, i) => `<button type="button" aria-label="Ver destaque ${i + 1} de ${bannersImg.length}" class="${i ? '' : 'on'}"></button>`).join('')}</div>
+    </section>`;
   const avisos = [
     dias > 0 && { k: 'lei', cor: 'amarelo', tit: `Faltam ${dias} ${dias === 1 ? 'dia' : 'dias'} para a escala 5x2 valer`, txt: 'A partir de 15/12/2026, duas folgas por semana e limite de 42 horas. Entenda em 3 minutos.', btn: 'Aula da nova lei', ir: 'aula' },
     dono && p.unidades > 0 && !p.escala_enviada && { k: 'enviar', cor: 'verde', tit: 'Mande a escala para a equipe', txt: 'Imagem no grupo do WhatsApp, PDF ou um link onde cada um vê a própria folga.', btn: 'Baixar ou enviar', ir: 'tabela' },
     dono && p.unidades > 0 && !p.contador && { k: 'contador', cor: 'azul', tit: 'Dê acesso grátis ao seu contador', txt: 'Ele vê a escala, baixa tudo e fecha o mês sem pedir nada para você.', btn: 'Convidar', ir: 'acessos' },
     !(typeof naTelaInicial === 'function' && naTelaInicial()) && { k: 'instalar', cor: 'escuro', tit: 'Coloque o app na tela inicial', txt: 'Abre como um aplicativo, direto no celular, sem baixar nada na loja.', btn: 'Ver como', ir: 'instalar' },
-  ].filter(a => a && !fechado(a.k)).slice(0, 2);
+  ].filter(a => a && !fechado(a.k) && !bannersImg.some(b => b.k === a.k)).slice(0, 2);
   const quiz = dono && !p.unidades ? `<section class="ban-quiz" aria-labelledby="tQuiz">
       <div class="ban-quiz-txt"><span class="ban-etq">Próximo passo</span><h2 id="tQuiz">Monte a escala da sua equipe em 2 minutos</h2>
-        <p>Responda umas perguntas: que dias abre, o horário, quantas pessoas por dia e quem trabalha. A escala sai pronta, dentro da nova lei.</p>
+        <p>Só números: que dias abre, quantas pessoas em cada função, o horário e as folgas. A escala sai pronta, dentro da nova lei.</p>
         <button class="btn ban-btn" data-ir="comecar">Começar agora <span aria-hidden="true">→</span></button></div>
       <div class="ban-quiz-mock" aria-hidden="true">${DIAS.map((d, i) => `<i class="${i >= 5 ? 'f' : ''}"><small>${d}</small><em>${i >= 5 ? 'Folga' : 'Trabalha'}</em></i>`).join('')}</div>
     </section>` : '';
@@ -346,7 +361,7 @@ async function telaInicio() {
       <div class="ban-acoes"><button class="btn pq" data-ir="${a.ir}">${a.btn}</button><button class="ban-x" data-fechar="${a.k}" aria-label="Fechar aviso">×</button></div></div>`).join('');
   const pronto = recem && atual ? `<div class="ini-pronto"><div><b>Pronto! A escala de ${esc(atual.nome)} está montada.</b><span>4 semanas, 2 folgas por semana para cada um, dentro da nova lei.</span></div><button class="btn" data-ir="escala">Ver a escala</button></div>` : '';
   recem = false;
-  v.innerHTML = `${pronto}${quiz}
+  v.innerHTML = `${pronto}${quiz}${carrosselImg}
     <header class="ini-topo">
       <div><p class="ini-oi">Olá, ${esc(nomeCurto(eu.nome))}</p><h1>${esc(conta.empresa || 'Sua empresa')}</h1>
         <p class="ini-data">${dataLonga(hoje)}${atual ? ` · ${esc(atual.nome)}` : ''}</p></div>
@@ -377,6 +392,7 @@ async function telaInicio() {
         <div class="atalhos">${atalhos.map(([r, t, d, mini]) => `<button class="atalho" data-ir="${r}"><span class="atalho-mini">${mini}</span><b>${t}</b><small>${esc(d)}</small></button>`).join('')}</div>
       </section>
     </div>`;
+  ligaCarrosselImg();
   $$('[data-fechar]').forEach(b => b.onclick = () => { gravar('banner_' + b.dataset.fechar, '1'); b.closest('.ban-aviso').remove(); });
   const car = $('#carrossel'), pontos = $$('#carPontos button');
   const larg = () => car.querySelector('.slide').offsetWidth + 14;
@@ -577,4 +593,27 @@ function telaPersonalizar() {
     ${liberado ? `<ul class="perso-lista">${itens.map(([r, t, d]) => `<li><button data-ir="${r}"><span><b>${t}</b><small>${esc(d)}</small></span><span class="seta" aria-hidden="true">›</span></button></li>`).join('')}</ul>`
       : '<div class="cartao"><b>Disponível no plano mensal</b><p>Fale com a gente para liberar.</p></div>'}
     <p style="margin-top:16px"><button class="link" data-ir="resultado">‹ Ver o resultado por função</button></p>`;
+}
+
+// carrossel dos banners em imagem: arrasta (scroll-snap), pontos, passa sozinho a cada 6s
+// (para com toque, mouse ou foco; não passa sozinho com movimento reduzido)
+function ligaCarrosselImg() {
+  const t = $('#bnTrilho'); if (!t) return;
+  const pts = $$('#bnPontos button'), n = pts.length;
+  const reduz = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const idx = () => Math.round(t.scrollLeft / t.clientWidth);
+  const vai = i => t.scrollTo({ left: ((i + n) % n) * t.clientWidth, behavior: reduz() ? 'auto' : 'smooth' });
+  t.onscroll = () => { const i = idx(); pts.forEach((p, j) => { p.classList.toggle('on', j === i); p.setAttribute('aria-current', j === i ? 'true' : 'false'); }); };
+  pts.forEach((p, j) => p.onclick = () => vai(j));
+  clearInterval(ligaCarrosselImg.t);
+  if (n < 2 || reduz()) return;
+  let parado = false;
+  const para = () => { parado = true; }, volta = () => { parado = false; };
+  t.addEventListener('pointerenter', para); t.addEventListener('pointerleave', volta);
+  t.addEventListener('touchstart', para, { passive: true }); t.addEventListener('touchend', () => setTimeout(volta, 4000));
+  t.addEventListener('focusin', para); t.addEventListener('focusout', volta);
+  ligaCarrosselImg.t = setInterval(() => {
+    if (!document.body.contains(t)) return clearInterval(ligaCarrosselImg.t);
+    if (!parado && !document.hidden) vai(idx() + 1);
+  }, 6000);
 }

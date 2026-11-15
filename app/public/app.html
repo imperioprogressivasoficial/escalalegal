@@ -729,6 +729,16 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 .ban-quiz-mock i small{display:block;font-size:.68rem;opacity:.8;margin-bottom:4px}
 .ban-quiz-mock i em{font-style:normal}
 .ban-quiz-mock i.f{background:#ffcd07;color:#3b2f00;border-color:#ffcd07}
+.bn-car{margin-bottom:16px}
+.bn-trilho{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:20px;box-shadow:0 20px 44px -28px rgba(6,21,51,.6)}
+.bn-trilho::-webkit-scrollbar{display:none}
+.bn-item{flex:0 0 100%;scroll-snap-align:start;display:block;line-height:0}
+.bn-item img{display:block;width:100%;height:auto;aspect-ratio:1920/560}
+.bn-pontos{display:flex;justify-content:center;gap:2px;margin-top:4px}
+.bn-pontos button{width:28px;height:28px;border:0;background:none;cursor:pointer;display:grid;place-items:center;padding:0}
+.bn-pontos button::before{content:"";width:8px;height:8px;border-radius:99px;background:#c3cddc;transition:width .25s,background .25s}
+.bn-pontos button.on::before{width:22px;background:var(--azul)}
+@media(max-width:760px){.bn-item img{aspect-ratio:1080/1240}}
 .ban-avisos{display:grid;gap:10px;margin-bottom:16px}
 .ban-aviso{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-radius:16px;padding:14px 16px;border:1px solid}
 .ban-aviso b{display:block;font:800 1.02rem var(--display);font-stretch:92%}
