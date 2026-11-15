@@ -198,7 +198,7 @@ async function rota() {
   const foco = ['comecar', 'cadastro'].includes(v); // quiz e cadastro: tela limpa, sem menu
   pintaLateral(); marcaLateral(v);
   pintaAbas(v, extra);
-  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'inicio'].includes(v) || (v === 'escala' && ['mes', 'semana'].includes(extra)));
+  $('#principal').classList.toggle('larga', ['fechamento', 'contador', 'inicio'].includes(v) || (v === 'escala' && ['mes', 'semana', 'agenda'].includes(extra)));
   $('#principal').classList.toggle('quiz-pg', foco);
   document.body.classList.toggle('modo-foco', foco);
   document.body.classList.toggle('ini-escuro', v === 'inicio');
@@ -207,7 +207,7 @@ async function rota() {
     if (v === 'comecar') wizInicio(extra === 'unidade');
     else if (v === 'cadastro') await telaCadastro();
     else if (v === 'inicio') await telaInicio();
-    else if (v === 'escala') { modoEsc = ['semana', 'pessoa', 'mes'].includes(extra) ? extra : 'dia'; await telaEscala(); if (extra === 'publicar') folhaExportar(); }
+    else if (v === 'escala') { modoEsc = ['semana', 'agenda', 'pessoa', 'mes'].includes(extra) ? extra : 'dia'; await telaEscala(); if (extra === 'publicar') folhaExportar(); }
     else if (vista === 'pessoas') telaPessoas();
     else if (vista === 'ocorrencias') await telaOcorrencias();
     else if (vista === 'fechamento') await telaFechamento();
@@ -615,7 +615,7 @@ async function telaEscala() {
   const hoje = hojeIso(), segHoje = segundaDe(hoje);
   if (!semData) semData = semanaInicial();
   $('#semTit').textContent = modoEsc === 'mes' ? `${br(semData)} a ${br(soma(semData, 27))}` : tituloSemana(semData);
-  $('#escModos').innerHTML = [['dia', 'Dia'], ['semana', 'Semana'], ['pessoa', 'Colaborador'], ['mes', '4 semanas']].map(([k, t]) => `<button type="button" data-ir="escala${k === 'dia' ? '' : '/' + k}" class="${modoEsc === k ? 'on' : ''}" ${modoEsc === k ? 'aria-current="page"' : ''}>${t}</button>`).join('');
+  $('#escModos').innerHTML = [['dia', 'Dia'], ['semana', 'Semana'], ['agenda', 'Agenda'], ['pessoa', 'Colaborador'], ['mes', 'Mês']].map(([k, t]) => `<button type="button" data-ir="escala${k === 'dia' ? '' : '/' + k}" class="${modoEsc === k ? 'on' : ''}" ${modoEsc === k ? 'aria-current="page"' : ''}>${t}</button>`).join('');
   $('#semSub').textContent = modoEsc === 'mes' ? '4 semanas' : semData === segHoje ? 'Esta semana' : semData === soma(segHoje, 7) ? 'Semana que vem' : semData === soma(segHoje, -7) ? 'Semana passada' : '';
   $('#escCorpo').innerHTML = esqueletoSemana();
   const pedido = semData;
@@ -673,7 +673,8 @@ function desenhaSemana() {
     return `<button data-dia="${i}" class="${i === diaSel ? 'on' : ''} ${data === hoje ? 'hoje' : ''} ${e.abertos[i] ? '' : 'fechado'}"><small>${d}</small><b>${data.slice(8)}</b>${falta ? '<i></i>' : fer ? '<i class="fer"></i>' : ''}</button>`;
   }).join('');
   let corpo;
-  if (modoEsc === 'semana') corpo = gradeSemana({inicio: semData, funcionarios: e.funcionarios, abertos: e.abertos, minimo: e.minimo, linhas: sem});
+  if (modoEsc === 'agenda') corpo = htmlAgenda(e, sem);
+  else if (modoEsc === 'semana') corpo = gradeSemana({inicio: semData, funcionarios: e.funcionarios, abertos: e.abertos, minimo: e.minimo, linhas: sem});
   else if (modoEsc === 'pessoa') {
     corpo = `<ul class="pp">${e.funcionarios.map((f, fi) => {
       const dias = sem[fi], folgas = dias.map((c, d) => c === 'F' && e.abertos[d] ? DIA_LONGO[d].toLowerCase() : null).filter(Boolean);
@@ -705,6 +706,7 @@ function desenhaSemana() {
   if (ed) {
     $$('#escCorpo [data-f]').forEach(b => b.onclick = () => folhaPessoaDia(+b.dataset.f, diaSel));
     $$('#escCorpo [data-pessoa]').forEach(li => li.onclick = () => folhaPessoaSemana(+li.dataset.pessoa));
+    if (modoEsc === 'agenda') ligaAgenda();
     $$('#escCorpo [data-cel]').forEach(td => td.onclick = () => { const [f, d] = td.dataset.cel.split(':').map(Number); diaSel = d; folhaPessoaDia(f, d); });
   }
 }
@@ -1082,3 +1084,68 @@ $('#formTrocaSenha').onsubmit = async e => {
 
 try { const m = sessionStorage.getItem('fechMes'); if (m) { $('#fechMes').value = m; sessionStorage.removeItem('fechMes'); } } catch {}
 if (tokenAcesso) telaSenha(); else iniciar();
+
+// ================= Agenda: a semana como uma agenda (colunas por dia, eixo de horas, turnos em blocos) =================
+let agFiltro = new Set(); // funções escondidas na legenda
+const AG_COR = [['#1351b4', '#e8f0fb'], ['#168821', '#e3f5e1'], ['#8a6400', '#fff5c2'], ['#4b2a9a', '#ece7fb'], ['#0b7a8a', '#dff4f6'], ['#c2571a', '#fde9dc'], ['#566173', '#eef1f5']];
+const minDia = t => { const [h, m] = String(t || '').split(':').map(Number); return isNaN(h) ? null : h * 60 + (m || 0); };
+const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+function turnoDe(fid) {
+  const f = funcs.find(x => x.id === fid) || {}, fn = (atual.funcoes || []).find(x => x.nome === f.cargo) || {};
+  let ini = minDia(f.entrada || fn.entrada || atual.abre) ?? 480, fim = minDia(f.saida || fn.saida);
+  const intervalo = +(f.intervalo_min ?? fn.intervalo ?? 60) || 0;
+  if (fim == null) fim = ini + Math.round((+atual.horas_dia || 8) * 60) + intervalo;
+  if (fim <= ini) fim += 1440;
+  return { ini, fim: Math.min(fim, ini + 16 * 60), intervalo };
+}
+function htmlAgenda(e, sem) {
+  const hoje = hojeIso(), funcoes = [...new Set(e.funcionarios.map(f => f.cargo || 'Equipe'))];
+  const cor = c => AG_COR[funcoes.indexOf(c) % AG_COR.length];
+  const visiveis = e.funcionarios.map((f, i) => ({ ...f, i, cargo: f.cargo || 'Equipe' })).filter(f => !agFiltro.has(f.cargo));
+  const turnos = visiveis.map(f => ({ ...f, ...turnoDe(f.id) }));
+  const h0 = Math.floor(Math.min(...turnos.map(t => t.ini), 24 * 60) / 60) * 60, h1 = Math.ceil(Math.max(...turnos.map(t => t.fim), h0 + 60) / 60) * 60;
+  const PX = 22; // pixels por 30 min
+  const y = m => (m - h0) / 30 * PX, alt = (h1 - h0) / 30 * PX;
+  const eixo = [];
+  for (let m = h0; m < h1; m += 60) eixo.push(`<span style="top:${y(m)}px">${hhmm(m)}</span>`);
+  const colunas = DIAS.map((d, k) => {
+    const data = soma(semData, k), fer = Escala.feriado(data, conta.ctx);
+    const cab = `<div class="ag-cab ${data === hoje ? 'hoje' : ''}"><small>${d}</small><b>${Number(data.slice(8))}</b>${fer ? `<em title="${esc(fer)}">feriado</em>` : ''}</div>`;
+    if (!e.abertos[k]) return { cab, dia: '<p class="ag-folgas">Fechado</p>', blocos: '<div class="ag-fechado">Fechado</div>' };
+    const folgas = turnos.filter(t => sem[t.i][k] === 'F').map(t => esc(t.nome));
+    const doDia = turnos.filter(t => sem[t.i][k] === 'T' || COD[sem[t.i][k]]).sort((a, b) => a.ini - b.ini || a.fim - b.fim);
+    // turnos que se sobrepõem ficam lado a lado (como na agenda do Google)
+    let grupo = [], fimGrupo = -1;
+    const fecha = () => { const n = Math.max(...grupo.map(t => t.lane)) + 1; grupo.forEach(t => t.n = n); grupo = []; };
+    const fins = []; doDia.forEach(t => { if (t.ini >= fimGrupo && grupo.length) { fecha(); fins.length = 0; } let l = fins.findIndex(f => f <= t.ini); if (l < 0) { l = fins.length; fins.push(0); } fins[l] = t.fim; t.lane = l; grupo.push(t); fimGrupo = Math.max(fimGrupo, t.fim); });
+    if (grupo.length) fecha();
+    const blocos = doDia.map(t => {
+      const c = sem[t.i][k], ausente = COD[c], [forte, claro] = cor(t.cargo), meio = t.ini + Math.round((t.fim - t.ini - t.intervalo) / 2);
+      const rotulo = `${t.nome}, ${t.cargo}, ${hhmm(t.ini % 1440)} às ${hhmm(t.fim % 1440)}${ausente ? ', ' + COD[c] : ''}`;
+      const pausa = t.intervalo && !ausente ? `<i class="ag-pausa" style="top:${y(meio) - y(t.ini)}px;height:${t.intervalo / 30 * PX}px"></i>` : '';
+      const n = t.n, estreito = n >= 3;
+      return `<button type="button" class="ag-bloco ${ausente ? 'ausente' : ''} ${estreito ? 'estreito' : ''}" data-ag="${t.i}:${k}" aria-label="${esc(rotulo)}" title="${esc(rotulo)}"
+        style="top:${y(t.ini)}px;height:${Math.max(18, y(t.fim) - y(t.ini))}px;left:calc(${t.lane} * 100% / ${n});width:calc(100% / ${n} - 3px);--forte:${forte};--claro:${claro}">
+        ${pausa}<b>${esc(estreito ? iniciaisDe(t.nome) : t.nome)}</b><small>${ausente ? esc(COD[c]) : `${hhmm(t.ini % 1440)}–${hhmm(t.fim % 1440)}`}</small></button>`;
+    }).join('');
+    return { cab, dia: `<p class="ag-folgas">${folgas.length ? `<b>Folga:</b> ${folgas.join(', ')}` : ''}</p>`, blocos };
+  });
+  const linhas = []; for (let m = h0; m < h1; m += 30) linhas.push(`<i class="${m % 60 ? 'meia' : ''}" style="top:${y(m)}px"></i>`);
+  const segHoje = segundaDe(hoje);
+  return `<div class="ag-topo"><button type="button" class="btn sec pq" id="agHoje" ${semData === segHoje ? 'disabled' : ''}>Hoje</button>
+      <div class="ag-legenda" role="group" aria-label="Filtrar por função">${funcoes.map(c => `<button type="button" data-agf="${esc(c)}" aria-pressed="${!agFiltro.has(c)}" class="${agFiltro.has(c) ? 'off' : ''}" style="--forte:${cor(c)[0]};--claro:${cor(c)[1]}">${esc(c)}</button>`).join('')}</div></div>
+    <div class="ag" style="--alt:${alt}px">
+      <div class="ag-grade">
+        <div class="ag-canto"></div>${colunas.map(c => c.cab).join('')}
+        <div class="ag-canto dia">Dia todo</div>${colunas.map(c => `<div class="ag-diatodo">${c.dia}</div>`).join('')}
+        <div class="ag-eixo">${eixo.join('')}</div>${colunas.map((c, k) => `<div class="ag-col ${soma(semData, k) === hoje ? 'hoje' : ''}"><div class="ag-linhas">${linhas.join('')}</div>${c.blocos}</div>`).join('')}
+      </div></div>`;
+}
+function ligaAgenda() {
+  $$('#escCorpo [data-ag]').forEach(b => b.onclick = () => { const [f, d] = b.dataset.ag.split(':').map(Number); diaSel = d; if (podeEditar()) folhaPessoaDia(f, d); });
+  $$('#escCorpo [data-agf]').forEach(b => b.onclick = () => { const c = b.dataset.agf; agFiltro.has(c) ? agFiltro.delete(c) : agFiltro.add(c); if (agFiltro.size >= new Set(semana.escala.funcionarios.map(f => f.cargo || 'Equipe')).size) agFiltro.delete(c); desenhaSemana(); });
+  const h = $('#agHoje'); if (h) h.onclick = () => { semData = segundaDe(hojeIso()); diaSel = null; telaEscala(); };
+  // no celular, começa no dia de hoje (3 dias por tela, arrasta para os lados)
+  const g = $('#escCorpo .ag'), hoje = $('#escCorpo .ag-col.hoje');
+  if (g && hoje && g.scrollWidth > g.clientWidth) g.scrollLeft = Math.max(0, hoje.offsetLeft - g.querySelector('.ag-eixo').offsetWidth);
+}

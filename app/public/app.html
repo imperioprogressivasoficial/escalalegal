@@ -848,6 +848,39 @@ body.modo-foco .topo-sino{display:none}
 .nf-trilho{grid-auto-columns:clamp(220px,70vw,280px)}
 @media(min-width:1024px){.nf-trilho{grid-auto-columns:280px}}
 .menu .m-sair span{color:var(--vermelho);font-weight:700}
+/* ===== Agenda (estilo agenda do Google) ===== */
+.ag-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ag-legenda{display:flex;gap:6px;flex-wrap:wrap}
+.ag-legenda button{border:1.5px solid var(--forte);background:var(--claro);color:var(--forte);border-radius:99px;padding:5px 12px;font-weight:700;font-size:.82rem;cursor:pointer}
+.ag-legenda button.off{background:#fff;color:var(--mut);border-color:var(--linha);text-decoration:line-through}
+.ag{background:#fff;border:1px solid var(--linha);border-radius:16px;overflow-x:auto;scroll-padding-left:var(--eixo);overscroll-behavior-x:contain;scroll-snap-type:x mandatory;--eixo:52px;--colw:minmax(110px,1fr)}
+.ag-grade{display:grid;grid-template-columns:var(--eixo) repeat(7,var(--colw));min-width:100%}
+.ag-canto{position:sticky;left:0;background:#fff;z-index:3;border-bottom:1px solid var(--linha)}
+.ag-canto.dia{font-size:.68rem;font-weight:700;color:var(--mut);padding:8px 4px;text-align:right}
+.ag-cab{text-align:center;padding:10px 4px 6px;border-bottom:1px solid var(--linha);border-left:1px solid #eef1f5;scroll-snap-align:start}
+.ag-cab small{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--mut);letter-spacing:.04em}
+.ag-cab b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;font:700 1.25rem var(--display);color:var(--tinta);margin-top:2px}
+.ag-cab.hoje small{color:var(--azul)}.ag-cab.hoje b{background:var(--azul);color:#fff}
+.ag-cab em{display:block;font-style:normal;font-size:.68rem;font-weight:700;color:#8a5a00}
+.ag-diatodo{border-left:1px solid #eef1f5;border-bottom:1px solid var(--linha);padding:6px;min-height:34px}
+.ag-folgas{font-size:.76rem;line-height:1.3;color:#4a3a00;background:#fff5c2;border-radius:6px;padding:4px 6px;margin:0}
+.ag-folgas:empty{display:none}.ag-folgas b{font-weight:800}
+.ag-eixo{position:sticky;left:0;z-index:2;background:#fff;height:var(--alt);border-right:1px solid var(--linha)}
+.ag-eixo span{position:absolute;right:6px;transform:translateY(-50%);font-size:.7rem;color:var(--mut);font-weight:600}
+.ag-eixo span:first-child{transform:none}
+.ag-col{position:relative;height:var(--alt);border-left:1px solid #eef1f5}
+.ag-col.hoje{background:#f7faff}
+.ag-linhas i{position:absolute;left:0;right:0;border-top:1px solid #eef1f5}.ag-linhas i.meia{border-top-style:dashed;border-color:#f3f5f8}
+.ag-bloco{position:absolute;margin-left:2px;border:0;border-left:4px solid var(--forte);background:var(--claro);color:var(--forte);border-radius:8px;padding:4px 6px;text-align:left;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;gap:1px;box-shadow:0 1px 2px rgba(7,29,65,.12);transition:transform .12s}
+.ag-bloco b{font-size:.78rem;line-height:1.15;color:var(--tinta);position:relative;z-index:1}.ag-bloco small{font-size:.7rem;font-weight:600;position:relative;z-index:1}
+.ag-bloco:hover{transform:scale(1.02);z-index:4}
+.ag-bloco.ausente{background:repeating-linear-gradient(135deg,var(--claro) 0 6px,#fff 6px 12px);opacity:.9}
+.ag-bloco.estreito{padding:4px 2px;align-items:center;border-left-width:3px}.ag-bloco.estreito small{display:none}.ag-bloco.estreito b{font-size:.72rem}
+.ag-pausa{position:absolute;left:0;right:0;background:rgba(255,255,255,.6);border-top:1px dashed var(--forte);border-bottom:1px dashed var(--forte)}
+.ag-fechado{position:absolute;inset:0;display:grid;place-items:center;color:#9aa3b2;font-weight:700;background:repeating-linear-gradient(135deg,#f6f7f9 0 8px,#fff 8px 16px)}
+@media(max-width:760px){.ag{--eixo:44px;--colw:calc((100vw - 32px - 2px - 44px) / 3)}.ag-cab b{width:32px;height:32px;font-size:1.05rem}}
+.esc-modos{grid-template-columns:repeat(5,1fr)}
+@media(max-width:420px){.esc-modos button{font-size:.78rem;padding:8px 2px}}
 /* ===== animações: só transform/opacity, curtas; nada com movimento reduzido ===== */
 @keyframes vistaEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes sobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -1210,14 +1243,14 @@ body.ini-escuro{background:#0b1220}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=29"></script>
-<script src="/cadastro.js?v=29"></script>
-<script src="/ooxml.js?v=29"></script>
-<script src="/exportar.js?v=29"></script>
-<script src="/aula.js?v=29"></script>
-<script src="/extras.js?v=29"></script>
-<script src="/inicio.js?v=29"></script>
-<script src="/extras-materiais.js?v=29"></script>
-<script src="/app.js?v=29"></script>
+<script src="/scheduler.js?v=30"></script>
+<script src="/cadastro.js?v=30"></script>
+<script src="/ooxml.js?v=30"></script>
+<script src="/exportar.js?v=30"></script>
+<script src="/aula.js?v=30"></script>
+<script src="/extras.js?v=30"></script>
+<script src="/inicio.js?v=30"></script>
+<script src="/extras-materiais.js?v=30"></script>
+<script src="/app.js?v=30"></script>
 </body>
 </html>
