@@ -253,6 +253,30 @@ table.tabela-escala{width:100%;border-collapse:separate;border-spacing:4px;min-w
 .menu-ind small,.menu-ind .seta{color:#e3f5e1!important}
 
 /* quiz */
+.q-barra{height:10px;border-radius:99px;background:#e6ecf5;overflow:hidden;margin:4px 0 18px}
+.q-barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#1351b4,#23b53a);transition:width .5s cubic-bezier(.16,1,.3,1)}
+.q-tempo{background:#eaf3ff;color:#1351b4;border-radius:99px;padding:3px 10px;font-size:.8rem}
+.quiz-q h1 mark{background:linear-gradient(transparent 55%,#ffe46b 55%);color:inherit;padding:0 .08em}
+.quiz-q{animation:qEntra .45s cubic-bezier(.16,1,.3,1)}
+@keyframes qEntra{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+.quiz-oi{text-align:center;background:linear-gradient(160deg,#0b2d6b,#1351b4 60%,#168821);color:#dbe7fb;border-radius:24px;padding:26px 22px 24px;margin-top:6px;box-shadow:0 24px 50px -26px rgba(6,21,51,.6)}
+.quiz-oi img{width:110px;margin:10px auto 4px;display:block}
+.quiz-oi h1{color:#fff;font-size:1.75rem;margin:6px 0 10px}
+.quiz-oi h1 mark{background:none;color:#ffcd07}
+.q-selo{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:5px 12px;font-weight:700;font-size:.85rem;color:#fff}
+.q-chips{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.q-chips li{background:#fff;color:#0c1b33;border-radius:99px;padding:6px 12px;font-weight:700;font-size:.84rem}
+.q-chips li::before{content:"✓ ";color:#168821}
+.segs-foto{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:6px}
+.segs-foto button{display:flex;flex-direction:column;text-align:left;padding:0;border:2px solid var(--linha);background:#fff;border-radius:16px;overflow:hidden;cursor:pointer;color:var(--tinta);transition:transform .2s,border-color .2s,box-shadow .2s}
+.segs-foto button:active{transform:scale(.97)}
+.segs-foto button.on,.segs-foto button:hover{border-color:#1351b4;box-shadow:0 12px 26px -16px rgba(19,81,180,.7)}
+.segs-foto .foto{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#dfe8f6}
+.segs-foto b{display:block;padding:10px 12px 12px;font-size:.92rem;line-height:1.25}
+.opcoes-grandes button{position:relative;padding-right:46px!important;transition:border-color .2s,background .2s}
+.opcoes-grandes button::after{content:"";position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;border-radius:50%;border:2px solid #c3cfe2;background:#fff}
+.opcoes-grandes button.on::after{border-color:#1351b4;background:radial-gradient(#1351b4 45%,#fff 50%)}
+.q-continuar{display:flex!important;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#23b53a,#168821)!important;border:0!important;font-size:1.08rem!important;box-shadow:0 14px 30px -14px rgba(22,136,33,.9)}
 .quiz{max-width:560px;margin:0 auto}
 .quiz-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700;color:var(--mut);font-size:.92rem}
 .quiz-q h1{font-size:clamp(1.6rem,6.5vw,2.1rem);margin:10px 0 8px}
@@ -611,10 +635,10 @@ table.tab{width:100%;border-collapse:collapse;font-size:.9rem}
 </dialog>
 
 <script src="/rastreio.js" defer></script>
-<script src="/scheduler.js?v=15"></script>
-<script src="/exportar.js?v=15"></script>
-<script src="/aula.js?v=15"></script>
-<script src="/extras.js?v=15"></script>
-<script src="/app.js?v=15"></script>
+<script src="/scheduler.js?v=16"></script>
+<script src="/exportar.js?v=16"></script>
+<script src="/aula.js?v=16"></script>
+<script src="/extras.js?v=16"></script>
+<script src="/app.js?v=16"></script>
 </body>
 </html>

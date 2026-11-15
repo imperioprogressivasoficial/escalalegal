@@ -224,29 +224,32 @@ function perguntas() {
 function wizDesenha() {
   const lista = perguntas(), id = lista[wz.i], total = lista.filter(x => x !== 'oi').length, num = lista.slice(0, wz.i + 1).filter(x => x !== 'oi').length;
   const s = seg(wz.setor || 'outro'), u = wz.un, e = wz.empresa;
-  const topo = id === 'oi' ? '' : `<div class="quiz-topo"><button class="link" id="qVolta">‹ Voltar</button><span>${num} de ${total}</span></div>
-    <div class="passos"><span class="on" style="flex:${num}"></span><span style="flex:${Math.max(total - num, 0.0001)}"></span></div>`;
-  const continuar = (txt = 'Continuar') => `<button class="btn cheio fixo-baixo" id="qOk">${txt}</button>`;
+  const falta = Math.max(1, Math.round((total - num + 1) * 12 / 60 * 2) / 2);
+  const topo = id === 'oi' ? '' : `<div class="quiz-topo"><button class="link" id="qVolta">‹ Voltar</button><span class="q-tempo">Falta${falta > 1 ? 'm' : ''} ~${String(falta).replace('.', ',')} min</span><span>Pergunta ${num} de ${total}</span></div>
+    <div class="q-barra"><i style="width:${Math.round(num / total * 100)}%"></i></div>`;
+  const continuar = (txt = 'Continuar') => `<button class="btn cheio fixo-baixo q-continuar" id="qOk">${txt}<span aria-hidden="true">→</span></button>`;
   let h = '';
-  if (id === 'oi') h = `<div class="vazio quiz-oi"><img src="/img/mascote.svg" alt=""><h1>Oi, ${esc(nomeCurto(eu.nome))}!</h1>
-      <p>Vou montar a escala da sua equipe, já dentro da nova lei.</p><p><b>É só responder umas perguntas rápidas.</b> Leva uns 2 minutos.</p></div>${continuar('Começar')}`;
-  else if (id === 'negocio') h = `<h1>${wz.soUnidade ? 'Que tipo de negócio é esta unidade?' : 'Qual é o seu negócio?'}</h1>
+  if (id === 'oi') h = `<div class="quiz-oi"><span class="q-selo">⏱ Leva uns 2 minutos</span><img src="/img/mascote.svg" alt="">
+      <h1>Oi, ${esc(nomeCurto(eu.nome))}! Vamos montar a sua <mark>escala 5x2</mark>?</h1>
+      <p>Responda umas perguntas rápidas. A escala sai pronta e já dentro da nova lei.</p>
+      <ul class="q-chips"><li>Uma pergunta por tela</li><li>Dentro da lei</li><li>Sem planilha</li></ul></div>${continuar('Começar')}`;
+  else if (id === 'negocio') h = `<h1>${wz.soUnidade ? 'Que tipo de <mark>negócio</mark> é esta unidade?' : 'Qual é o seu <mark>negócio</mark>?'}</h1>
       <p class="sub">Cada negócio tem suas regras. Toque no seu.</p>
-      <div class="segs">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>`;
+      <div class="segs-foto">${SEG_ORDEM.map(k => `<button type="button" data-seg="${k}" class="${wz.setor === k ? 'on' : ''}"><img class="foto" src="/img/segmentos/${k}.webp?v=1" alt="" loading="lazy" onerror="this.remove()"><b>${esc(seg(k).nome)}</b></button>`).join('')}</div>`;
   else if (id === 'nome') h = wz.soUnidade
-    ? `<h1>Qual o nome desta unidade?</h1><p class="sub">Para você saber de qual escala está falando.</p><input id="qTxt" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" autocomplete="off">${continuar()}`
-    : `<h1>Qual o nome da sua empresa?</h1><p class="sub">Do jeito que sua equipe conhece.</p><input id="qTxt" value="${esc(e.nome)}" placeholder="Ex.: ${esc(s.nome.split(' /')[0])} Bom Preço" autocomplete="organization">${continuar()}`;
-  else if (id === 'uf') h = `<h1>Em que estado fica?</h1><p class="sub">Para colocar os feriados do seu estado.</p>
+    ? `<h1>Qual o <mark>nome</mark> desta unidade?</h1><p class="sub">Para você saber de qual escala está falando.</p><input id="qTxt" value="${esc(wz.nomeUn)}" placeholder="Ex.: Loja Shopping" autocomplete="off">${continuar()}`
+    : `<h1>Qual o nome da sua <mark>empresa</mark>?</h1><p class="sub">Do jeito que sua equipe conhece.</p><input id="qTxt" value="${esc(e.nome)}" placeholder="Ex.: ${esc(s.nome.split(' /')[0])} Bom Preço" autocomplete="organization">${continuar()}`;
+  else if (id === 'uf') h = `<h1>Em que <mark>estado</mark> fica?</h1><p class="sub">Para colocar os feriados do seu estado.</p>
       <div class="ufs">${Escala.UFS.map(x => `<button type="button" data-uf="${x}" class="${e.uf === x ? 'on' : ''}">${x}</button>`).join('')}</div>`;
-  else if (id === 'cidade') h = `<h1>E a cidade?</h1><p class="sub">Se sua cidade tem feriado próprio, você coloca depois em Mais › Dados da empresa.</p>
+  else if (id === 'cidade') h = `<h1>E a <mark>cidade</mark>?</h1><p class="sub">Se sua cidade tem feriado próprio, você coloca depois em Mais › Dados da empresa.</p>
       <input id="qTxt" value="${esc(e.cidade)}" placeholder="Ex.: Salvador" autocomplete="address-level2">${continuar()}`;
-  else if (id === 'porte') h = `<h1>Qual o tamanho da empresa?</h1><p class="sub">Se não souber, toque em "Não sei". Seu contador sabe.</p>
+  else if (id === 'porte') h = `<h1>Qual o <mark>tamanho</mark> da empresa?</h1><p class="sub">Se não souber, toque em "Não sei". Seu contador sabe.</p>
       <div class="opcoes-grandes">${Object.entries(PORTES).filter(([k]) => k !== 'media').map(([k, [n, d]]) => `<button type="button" data-porte="${k}" class="${e.porte === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}</div>`;
   else if (id === 'dias') {
     const pad = u.abertos.join('');
     const op = [['1111111', 'Todo dia', 'de segunda a domingo'], ['1111110', 'Segunda a sábado', 'fecha no domingo'], ['1111100', 'Segunda a sexta', 'fecha sábado e domingo']];
     const igual = op.some(o => o[0] === pad);
-    h = `<h1>Que dias ${artigo(s)} ${esc(s.local)} abre?</h1><p class="sub">${esc(s.nome.split(' /')[0])} costuma abrir ${op.find(o => o[0] === seg(wz.setor).abertos.join(''))?.[1].toLowerCase() || 'em dias variados'}.</p>
+    h = `<h1>Que <mark>dias</mark> ${artigo(s)} ${esc(s.local)} abre?</h1><p class="sub">${esc(s.nome.split(' /')[0])} costuma abrir ${op.find(o => o[0] === seg(wz.setor).abertos.join(''))?.[1].toLowerCase() || 'em dias variados'}.</p>
       <div class="opcoes-grandes">${op.map(([k, n, d]) => `<button type="button" data-dias="${k}" class="${pad === k ? 'on' : ''}">${n}<small>${d}</small></button>`).join('')}
       <button type="button" id="qOutros" class="${igual ? '' : 'on'}">Outros dias<small>escolher um por um</small></button></div>
       <div id="qDiasBox" class="${igual ? 'hide' : ''}" style="margin-top:12px"><div class="dias-conf">${DIAS.map((d, i) => `<div><button type="button" class="tg ${u.abertos[i] ? 'on' : ''}" data-ab="${i}">${d}</button></div>`).join('')}</div>${continuar()}</div>`;
@@ -255,11 +258,11 @@ function wizDesenha() {
       <div id="qHoraBox" class="hide" style="margin-top:14px"><div class="lado"><div><label for="qAbre" style="margin-top:0">Abre às</label><input id="qAbre" type="time" value="${u.abre}"></div><div><label for="qFecha" style="margin-top:0">Fecha às</label><input id="qFecha" type="time" value="${u.fecha}"></div></div>${continuar()}</div>`;
   else if (id === 'minimo') {
     const sug = Math.max(...seg(wz.setor).minimo), atualMin = wz.minMudou ? Math.max(...u.minimo) : sug;
-    h = `<h1>Quantas pessoas precisam estar trabalhando por dia?</h1>
+    h = `<h1>Quantas pessoas precisam estar <mark>trabalhando</mark> por dia?</h1>
       <p class="sub">O mínimo para não deixar ${artigo(s)} ${esc(s.local)} descoberto, somando todos os turnos. Para ${esc(s.nome.split(' /')[0].toLowerCase())}, o comum é ${sug}.</p>
       <div class="contador-mais grande"><button type="button" id="qMenos" aria-label="Menos">−</button><output id="qMin">${atualMin}</output><button type="button" id="qMais" aria-label="Mais">+</button></div>
       <p class="dica" style="text-align:center;margin-top:6px">pessoas trabalhando, no mínimo</p>${continuar()}`;
-  } else if (id === 'pessoas') h = `<h1>Quem trabalha com você?</h1><p class="sub">Escreva um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
+  } else if (id === 'pessoas') h = `<h1>Quem <mark>trabalha</mark> com você?</h1><p class="sub">Escreva um nome por linha. Pode colar a lista do grupo do WhatsApp.</p>
       <textarea id="qPessoas" rows="8" placeholder="Ana&#10;Bruno&#10;Carla&#10;Diego">${esc(wz.texto)}</textarea><div id="qConta"></div>${continuar(u.criticas.length ? 'Continuar' : 'Montar minha escala')}`;
   else if (id === 'critica') {
     const c = u.criticas[0];
