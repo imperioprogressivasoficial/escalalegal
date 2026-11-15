@@ -117,10 +117,9 @@ window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
 var fila=[],ok=false,K='consentimento',ativo=C.pixel||C.ga||C.gtm;
 window.rastrear=function(ev,d){if(!ativo)return;if(ok)envia(ev,d);else fila.push([ev,d])};
 window.preferenciasCookies=function(){try{localStorage.removeItem(K)}catch(e){}aviso()};
-if(!ativo)return;
-gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});
+if(ativo)gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});
 function s(src){var t=document.createElement('script');t.async=true;t.src=src;document.head.appendChild(t)}
-function carrega(){if(ok)return;ok=true;
+function carrega(){if(ok||!ativo)return;ok=true;
 gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});
 if(C.gtm){dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});s('https://www.googletagmanager.com/gtm.js?id='+C.gtm)}
 if(C.ga){s('https://www.googletagmanager.com/gtag/js?id='+C.ga);gtag('js',new Date());gtag('config',C.ga)}
@@ -129,8 +128,9 @@ fila.forEach(function(e){envia(e[0],e[1])});fila=[]}
 var GA4={Lead:'generate_lead',InitiateCheckout:'begin_checkout',Purchase:'purchase',CompleteRegistration:'sign_up',ViewContent:'view_item'};
 function envia(ev,d){d=d||{};if(window.fbq&&!(ev==='Purchase'&&C.capi))fbq('track',ev,d);if(C.ga||C.gtm)gtag('event',GA4[ev]||ev,{value:d.value,currency:d.currency});dataLayer.push({event:'escala_'+ev})}
 function aviso(){if(document.getElementById('avisoCookies'))return;var a=document.createElement('div');a.id='avisoCookies';a.setAttribute('role','dialog');a.setAttribute('aria-label','Cookies');
-a.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:560px;margin:0 auto;background:#0c1b33;color:#e6edf7;border-radius:16px;padding:16px 18px;font:500 15px/1.45 system-ui,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.4)';
-a.innerHTML='Usamos cookies para medir as visitas e os anúncios. Você escolhe. <a href="/privacidade#cookies" style="color:#9fc2ff">Saiba mais</a><div style="display:flex;gap:8px;margin-top:12px"><button data-c="sim" style="flex:1;border:0;border-radius:10px;padding:11px;font:700 15px system-ui;background:#23b53a;color:#fff;cursor:pointer">Aceitar</button><button data-c="nao" style="flex:1;border:1px solid #46546a;border-radius:10px;padding:11px;font:700 15px system-ui;background:transparent;color:#e6edf7;cursor:pointer">Só os necessários</button></div>';
+a.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:520px;margin:0 auto;background:rgba(12,27,51,.97);backdrop-filter:blur(10px);color:#e6edf7;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 20px;font:500 15px/1.5 system-ui,sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.45);transform:translateY(30px);opacity:0;transition:transform .5s cubic-bezier(.16,1,.3,1),opacity .5s';
+a.innerHTML='<b style="display:block;font-size:16px;color:#fff;margin-bottom:4px">Este site usa cookies</b>Eles ajudam a medir as visitas e melhorar os anúncios. Você escolhe. <a href="/privacidade#cookies" style="color:#9fc2ff">Saiba mais</a><div style="display:flex;gap:8px;margin-top:14px"><button data-c="sim" style="flex:1.4;border:0;border-radius:12px;padding:12px;font:700 15px system-ui;background:linear-gradient(135deg,#2bc443,#168821);color:#fff;cursor:pointer">Aceitar cookies</button><button data-c="nao" style="flex:1;border:1px solid #5a6a85;border-radius:12px;padding:12px;font:700 15px system-ui;background:transparent;color:#e6edf7;cursor:pointer">Só os necessários</button></div>';
+setTimeout(function(){a.style.transform='none';a.style.opacity='1'},400);
 a.onclick=function(e){var b=e.target.closest('button');if(!b)return;try{localStorage.setItem(K,b.dataset.c)}catch(x){}a.remove();if(b.dataset.c==='sim')carrega()};
 (document.body?document.body.appendChild(a):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(a)}))}
 var v=null;try{v=localStorage.getItem(K)}catch(e){}

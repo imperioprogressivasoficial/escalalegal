@@ -70,7 +70,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .menu .btn{color:#fff}
 
 /* herói */
-.heroi{position:relative;isolation:isolate;background:var(--grad-hero);color:#c9d8f0;margin-top:-74px;padding:130px 0 0;overflow:hidden}
+.heroi{position:relative;isolation:isolate;background:var(--grad-hero);color:#c9d8f0;margin-top:-74px;padding:130px 0 0;overflow:hidden;overflow:clip}
 .heroi::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%)}
 .brilho-h{position:absolute;z-index:-1;width:520px;height:520px;border-radius:50%;filter:blur(40px);opacity:.5;animation:deriva 16s ease-in-out infinite alternate}
 .bh1{background:#2670e8;right:-120px;top:-120px}
@@ -85,6 +85,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .heroi .lead{font-size:clamp(1.12rem,1.5vw,1.3rem);color:#c9d8f0;max-width:31em}
 .heroi .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
 .confianca{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:26px;font-size:.92rem;font-weight:600;color:#c9d8f0}
+@media(min-width:600px){.confianca{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:12px 20px}.confianca span{white-space:nowrap}}
 .confianca span{display:inline-flex;align-items:center;gap:8px}
 .confianca span::before{content:"";width:18px;height:18px;border-radius:50%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.4l2.6 2.6L11 4.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat,var(--grad-verde)}
 
@@ -93,9 +94,18 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .janela-barra{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#eef2f8;border-bottom:1px solid var(--linha)}
 .janela-barra i{width:10px;height:10px;border-radius:50%;background:#ff5f57}.janela-barra i:nth-child(2){background:#febc2e}.janela-barra i:nth-child(3){background:#28c840}
 .janela-barra span{margin-left:12px;font-size:.78rem;color:var(--mut);background:#fff;border-radius:6px;padding:3px 14px}
-.celular{position:absolute;right:0;bottom:6px;width:30%;min-width:150px;background:#0c1b33;border-radius:30px;padding:8px;box-shadow:0 40px 70px -24px rgba(0,0,0,.75);animation:boia 7s ease-in-out infinite}
-.celular img{border-radius:23px}
-.celular::before{content:"";position:absolute;top:13px;left:50%;width:30%;height:5px;border-radius:9px;background:#26344f;transform:translateX(-50%)}
+.macbook{position:relative;width:86%;transform:perspective(1800px) rotateY(-9deg) rotateX(3deg);transform-origin:left center;filter:drop-shadow(0 50px 60px rgba(0,0,0,.55))}
+.mac-tela{position:relative;background:#0a0b0f;border-radius:18px 18px 6px 6px;padding:2.6% 2.6% 3.4%;box-shadow:inset 0 0 0 1.5px #3b404b}
+.mac-tela::before{content:"";position:absolute;top:1%;left:50%;width:7px;height:7px;border-radius:50%;background:#20242d;transform:translateX(-50%)}
+.mac-tela img{display:block;border-radius:3px;width:100%}
+.mac-base{position:relative;height:16px;margin:0 -8%;background:linear-gradient(#e3e6ea,#b9bec6 55%,#8d939c);border-radius:2px 2px 22px 22px}
+.mac-base::before{content:"";position:absolute;left:50%;top:0;width:15%;height:6px;background:linear-gradient(#a7adb6,#c9cdd3);border-radius:0 0 10px 10px;transform:translateX(-50%)}
+.iphone{position:absolute;right:0;bottom:0;width:27%;min-width:132px;padding:2.4%;background:#0a0b0f;border-radius:clamp(26px,3.2vw,48px);box-shadow:inset 0 0 0 2px #4a505c,0 0 0 1px rgba(255,255,255,.08),0 40px 70px -24px rgba(0,0,0,.75);animation:boia 7s ease-in-out infinite}
+.iphone::before{content:"";position:absolute;z-index:2;top:4.2%;left:50%;width:30%;height:3.2%;border-radius:99px;background:#000;transform:translateX(-50%)}
+.iphone-tela{position:relative;overflow:hidden;border-radius:clamp(19px,2.5vw,38px);display:grid;background:#0c1b33;padding-top:13%}
+.iphone-tela img{grid-area:1/1;width:100%;display:block}
+.iphone.grande{position:relative;right:auto;bottom:auto;width:min(330px,78%);margin:0 auto;padding:11px;border-radius:52px;animation:none}
+.iphone.grande .iphone-tela{border-radius:42px}
 @keyframes boia{50%{transform:translateY(-12px)}}
 .chip{position:absolute;z-index:2;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.96);color:var(--tinta);border-radius:14px;padding:11px 15px;box-shadow:0 22px 44px -16px rgba(0,0,0,.55);font-weight:700;font-size:.9rem;line-height:1.25;animation:boia 6s ease-in-out infinite}
 .chip small{display:block;font-weight:500;color:var(--mut);font-size:.78rem}
@@ -111,7 +121,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{o
 .fato{padding:24px 26px;border-right:1px solid var(--linha)}
 .fato:last-child{border-right:0}
 .fato b{display:block;font:900 2.1rem/1 var(--display);font-stretch:80%;background:linear-gradient(90deg,var(--azul),var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent}
-.fato span{display:block;margin-top:6px;font-size:.92rem;line-height:1.4}
+.fato span{display:block;margin-top:6px;font-size:.95rem;line-height:1.4;color:#3a4759;font-weight:500}
 
 /* problema */
 .problema{background:linear-gradient(180deg,#fff 0%,var(--gelo) 100%)}
@@ -262,18 +272,28 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .fixo{position:fixed;z-index:70;left:12px;right:12px;bottom:12px;display:none;align-items:center;justify-content:space-between;gap:12px;background:rgba(6,21,51,.95);backdrop-filter:blur(10px);color:#fff;border-radius:16px;padding:9px 9px 9px 18px;box-shadow:0 20px 40px -12px rgba(0,0,0,.6);transform:translateY(160%);visibility:hidden;transition:transform .4s,visibility 0s .4s}
 .fixo.on{transform:none;visibility:visible;transition:transform .4s}
 .fixo b{display:block;font:900 1.35rem/1 var(--display)}
-.fixo small{color:#9fb3d6;font-size:.75rem}
+.fixo small{color:#9fb3d6;font-size:.75rem;white-space:nowrap}
 
 /* entrada */
 .carrega .heroi [data-e]{opacity:0;transform:translateY(24px)}
 [data-e]{transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);transition-delay:calc(var(--d,0)*110ms)}
 .js [data-r]{transition:transform .9s cubic-bezier(.16,1,.3,1),opacity .9s;transition-delay:calc(var(--d,0)*90ms)}
-.js [data-r].fora{transform:translateY(40px);opacity:.15}
+.js [data-r]{transition:transform .9s cubic-bezier(.16,1,.3,1),opacity .9s,filter .9s;transition-delay:calc(var(--d,0)*90ms)}
+.js [data-r].fora{transform:translateY(46px) scale(.97);opacity:0;filter:blur(10px)}
+@supports (animation-timeline:view()){
+  .curva{animation:curva-entra linear both,curva-sai linear forwards;animation-timeline:view(),view();animation-range:entry 0% entry 240px,exit calc(100% - 200px) exit 100%}
+  @keyframes curva-entra{from{transform:perspective(1200px) rotateX(16deg) scale(.94);transform-origin:50% 0;filter:blur(6px);opacity:.25}to{transform:none;filter:none;opacity:1}}
+  @keyframes curva-sai{from{transform:none;filter:none;opacity:1}to{transform:perspective(1200px) rotateX(-14deg) scale(.95);transform-origin:50% 100%;filter:blur(6px);opacity:.3}}
+}
 
-.formatos-mini{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:24px}
-.formatos-mini span{font-weight:700;font-size:.92rem;color:#c9d8f0;margin-right:4px}
-.formatos-mini i{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#fff;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
-.formatos-mini img{width:34px;height:34px}
+.formatos-mini{margin-top:26px;max-width:560px}
+.formatos-mini>span{display:block;font-weight:700;font-size:.92rem;color:#c9d8f0;margin-bottom:10px}
+.esteira{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.esteira-trilho{display:flex;gap:8px;width:max-content;animation:esteira 26s linear infinite}
+.esteira:hover .esteira-trilho{animation-play-state:paused}
+.esteira i{display:inline-flex;align-items:center;gap:9px;flex:none;background:#fff;color:var(--tinta);border-radius:12px;padding:8px 14px 8px 9px;font:700 .9rem/1 var(--corpo);font-style:normal;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)}
+.esteira img{width:28px;height:28px}
+@keyframes esteira{to{transform:translateX(calc(-50% - 4px))}}
 .formatos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
 .formato{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px;transition:transform .3s,box-shadow .3s}
 .formato:hover{transform:translateY(-4px);box-shadow:0 22px 40px -24px rgba(12,27,51,.35)}
@@ -297,12 +317,13 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
 .centro-cta{display:flex;justify-content:center;margin-top:26px}
 @media(max-width:980px){.indique-grid{grid-template-columns:1fr;gap:28px}}
 @media(max-width:980px){.formatos{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:480px){.formatos{gap:10px}.formato{padding:16px}.formato h3{font-size:1.1rem}.formato p{font-size:.9rem}.formatos-mini i{width:46px;height:46px}}
+@media(max-width:480px){.formatos{gap:10px}.formato{padding:16px}.formato h3{font-size:1.1rem}.formato p{font-size:.9rem}}
 @media(max-width:980px){
   .menu a:not(.btn){display:none}
   .heroi-grid,.app-grid,.lei-grid,.preco-grid,.faq-grid{grid-template-columns:minmax(0,1fr)}
   .janela{transform:none}
   .ze-espia{left:-6px;width:74px;bottom:auto;top:-46px}
+  .vitrine{margin-top:56px}
   .chip.c1{left:6px;top:auto;bottom:58%}
   .fatos-grid{grid-template-columns:1fr 1fr}.fato:nth-child(2){border-right:0}.fato:nth-child(-n+2){border-bottom:1px solid var(--linha)}
   .compara,.pilares,.setores{grid-template-columns:minmax(0,1fr)}
@@ -346,19 +367,19 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <a class="btn" href="#preco" data-comprar>Quero a Sua Escala 5x2 <small>R$&nbsp;97</small></a>
         <a class="btn-sec" href="#app">Ver o sistema por dentro</a>
       </div>
-      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><i title="WhatsApp"><img src="img/formatos/whatsapp.svg" alt="" width="40" height="40"></i><i title="PDF"><img src="img/formatos/pdf.svg" alt="" width="40" height="40"></i><i title="Excel"><img src="img/formatos/excel.svg" alt="" width="40" height="40"></i><i title="Google Planilhas"><img src="img/formatos/sheets.svg" alt="" width="40" height="40"></i><i title="Imagem JPG"><img src="img/formatos/jpg.svg" alt="" width="40" height="40"></i><i title="CSV"><img src="img/formatos/csv.svg" alt="" width="40" height="40"></i></div>
+      <div class="formatos-mini" data-e style="--d:4"><span>Baixe ou envie em</span><div class="esteira" aria-label="WhatsApp, PDF, Excel, Google Planilhas, imagem, CSV, link da equipe e impressão"><div class="esteira-trilho"><span class="grupo" style="display:contents"><i><img src="img/formatos/whatsapp.svg" alt="" width="28" height="28">WhatsApp</i><i><img src="img/formatos/pdf.svg" alt="" width="28" height="28">PDF</i><i><img src="img/formatos/excel.svg" alt="" width="28" height="28">Excel</i><i><img src="img/formatos/sheets.svg" alt="" width="28" height="28">Google Planilhas</i><i><img src="img/formatos/jpg.svg" alt="" width="28" height="28">Imagem</i><i><img src="img/formatos/csv.svg" alt="" width="28" height="28">CSV</i><i><img src="img/formatos/link.svg" alt="" width="28" height="28">Link da equipe</i><i><img src="img/formatos/imprimir.svg" alt="" width="28" height="28">Imprimir</i></span><span style="display:contents" aria-hidden="true"><i><img src="img/formatos/whatsapp.svg" alt="" width="28" height="28">WhatsApp</i><i><img src="img/formatos/pdf.svg" alt="" width="28" height="28">PDF</i><i><img src="img/formatos/excel.svg" alt="" width="28" height="28">Excel</i><i><img src="img/formatos/sheets.svg" alt="" width="28" height="28">Google Planilhas</i><i><img src="img/formatos/jpg.svg" alt="" width="28" height="28">Imagem</i><i><img src="img/formatos/csv.svg" alt="" width="28" height="28">CSV</i><i><img src="img/formatos/link.svg" alt="" width="28" height="28">Link da equipe</i><i><img src="img/formatos/imprimir.svg" alt="" width="28" height="28">Imprimir</i></span></div></div></div>
       <div class="confianca" data-e style="--d:4"><span>Acesso imediato</span><span>Pagamento único e vitalício</span><span>7 dias de garantia</span></div>
     </div>
     <div class="vitrine" data-e style="--d:2">
       <img class="ze-espia" src="img/mascote.svg" alt="Zé Folga, o mascote da Sua Escala 5x2">
-      <div class="janela"><div class="janela-barra"><i></i><i></i><i></i><span>Sua Escala 5x2 · Loja Shopping Norte</span></div><img src="img/app-escala.webp" width="1600" height="950" alt="A tabela pronta da Sua Escala 5x2: sete funcionários, duas folgas para cada um e quantas pessoas trabalham em cada dia."></div>
-      <div class="celular"><img src="img/app-celular.webp" width="600" height="1298" alt="A Sua Escala 5x2 no celular: quem trabalha e quem folga no dia."></div>
+      <div class="macbook"><div class="mac-tela"><img src="img/mac-tabela.webp" width="1440" height="900" alt="A Sua Escala 5x2 no computador: a tabela pronta, com as formas de enviar e as folgas de cada funcionário."></div><div class="mac-base"></div></div>
+      <div class="iphone"><div class="iphone-tela"><img src="img/iphone-escala.webp" width="780" height="1688" alt="A Sua Escala 5x2 no iPhone: quem trabalha e quem folga no dia."></div></div>
       <div class="chip c1"><b>✓</b><div>Dentro da lei<small>conferido antes de entregar</small></div></div>
       <div class="chip c2"><b>2</b><div>folgas por funcionário<small>como manda a nova lei</small></div></div>
     </div>
   </div>
   <div class="fatos wrap" style="width:auto">
-    <div class="wrap fatos-grid" data-r>
+    <div class="wrap fatos-grid">
       <div class="fato"><b>2 folgas</b><span>remuneradas por semana para cada funcionário</span></div>
       <div class="fato"><b>42 horas</b><span>de limite semanal a partir de 16/12/2026</span></div>
       <div class="fato"><b>40 horas</b><span>de limite semanal a partir de 16/12/2027</span></div>
@@ -435,14 +456,11 @@ dialog::backdrop{background:rgba(6,21,51,.7);backdrop-filter:blur(4px)}
         <button class="aba" role="tab" aria-selected="false" data-tela="2"><strong>3. Baixe ou envie do seu jeito</strong><span>WhatsApp, PDF, Excel, Google Planilhas, imagem ou o link para a equipe.</span></button>
       </div>
       <div class="fundo-app" data-r>
-        <div class="tela">
-          <div class="janela-barra"><i></i><i></i><i></i><span id="telaNome">Perguntas</span></div>
-          <div class="tela-img">
-            <img class="on" src="img/app-quiz.webp" width="1600" height="950" alt="As perguntas do primeiro acesso: tipo de negócio, dias que abre e quem trabalha.">
-            <img src="img/app-escala.webp" width="1600" height="950" alt="A escala pronta com as folgas de cada funcionário." loading="lazy">
-            <img src="img/app-saidas.webp" width="1600" height="950" alt="As formas de baixar e enviar a escala, e o Google Planilhas." loading="lazy">
-          </div>
-        </div>
+        <div class="iphone grande"><div class="iphone-tela tela-img">
+          <img class="on" src="img/iphone-quiz.webp" width="780" height="1688" alt="A primeira pergunta no iPhone: qual é o seu negócio.">
+          <img src="img/iphone-escala.webp" width="780" height="1688" alt="A escala pronta no iPhone: quem trabalha e quem folga no dia." loading="lazy">
+          <img src="img/iphone-saidas.webp" width="780" height="1688" alt="As formas de enviar a escala no iPhone: WhatsApp, PDF, Excel, CSV e Google Planilhas." loading="lazy">
+        </div></div>
       </div>
     </div>
   </div>
@@ -667,13 +685,11 @@ function conta() {
 if (conta()) { const t = setInterval(() => { if (!conta()) clearInterval(t); }, 1000); }
 
 // abas do sistema
-const nomes = ['Perguntas', 'Escala pronta', 'Baixar ou enviar'];
 let abaAtual = 0, girar = null;
 function mostra(i) {
   abaAtual = i;
   $$('.aba').forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
   $$('.tela-img img').forEach((im, j) => im.classList.toggle('on', j === i));
-  $('#telaNome').textContent = nomes[i];
 }
 $$('.aba').forEach(b => b.addEventListener('click', () => { clearInterval(girar); mostra(+b.dataset.tela); }));
 if (!calmo) girar = setInterval(() => mostra((abaAtual + 1) % 3), 5000);
@@ -687,7 +703,9 @@ function rolar() {
 }
 addEventListener('scroll', rolar, {passive: true}); rolar();
 
-// entrada ao rolar
+// entrada ao rolar: cada bloco entra com desfoque; as seções curvam como uma tela curva
+if (!calmo) document.querySelectorAll('.sec > .wrap > *').forEach(w => w.classList.add('curva'));
+document.querySelectorAll('.formatos .formato').forEach((f, i) => f.style.setProperty('--d', i % 5));
 if (!calmo && 'IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.remove('fora'); io.unobserve(e.target); } }), {rootMargin: '0px 0px -8% 0px'});
   $$('[data-r]').forEach(el => { if (el.getBoundingClientRect().top > innerHeight * .92) { el.classList.add('fora'); io.observe(el); } });
