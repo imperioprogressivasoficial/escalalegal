@@ -66,7 +66,13 @@
     + '#zeEspera.on{transform:translate(-50%,0);opacity:1}'
     + '#zeEspera .ze-anim{width:34px;height:auto}'
     + '[data-tema="escuro"] #zeEspera{background:#16213a;color:#e8eef8;border-color:#2a3a5c}'
-    + '@media(prefers-reduced-motion:reduce){.ze-anim *{animation:none!important}}';
+    + '.ze-giro{position:relative;display:grid;place-items:center}'
+    + '.ze-giro::before{content:"";position:absolute;inset:0;border-radius:50%;border:4px solid rgba(19,81,180,.14);border-top-color:' + AZUL + ';border-right-color:' + AZUL + ';animation:zeGira .85s linear infinite}'
+    + '#zeAbertura .ze-giro{width:176px;height:176px}#zeAbertura .ze-giro::before{border-width:6px}'
+    + '#zeEspera .ze-giro{width:46px;height:46px}#zeEspera .ze-giro::before{border-width:3px}'
+    + '@keyframes zeGira{to{transform:rotate(360deg)}}'
+    + '[data-tema="escuro"] .ze-giro::before{border-color:rgba(159,194,255,.18);border-top-color:#5b9bff;border-right-color:#5b9bff}'
+    + '@media(prefers-reduced-motion:reduce){.ze-anim *{animation:none!important}.ze-giro::before{animation-duration:2.5s}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
   var pendentes = 0;
@@ -79,7 +85,7 @@
     setTimeout(function () { el.classList.add('some'); setTimeout(function () { el.remove(); }, 400); }, Math.max(0, 700 - (Date.now() - inicioAb)));
   }
   if (abertura) {
-    abertura.innerHTML = ze('tchau') + '<p>Oi! Já estou abrindo…</p>';
+    abertura.innerHTML = '<div class="ze-giro">' + ze('tchau') + '</div><p>Oi! Já estou abrindo…</p>';
     // some quando a primeira tela aparece (ou no máximo em 8 s)
     // pronto = tela de entrada à vista, ou o app à vista sem nenhuma busca pendente
     var pronto = function () { return document.querySelector('#telaEntrada:not(.hide)') || (document.querySelector('#telaApp:not(.hide)') && pendentes === 0); };
@@ -93,10 +99,11 @@
   // espera: se uma busca na API demora mais de 0,5 s, aparece o Zé correndo
   var timer = null, pilula = null;
   function mostra() {
-    if (!pilula) { pilula = document.createElement('div'); pilula.id = 'zeEspera'; pilula.setAttribute('role', 'status'); pilula.innerHTML = ze('correndo') + '<span>Só um instante…</span>'; document.body.appendChild(pilula); }
+    if (!pilula) { pilula = document.createElement('div'); pilula.id = 'zeEspera'; pilula.setAttribute('role', 'status'); pilula.innerHTML = '<div class="ze-giro">' + ze('correndo') + '</div><span>Só um instante…</span>'; document.body.appendChild(pilula); }
     requestAnimationFrame(function () { pilula.classList.add('on'); });
+    if (window.Sons) Sons.digitar();
   }
-  function esconde() { clearTimeout(timer); timer = null; if (pilula) pilula.classList.remove('on'); }
+  function esconde() { clearTimeout(timer); timer = null; if (pilula && pilula.classList.contains('on')) { pilula.classList.remove('on'); if (window.Sons) Sons.pararDigitar(); } }
   var fetchOriginal = window.fetch;
   window.fetch = function (url, opts) {
     var u = typeof url === 'string' ? url : (url && url.url) || '';

@@ -689,7 +689,7 @@ function dadosDoQuiz() {
 }
 async function wizGerar() {
   const {unidade, pessoas, setores} = dadosDoQuiz();
-  $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><div class="oi-masc">${window.Carregando ? Carregando.svg('correndo') : ''}</div><h1>Gerando a escala…</h1>
+  $('#v-comecar').innerHTML = `<div class="quiz-wrap"><div class="quiz-card quiz-oi montando"><div class="oi-masc ze-giro" style="width:130px;height:130px;margin:14px auto 0"><div style="width:86px">${window.Carregando ? Carregando.svg('correndo') : ''}</div></div><h1>Gerando a escala…</h1>
     <p>Distribuindo as folgas de ${plural(pessoas.length, 'colaborador', 'colaboradores')} dentro da lei.</p><div class="q-barra carregando"><i></i></div></div></div>`;
   const espera = new Promise(r => setTimeout(r, 1400));
   try {
