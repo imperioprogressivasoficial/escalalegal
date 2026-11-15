@@ -46,6 +46,10 @@ services:
       COMISSAO_PERCENT: ${COMISSAO_PERCENT:-0}
       GA_ID: ${GA_ID:-}
       GTM_ID: ${GTM_ID:-}
+      GOOGLE_ADS_ID: ${GOOGLE_ADS_ID:-}
+      GOOGLE_ADS_CONVERSAO: ${GOOGLE_ADS_CONVERSAO:-}
+      GOOGLE_ADS_CONVERSAO_CLIQUE: ${GOOGLE_ADS_CONVERSAO_CLIQUE:-}
+      BLOG_DOMAIN: ${BLOG_DOMAIN:-}
       META_CAPI_TOKEN: ${META_CAPI_TOKEN:-}
       META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE:-}
       GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
@@ -80,6 +84,12 @@ services:
       - traefik.http.routers.escalalegal-www.tls=true
       - traefik.http.routers.escalalegal-www.tls.certresolver=letsencrypt
       - traefik.http.routers.escalalegal-www.service=escalalegal
+      # blog + gerador grátis (mesmo app, separado pelo Host). Precisa do registro DNS A: blog -> IP do VPS
+      - traefik.http.routers.escalalegal-blog.rule=Host(`blog.${DOMAIN}`)
+      - traefik.http.routers.escalalegal-blog.entrypoints=websecure
+      - traefik.http.routers.escalalegal-blog.tls=true
+      - traefik.http.routers.escalalegal-blog.tls.certresolver=letsencrypt
+      - traefik.http.routers.escalalegal-blog.service=escalalegal
       # endereço antigo: continua recebendo webhook e manda as páginas para o DOMAIN
       - traefik.http.routers.escalalegal-antigo.rule=Host(`${DOMINIO_ANTIGO:-escala.n8nimperio.tech}`)
       - traefik.http.routers.escalalegal-antigo.entrypoints=websecure

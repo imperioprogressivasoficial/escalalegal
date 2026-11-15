@@ -196,6 +196,10 @@ alter table usuarios add column if not exists ref_codigo text unique;
 alter table usuarios add column if not exists indicado_por int references usuarios(id) on delete set null;
 alter table usuarios add column if not exists pix text;
 alter table leads add column if not exists ref text;
+-- gerador grátis do blog: de onde veio o lead e quando autorizou o envio (LGPD)
+alter table leads add column if not exists origem text;
+alter table leads add column if not exists consentimento_em timestamptz;
+alter table leads add column if not exists novidades boolean not null default false;
 -- uma comissão por compra indicada: devida -> paga (ou cancelada se houver reembolso antes de pagar)
 create table if not exists comissoes (
   id serial primary key,

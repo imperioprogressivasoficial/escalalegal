@@ -18,6 +18,9 @@ const {
 const VALOR_COMISSAO = Math.round((+String(PRECO).replace(',', '.') || 97) * (+COMISSAO_PERCENT || 0)) / 100;
 const PRODUCAO = NODE_ENV === 'production';
 const APP_URL = (process.env.APP_URL || (DOMAIN ? `https://${DOMAIN}` : `http://localhost:${PORT}`)).replace(/\/$/, '');
+// blog e gerador grátis no subdomínio (mesmo app, separado pelo Host): BLOG_DOMAIN ou blog.DOMAIN
+const BLOG_HOST = String(process.env.BLOG_DOMAIN || (DOMAIN ? `blog.${String(DOMAIN).replace(/^www\./, '')}` : '')).toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+const BLOG_URL = BLOG_HOST ? (process.env.BLOG_URL || (DOMAIN ? `https://${BLOG_HOST}` : `http://${BLOG_HOST}:${PORT}`)).replace(/\/$/, '') : '';
 const SEGREDO = SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 if (!SESSION_SECRET) console.warn('AVISO: SESSION_SECRET vazio. Todo reinício vai deslogar os clientes.');
 if (PRODUCAO && LIBERAR_TUDO === '1') console.warn('AVISO: LIBERAR_TUDO=1 em produção. Qualquer pessoa gera escala sem pagar.');
@@ -35,15 +38,19 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? +TRUST_PROXY : TRUST_PROXY);
 // cabeçalhos de segurança (CSP, anti-iframe, HSTS), copiadores de página, imagens em outro domínio e origem da API
-const seg = require('./seguranca.js')({ DOMAIN, APP_URL, PRODUCAO });
+const seg = require('./seguranca.js')({ DOMAIN, APP_URL, PRODUCAO, BLOG_HOST });
 app.use(seg.cabecalhos);
 app.use(seg.bloqueiaCopiadores);
 app.use(seg.protegeArquivos);
 app.use(seg.confereOrigem);
+// blog + gerador grátis (só responde no Host do blog; o resto segue para o app)
+const blog = require('./blog')({ APP_URL, BLOG_URL, BLOG_HOST, PRODUCAO, seg });
+app.use(blog.rotas);
 // endereço antigo (ou www): páginas vão para o domínio principal. API e webhook seguem funcionando onde chegarem.
+// O host do blog nunca é redirecionado.
 app.use((req, res, next) => {
-  const host = String(req.hostname || '');
-  if (DOMAIN && host && host !== DOMAIN && host.includes('.') && !/^[\d.]+$/.test(host) && req.method === 'GET' && !req.path.startsWith('/api/'))
+  const host = String(req.hostname || '').toLowerCase();
+  if (DOMAIN && host && host !== DOMAIN && host !== BLOG_HOST && host.includes('.') && !/^[\d.]+$/.test(host) && req.method === 'GET' && !req.path.startsWith('/api/'))
     return res.redirect(301, `https://${DOMAIN}${req.originalUrl}`);
   next();
 });
@@ -57,7 +64,7 @@ const limite = (max = 20, janela = 60_000) => (req, res, next) => {
   h.push(now); hits.set(k, h); next();
 };
 // site público (metas, robots, sitemap, llms, rastreio, 404) antes dos arquivos estáticos
-const site = require('./site.js')({ app, APP_URL, PRODUCAO, seg, q, limite });
+const site = require('./site.js')({ app, APP_URL, BLOG_URL, PRODUCAO, seg, q, limite });
 app.use('/img', express.static(path.join(__dirname, 'public', 'img'), { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: PRODUCAO ? '10m' : 0 }));
 
@@ -423,6 +430,7 @@ app.post('/api/webhook/pagamento', express.urlencoded({ extended: true, limit: '
 // ---------- leads (formulário da página de vendas) ----------
 app.post('/api/leads', seg.soDaNossaPagina, limite(10), erro(async (req, res) => {
   const b = req.body || {};
+  if (b.origem === 'blog-gerador') return leadDoGerador(req, res, b);
   const nome = limpa(b.nome), whatsapp = limpa(b.whatsapp, 20).replace(/\D/g, '');
   if (!nome || whatsapp.length < 10) return res.status(400).json({ erro: 'Informe nome e WhatsApp com DDD.' });
   const utm = b.utm && typeof b.utm === 'object' && !Array.isArray(b.utm)
@@ -432,6 +440,41 @@ app.post('/api/leads', seg.soDaNossaPagina, limite(10), erro(async (req, res) =>
   enviar(N8N_WEBHOOK_URL, { evento: 'lead', id: rows[0].id, nome, whatsapp, email: limpa(b.email, 160), empresa: limpa(b.empresa) });
   res.json({ ok: true });
 }));
+
+// gerador grátis do blog: só o e-mail, com autorização expressa (LGPD), e a escala da semana vai por e-mail
+async function leadDoGerador(req, res, b) {
+  const email = limpa(b.email, 160).toLowerCase();
+  if (!emailValido(email)) return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  if (b.consentimento !== true) return res.status(400).json({ erro: 'Marque a caixa autorizando o envio da escala por e-mail.' });
+  const utm = b.utm && typeof b.utm === 'object' && !Array.isArray(b.utm)
+    ? Object.fromEntries(Object.entries(b.utm).slice(0, 10).map(([k, v]) => [limpa(k, 40), limpa(v, 200)])) : {};
+  const e = b.escala && typeof b.escala === 'object' ? b.escala : {};
+  const inicio = /^\d{4}-\d{2}-\d{2}$/.test(e.inicio || '') ? e.inicio : null;
+  const linhas = (Array.isArray(e.linhas) ? e.linhas : []).slice(0, 10)
+    .map(l => ({ nome: limpa(l?.nome, 40), dias: limpa(l?.dias, 7).toUpperCase().replace(/[^TF-]/g, '') }))
+    .filter(l => l.nome && l.dias.length === 7);
+  const novidades = b.novidades === true;
+  await q(`insert into leads (nome, empresa, whatsapp, email, setor, funcionarios, utm, ip, ref, origem, consentimento_em, novidades, escala)
+    values ($1,'','',$2,$3,$4,$5,$6,$7,'blog-gerador',now(),$8,$9)`,
+    ['Gerador grátis', email, limpa(b.setor, 40), linhas.length, utm, req.ip, codigoInd('ind_' + limpa(b.ref, 20)), novidades, { inicio, linhas }]);
+  if (linhas.length && inicio) {
+    const D = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], br = d => d.slice(8) + '/' + d.slice(5, 7);
+    const fim = new Date(inicio + 'T12:00:00Z'); fim.setUTCDate(fim.getUTCDate() + 6);
+    const site = `${APP_URL}/?utm_source=blog&utm_medium=email&utm_campaign=gerador#preco`;
+    await fila.enfileirar(email, `Sua escala 5x2 da semana de ${br(inicio)}`, modelo({
+      titulo: `Escala 5x2 da semana de ${br(inicio)} a ${br(fim.toISOString().slice(0, 10))}`,
+      paragrafos: [
+        ...linhas.map(l => { const f = [...l.dias].map((c, i) => c === 'F' ? D[i] : '').filter(Boolean); return `${l.nome}: folga ${f.join(' e ') || '—'}`; }),
+        'Feita no gerador grátis do blog Sua Escala 5x2: 1 semana, sem nomes. Confira com o seu contador.',
+        'Quer o mês inteiro, com os nomes, faltas, férias, envio pelo WhatsApp e acesso do contador? A Sua Escala 5x2 completa faz tudo isso.',
+      ],
+      botao: 'Conhecer a versão completa', link: site,
+      rodape: 'Você recebeu este e-mail porque pediu a escala no gerador grátis.' + (novidades ? '' : ' Não vamos mandar outros e-mails sem a sua autorização.'),
+    }));
+  }
+  enviar(N8N_WEBHOOK_URL, { evento: 'lead', origem: 'blog-gerador', email, novidades });
+  res.json({ ok: true });
+}
 
 // ---------- admin ----------
 function adminAuth(req, res, next) {

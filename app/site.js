@@ -5,11 +5,18 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-module.exports = function site({ app, APP_URL, PRODUCAO, seg, q, limite }) {
+module.exports = function site({ app, APP_URL, BLOG_URL = '', PRODUCAO, seg, q, limite }) {
   const E = process.env;
   const PIXEL = /^\d+$/.test(E.META_PIXEL_ID || '') ? E.META_PIXEL_ID : '';
   const GA = /^G-[A-Z0-9]+$/i.test(E.GA_ID || '') ? E.GA_ID : '';
   const GTM = /^GTM-[A-Z0-9]+$/i.test(E.GTM_ID || '') ? E.GTM_ID : '';
+  // Google Ads: conversão "gerou a escala" no gerador grátis do blog e "foi para o site pago" (rótulo próprio ou o mesmo)
+  // a escolha dos cookies vale para o domínio principal e todos os subdomínios (www, blog): cookie em .DOMAIN
+  const DOM_COOKIE = (() => { try { return new URL(APP_URL).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  const AW = /^AW-\d+$/i.test(E.GOOGLE_ADS_ID || '') ? E.GOOGLE_ADS_ID : '';
+  const rotulo = v => /^[\w-]{4,40}$/.test(v || '') ? v : '';
+  const AW_GEROU = AW ? rotulo(E.GOOGLE_ADS_CONVERSAO) : '';
+  const AW_CLIQUE = AW ? (rotulo(E.GOOGLE_ADS_CONVERSAO_CLIQUE) || AW_GEROU) : '';
   // token da API de Conversões: vem do .env ou do /admin (tabela config); guardado em cache por 1 minuto
   let capiCache = { t: '', em: 0 };
   async function tokenMeta() {
@@ -126,15 +133,21 @@ module.exports = function site({ app, APP_URL, PRODUCAO, seg, q, limite }) {
 `));
 
   // ---------- rastreio com aviso de cookies ----------
-  // Só carrega Pixel/Analytics/GTM depois do "Aceitar" (modo de consentimento do Google começa negado).
+  // Só carrega Pixel/Analytics/GTM/Google Ads depois do "Aceitar" (modo de consentimento do Google começa negado).
   // o rastreio também confere o domínio: uma cópia que puxa este arquivo do nosso servidor volta para o site real
   const guardaJs = seg && seg.guarda() ? seg.guarda().replace(/^<script[^>]*>|<\/script>$/g, '') + '\n' : '';
   const rastreio = () => `${guardaJs}(function(){
-var C=${JSON.stringify({ pixel: PIXEL, ga: GA, gtm: GTM, capi: !!CAPI })};
+if(window.__rastreioIniciado)return;window.__rastreioIniciado=1; // carregado de novo (SPA): não repete o aviso nem o rastreio
+var C=${JSON.stringify({ pixel: PIXEL, ga: GA, gtm: GTM, aw: AW, awg: AW_GEROU, awc: AW_CLIQUE, capi: !!CAPI, dom: /\./.test(DOM_COOKIE) && !/^[\d.]+$/.test(DOM_COOKIE) ? DOM_COOKIE : '' })};
 window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}window.gtag=gtag;
-var fila=[],ok=false,K='consentimento',ativo=C.pixel||C.ga||C.gtm;
+var fila=[],ok=false,K='consentimento',ativo=C.pixel||C.ga||C.gtm||C.aw;
 window.rastrear=function(ev,d){if(!ativo)return;if(ok)envia(ev,d);else fila.push([ev,d])};
-window.preferenciasCookies=function(){try{localStorage.removeItem(K)}catch(e){}aviso()};
+// escolha guardada uma vez: cookie de 1 ano no domínio e nos subdomínios + localStorage + sessão (se o armazenamento falhar, não volta na mesma visita)
+var CK={sim:'aceito',nao:'necessarios'};
+function dominio(){var h=location.hostname;return C.dom&&(h===C.dom||h.slice(-C.dom.length-1)==='.'+C.dom)?';domain=.'+C.dom:''}
+function lerEscolha(){var c=ck(K);if(c==='aceito')return 'sim';if(c==='necessarios')return 'nao';var v=null;try{v=localStorage.getItem(K)}catch(e){}if(v!=='sim'&&v!=='nao'){try{v=sessionStorage.getItem(K)}catch(e){}}if(v!=='sim'&&v!=='nao')v=window.__cookiesEscolha||null;return v==='sim'||v==='nao'?v:null}
+function guardaEscolha(v){window.__cookiesEscolha=v;try{document.cookie=K+'='+CK[v]+';max-age=31536000;path=/;SameSite=Lax'+dominio()+(location.protocol==='https:'?';Secure':'')}catch(e){}try{localStorage.setItem(K,v)}catch(e){}try{sessionStorage.setItem(K,v)}catch(e){}}
+window.preferenciasCookies=function(){window.__cookiesEscolha=null;try{document.cookie=K+'=;max-age=0;path=/'+dominio()}catch(e){}try{localStorage.removeItem(K)}catch(e){}try{sessionStorage.removeItem(K)}catch(e){}aviso(true)};
 if(ativo)gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});
 function s(src){var t=document.createElement('script');t.async=true;t.src=src;document.head.appendChild(t)}
 function eid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,10)}
@@ -143,18 +156,21 @@ function srv(ev,id,d){if(!C.pixel)return;var go=function(){try{var u=new URLSear
 function carrega(){if(ok||!ativo)return;ok=true;
 gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});
 if(C.gtm){dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});s('https://www.googletagmanager.com/gtm.js?id='+C.gtm)}
-if(C.ga){s('https://www.googletagmanager.com/gtag/js?id='+C.ga);gtag('js',new Date());gtag('config',C.ga)}
+if(C.ga||C.aw){s('https://www.googletagmanager.com/gtag/js?id='+(C.ga||C.aw));gtag('js',new Date());if(C.ga)gtag('config',C.ga);if(C.aw)gtag('config',C.aw)}
 if(C.pixel){!function(f,b,e,v,n,t,x){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;x=b.getElementsByTagName(e)[0];x.parentNode.insertBefore(t,x)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',C.pixel);var pv=eid();fbq('track','PageView',{},{eventID:pv});srv('PageView',pv)}
 fila.forEach(function(e){envia(e[0],e[1])});fila=[]}
-var GA4={Lead:'generate_lead',InitiateCheckout:'begin_checkout',Purchase:'purchase',CompleteRegistration:'sign_up',ViewContent:'view_item'};
-function envia(ev,d){d=d||{};var id=eid();if(window.fbq)fbq('track',ev,d,{eventID:id});if(ev!=='Purchase')srv(ev,id,d);if(C.ga||C.gtm)gtag('event',GA4[ev]||ev,{value:d.value,currency:d.currency});dataLayer.push({event:'escala_'+ev})}
-function aviso(){if(document.getElementById('avisoCookies'))return;var a=document.createElement('div');a.id='avisoCookies';a.setAttribute('role','dialog');a.setAttribute('aria-label','Cookies');
-a.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:520px;margin:0 auto;background:rgba(12,27,51,.97);backdrop-filter:blur(10px);color:#e6edf7;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 20px;font:500 15px/1.5 system-ui,sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.45);transform:translateY(30px);opacity:0;transition:transform .5s cubic-bezier(.16,1,.3,1),opacity .5s';
-a.innerHTML='<b style="display:block;font-size:16px;color:#fff;margin-bottom:4px">Este site usa cookies</b>Eles ajudam a medir as visitas e melhorar os anúncios. Você escolhe. <a href="/privacidade#cookies" style="color:#9fc2ff">Saiba mais</a><div style="display:flex;gap:8px;margin-top:14px"><button data-c="sim" style="flex:1.4;border:0;border-radius:12px;padding:12px;font:700 15px system-ui;background:linear-gradient(135deg,#2bc443,#168821);color:#fff;cursor:pointer">Aceitar cookies</button><button data-c="nao" style="flex:1;border:1px solid #5a6a85;border-radius:12px;padding:12px;font:700 15px system-ui;background:transparent;color:#e6edf7;cursor:pointer">Só os necessários</button></div>';
-setTimeout(function(){a.style.transform='none';a.style.opacity='1'},400);
-a.onclick=function(e){var b=e.target.closest('button');if(!b)return;try{localStorage.setItem(K,b.dataset.c)}catch(x){}a.remove();if(b.dataset.c==='sim')carrega()};
+var GA4={Lead:'generate_lead',InitiateCheckout:'begin_checkout',Purchase:'purchase',CompleteRegistration:'sign_up',ViewContent:'view_item',GerouEscala:'gerou_escala',CliqueSitePago:'clique_site_pago'};
+var META={PageView:1,ViewContent:1,Lead:1,InitiateCheckout:1,CompleteRegistration:1,AddPaymentInfo:1,Contact:1,Purchase:1},ADS={GerouEscala:C.awg,CliqueSitePago:C.awc};
+function envia(ev,d){d=d||{};var id=eid();if(window.fbq)fbq(META[ev]?'track':'trackCustom',ev,d,{eventID:id});if(ev!=='Purchase'&&META[ev])srv(ev,id,d);if(C.ga||C.gtm)gtag('event',GA4[ev]||ev,{value:d.value,currency:d.currency});
+if(C.aw&&ADS[ev])gtag('event','conversion',{send_to:C.aw+'/'+ADS[ev],value:d.value,currency:d.currency||'BRL',transport_type:'beacon'});dataLayer.push({event:'escala_'+ev})}
+function aviso(forca){if(document.getElementById('avisoCookies')||(!forca&&lerEscolha()))return;var a=document.createElement('div');a.id='avisoCookies';a.setAttribute('role','dialog');a.setAttribute('aria-label','Cookies');
+var css=document.createElement('style');css.textContent='#avisoCookies{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:rgba(12,27,51,.97);color:#e6edf7;border-top:1px solid rgba(255,255,255,.14);padding:10px 12px calc(10px + env(safe-area-inset-bottom));font:500 13px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 -10px 30px rgba(0,0,0,.25);transform:translateY(100%);transition:transform .35s cubic-bezier(.16,1,.3,1)}#avisoCookies.on{transform:none}#avisoCookies p{margin:0;flex:1 1 260px}#avisoCookies a{color:#9fc2ff}#avisoCookies div{display:flex;gap:8px;flex:1 1 100%}#avisoCookies button{flex:1;height:36px;border-radius:9px;font:700 14px system-ui,-apple-system,sans-serif;cursor:pointer;padding:0 12px}#avisoCookies .s{border:0;background:#168821;color:#fff}#avisoCookies .n{border:1px solid #5a6a85;background:transparent;color:#e6edf7}@media (min-width:640px){#avisoCookies{left:16px;right:auto;bottom:16px;max-width:380px;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;transform:translateY(calc(100% + 24px))}}';
+a.appendChild(css);
+a.insertAdjacentHTML('beforeend','<p>Usamos cookies para medir visitas e anúncios. <a href="${APP_URL}/privacidade#cookies">Saiba mais</a></p><div><button type="button" class="s" data-c="sim">Aceitar</button><button type="button" class="n" data-c="nao">Só necessários</button></div>');
+setTimeout(function(){a.classList.add('on')},400);
+a.onclick=function(e){var b=e.target.closest('button');if(!b)return;guardaEscolha(b.dataset.c);a.remove();if(b.dataset.c==='sim')carrega()};
 (document.body?document.body.appendChild(a):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(a)}))}
-var v=null;try{v=localStorage.getItem(K)}catch(e){}
+var v=lerEscolha();if(v)guardaEscolha(v);
 if(v==='sim')carrega();else if(v!=='nao')aviso();
 })();`;
   app.get(['/rastreio.js', '/pixel.js'], (_req, res) => res.type('application/javascript').set('Cache-Control', 'public, max-age=600').send(rastreio()));
@@ -187,7 +203,7 @@ if(v==='sim')carrega();else if(v!=='nao')aviso();
   async function eventoMeta(req, b) {
     const tk = await tokenMeta(); if (!tk) return;
     const url = String(b.url || '').slice(0, 500);
-    if (url && !url.startsWith(APP_URL)) return; // só eventos do nosso domínio
+    if (url && !url.startsWith(APP_URL) && !(BLOG_URL && url.startsWith(BLOG_URL))) return; // só eventos do nosso domínio (e do blog)
     const user_data = { client_ip_address: ip(req), client_user_agent: String(req.headers['user-agent'] || '').slice(0, 400) };
     if (/^fb\.\d\.\d+\.[\w.-]+$/.test(b.fbp || '')) user_data.fbp = b.fbp;
     if (/^fb\.\d\.\d+\.[\w.-]+$/.test(b.fbc || '')) user_data.fbc = b.fbc;

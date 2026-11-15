@@ -6,13 +6,13 @@
 // copiar e editar o HTML à mão. A canonical, a marca d'água e os logs ajudam a provar a autoria.
 const crypto = require('crypto');
 
-module.exports = function seguranca({ DOMAIN, APP_URL, PRODUCAO, E = process.env }) {
-  // ---------- domínios permitidos ----------
+module.exports = function seguranca({ DOMAIN, APP_URL, PRODUCAO, BLOG_HOST = '', E = process.env }) {
+  // ---------- domínios permitidos (o principal, www, o blog e os extras) ----------
   const hostDe = u => { try { return new URL(u).hostname.toLowerCase(); } catch { return ''; } };
   const extras = String(E.DOMINIOS_PERMITIDOS || '').split(/[\s,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
   const principal = (DOMAIN || hostDe(APP_URL) || '').toLowerCase();
   const PERMITIDOS = [...new Set([principal, hostDe(APP_URL), ...extras, ...extras.map(h => h.startsWith('www.') ? h.slice(4) : 'www.' + h),
-    principal && !principal.startsWith('www.') ? 'www.' + principal : '', 'localhost', '127.0.0.1'].filter(Boolean))];
+    principal && !principal.startsWith('www.') ? 'www.' + principal : '', String(BLOG_HOST).toLowerCase(), 'localhost', '127.0.0.1'].filter(Boolean))];
   const hostPermitido = h => { h = String(h || '').toLowerCase().replace(/:\d+$/, ''); return PERMITIDOS.includes(h); };
   // o guarda só liga com domínio configurado (em desenvolvimento sem DOMAIN fica desligado)
   const GUARDA_LIGADO = !!principal && E.ANTICLONE !== '0';
@@ -35,8 +35,8 @@ module.exports = function seguranca({ DOMAIN, APP_URL, PRODUCAO, E = process.env
   }
 
   // ---------- Content-Security-Policy ----------
-  // O que as páginas carregam: Google Fonts, rastreio (Meta Pixel, GA4, GTM) depois do "Aceitar" e o player do vídeo (vturb/ConverteAI).
-  const GOOGLE = 'https://www.googletagmanager.com https://*.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com https://www.google.com.br https://*.doubleclick.net https://www.googleadservices.com';
+  // O que as páginas carregam: Google Fonts, rastreio (Meta Pixel, GA4, GTM, Google Ads) depois do "Aceitar" e o player do vídeo (vturb/ConverteAI).
+  const GOOGLE = 'https://www.googletagmanager.com https://*.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com https://www.google.com.br https://*.doubleclick.net https://www.googleadservices.com https://pagead2.googlesyndication.com';
   const META = 'https://connect.facebook.net https://www.facebook.com https://*.facebook.com';
   const VTURB = 'https://scripts.converteai.net https://cdn.converteai.net https://images.converteai.net https://*.converteai.net https://license.vturb.com https://*.vturb.com https://*.vturb.com.br https://*.vturb.net';
   const CSP = [
